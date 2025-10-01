@@ -1,0 +1,315 @@
+
+body {
+	background: #f6fafd;
+}
+
+/* HERO SECTION */
+.inicio-hero-section {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	justify-content: space-between;
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 3rem 1rem 2rem 1rem;
+	gap: 2.5rem;
+}
+.inicio-hero-left {
+	flex: 1.2;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+}
+.inicio-hero-title {
+	font-size: 3.2rem;
+	font-weight: 800;
+	color: #222;
+	margin-bottom: 1.2rem;
+	line-height: 1.1;
+	letter-spacing: 0.5px;
+}
+.inicio-hero-desc {
+	font-size: 1.45rem;
+	color: #555;
+	margin-bottom: 2.2rem;
+	max-width: 580px;
+	line-height: 1.5;
+}
+.inicio-hero-btns {
+	display: flex;
+	gap: 1.2rem;
+}
+.inicio-btn-main {
+	background: #f97316;
+	color: #fff;
+	border: none;
+	border-radius: 12px;
+	padding: 0.9rem 2.2rem;
+	font-size: 1.08rem;
+	font-weight: 700;
+	cursor: pointer;
+	box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+	transition: background 0.2s;
+}
+.inicio-btn-main:hover {
+	background: #ea580c;
+}
+.inicio-btn-alt {
+	background: #fff;
+	color: #222;
+	border: none;
+	border-radius: 12px;
+	padding: 0.9rem 2.2rem;
+	font-size: 1.08rem;
+	font-weight: 700;
+	cursor: pointer;
+	box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+	border: 2px solid #e5e7eb;
+	transition: background 0.2s;
+}
+.inicio-btn-alt:hover {	
+	background: #f3f4f6;
+}
+
+/* HERO CARDS */
+.inicio-hero-cards {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 2.2rem;
+	align-items: flex-end;
+	margin-right: 2.5rem;
+	min-width: 420px;
+	max-width: 420px;
+	overflow-y: auto;
+	max-height: 80vh;
+}
+.inicio-hero-card {
+	background: #fff;
+	border-radius: 18px;
+	box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+	display: flex;
+	align-items: flex-start;
+	gap: 1.2rem;
+	padding: 1.7rem 2.7rem;
+	width: 100%;
+	min-width: 380px;
+	max-width: 420px;
+	box-sizing: border-box;
+	transition: box-shadow 0.25s, transform 0.25s;
+	word-break: break-word;
+	white-space: normal;
+	min-height: 120px;
+}
+.inicio-hero-card:hover {
+	box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+	transform: translateY(-8px) scale(1.04);
+}
+.inicio-hero-icon {
+	width: 56px;
+	height: 56px;
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.inicio-hero-icon img {
+	width: 36px;
+	height: 36px;
+}
+.inicio-hero-card-title {
+	font-size: 1.45rem;
+	font-weight: 700;
+	color: #222;
+	margin-bottom: 0.2rem;
+}
+.inicio-hero-card-desc {
+	font-size: 1.18rem;
+	color: #444;
+	word-break: break-word;
+	white-space: normal;
+}
+
+/* ESPECIALIDADES GRID */
+.inicio-especialidades-section {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 2.5rem 1rem 2rem 1rem;
+}
+.inicio-especialidades-title {
+	font-size: 2rem;
+	font-weight: 800;
+	color: #222;
+	margin-bottom: 2.2rem;
+	text-align: left;
+	letter-spacing: 0.5px;
+}
+.inicio-especialidades-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+	gap: 2rem;
+}
+.inicio-especialidad-card {
+	background: #fff;
+	border-radius: 18px;
+	box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+	display: flex;
+	align-items: flex-start;
+	gap: 1.2rem;
+	padding: 1.5rem 2rem;
+	min-width: 320px;
+	transition: box-shadow 0.25s, transform 0.25s;
+}
+.inicio-especialidad-card:hover {
+	box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+	transform: translateY(-8px) scale(1.04);
+}
+.inicio-especialidad-icon {
+	width: 56px;
+	height: 56px;
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.inicio-especialidad-icon img {
+	width: 36px;
+	height: 36px;
+}
+.inicio-especialidad-title {
+	font-size: 1.18rem;
+	font-weight: 700;
+	color: #222;
+	margin-bottom: 0.7rem;
+}
+.inicio-especialidad-list {
+	font-size: 1rem;
+	color: #444;
+	margin: 0;
+	padding-left: 1.2rem;
+}
+.inicio-especialidad-list li {
+	margin-bottom: 0.5rem;
+}
+
+/* ANIMACIONES SUAVES */
+.inicio-hero-section {
+	padding-top: 1rem;
+	animation: fadeInUp 1.2s;
+}
+.inicio-hero-card, .inicio-especialidad-card {
+	opacity: 0;
+	transform: translateY(30px);
+	animation: fadeUpCard 1s forwards;
+}
+.inicio-hero-card:nth-child(1) { animation-delay: 0.2s; }
+.inicio-hero-card:nth-child(2) { animation-delay: 0.4s; }
+.inicio-hero-card:nth-child(3) { animation-delay: 0.6s; }
+.inicio-especialidad-card:nth-child(1) { animation-delay: 0.2s; }
+.inicio-especialidad-card:nth-child(2) { animation-delay: 0.4s; }
+.inicio-especialidad-card:nth-child(3) { animation-delay: 0.6s; }
+.inicio-especialidad-card:nth-child(4) { animation-delay: 0.8s; }
+@keyframes fadeInUp {
+	from { opacity: 0; transform: translateY(40px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeUpCard {
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+	.inicio-hero-section {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 2rem;
+	}
+	.inicio-hero-cards {
+		align-items: stretch;
+		margin-right: 0;
+		min-width: 90vw;
+		max-width: 98vw;
+	}
+	.inicio-hero-card {
+		min-width: 90vw;
+		max-width: 98vw;
+	}
+	.inicio-especialidades-grid {
+		grid-template-columns: 1fr;
+		gap: 1.2rem;
+	}
+}
+@media (max-width: 600px) {
+	.inicio-hero-title {
+		font-size: 1.7rem;
+	}
+	.inicio-especialidades-title {
+		font-size: 1.1rem;
+	}
+	.inicio-hero-card,
+	.inicio-especialidad-card {
+		min-width: 90vw;
+		padding: 1rem 0.5rem;
+	}
+	.inicio-hero-icon,
+	.inicio-especialidad-icon {
+		width: 40px;
+		height: 40px;
+	}
+	.inicio-hero-icon img,
+	.inicio-especialidad-icon img {
+		width: 24px;
+		height: 24px;
+	}
+}
+@media (max-width: 900px) {
+	.inicio-cards {
+		gap: 1.2rem;
+	}
+	.inicio-card {
+		width: 90vw;
+		min-width: 220px;
+		max-width: 340px;
+	}
+	}
+
+	@media (max-width: 700px) {
+	.inicio-title {
+		font-size: 1.5rem;
+	}
+	.inicio-main {
+		padding: 1.2rem 0.2rem;
+		min-height: 100vh;
+	}
+	.inicio-card {
+		padding: 1.2rem 0.7rem 1rem 0.7rem;
+		width: 98vw;
+		min-width: 180px;
+		max-width: 98vw;
+	}
+	.inicio-card-img {
+		width: 60px;
+		height: 60px;
+	}
+}
+
+@media (max-width: 480px) {
+	.inicio-main {
+		padding: 0.7rem 0.1rem;
+		min-height: 100vh;
+	}
+	.inicio-title {
+		font-size: 1.1rem;
+	}
+	.inicio-card {
+		padding: 0.7rem 0.2rem 0.7rem 0.2rem;
+		min-width: 120px;
+		max-width: 99vw;
+	}
+	.inicio-card-img {
+		width: 40px;
+		height: 40px;
+	}
+}

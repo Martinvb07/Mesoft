@@ -1,0 +1,269 @@
+body {
+    background: #f6fafd;
+}
+
+.p{
+    text-align: justify;;
+}
+
+:root {
+    --brand: #ff6633;
+    --brand-hover: #ff5a21;
+    --ink: #222;
+    --muted: #555;
+    --card: #fff;
+    --card-border: #eef2f6;
+}
+
+.quienes-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 1rem 2rem 1rem;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    animation: fadeInUp 1.2s;
+}
+.quienes-hero-section {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 2rem;
+    align-items: start;
+}
+.quienes-hero-left h1 { margin-top: 0; text-align: left; }
+.quienes-hero-right { align-self: stretch; }
+.quienes-main h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--ink);
+    margin: 0 0 1rem 0;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+.quienes-main p {
+    font-size: 1.25rem;
+    color: var(--muted);
+    margin: 0 0 1.2rem 0;
+    line-height: 1.5;
+    text-align: left;
+    max-width: 640px;
+}
+.quienes-main ul {
+    font-size: 1.08rem;
+    color: #444;
+    margin: 0.5rem 0 1.2rem 1.5rem;
+    padding-left: 1.2rem;
+}
+.quienes-main ul li {
+    margin-bottom: 0.5rem;
+}
+
+/* Table styles for Fases vs Actividades */
+.quienes-table-wrapper {
+    overflow-x: auto;
+}
+.quienes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 0.98rem;
+}
+.quienes-table thead th {
+    background: #eaf2ff;
+    color: #222;
+    text-align: center;
+    padding: 0.8rem;
+    border: 1px solid #d6e4ff;
+    font-weight: 800;
+    letter-spacing: .3px;
+}
+.quienes-table tbody td {
+    vertical-align: top;
+    padding: 0.9rem 1rem;
+    border: 1px solid #eef2f6;
+}
+.quienes-table tbody td:first-child {
+    width: 28%;
+    text-align: center;
+    background: #fbfdff;
+    font-weight: 700;
+}
+.quienes-table ul {
+    margin: 0.25rem 0 0.25rem 1.2rem;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hero actions */
+.hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin: 1.5rem 0 2rem 0;
+}
+.btn {
+    padding: 0.9rem 1.3rem;
+    border-radius: 12px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(44,62,80,0.10);
+    outline: none;
+}
+.btn-primary {
+    background: var(--brand);
+    color: #fff;
+}
+.btn-primary:hover { background: var(--brand-hover); }
+.btn-secondary {
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--card-border);
+}
+.btn-secondary:hover { background: #f7fafc; }
+
+/* Valores card */
+.values-section {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0 0 1.2rem 0;
+}
+.values-section h2 {
+    font-size: 3rem; /* match h1 */
+    font-weight: 800;
+    color: var(--ink);
+    margin: 0 0 1rem 0;
+}
+.values-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+}
+.value-item {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+    padding: 1.4rem 2rem;
+    transition: box-shadow 0.25s, transform 0.25s;
+}
+.value-item:hover {
+    box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+    transform: translateY(-6px) scale(1.02);
+}
+.value-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: #ffe8df;
+    color: var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex: 0 0 56px;
+}
+.value-item h3 { margin: 0 0 0.25rem 0; font-size: 1.18rem; color: var(--ink); }
+.value-item p { margin: 0; font-size: 1rem; color: var(--muted); }
+
+/* Team section */
+.team-section {
+    margin-top: 3.5rem;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 1.4rem 0 1.6rem 0;
+    scroll-margin-top: 96px; /* evitar que el título quede oculto por el navbar */
+}
+.team-section h2 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--ink);
+    margin: 0 0 1rem 0;
+}
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+.team-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+    padding: 1.2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.4rem;
+    transition: box-shadow 0.25s, transform 0.25s;
+}
+.team-card:hover {
+    box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+    transform: translateY(-6px) scale(1.02);
+}
+.team-card .avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fff1eb;
+    color: var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: inset 0 0 0 2px #ffd9cc;
+}
+.team-name { margin: 0.3rem 0 0 0; font-size: 1.05rem; color: var(--ink); font-weight: 700; }
+.team-role { margin: 0; font-size: 0.95rem; color: #666; }
+.team-bio { margin: 0; font-size: 0.92rem; color: var(--muted); }
+.value-item h3 { margin: 0 0 0.25rem 0; font-size: 1.2rem; }
+.value-item p { margin: 0; font-size: 0.98rem; color: #555; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .quienes-main {
+        padding: 2rem 0.5rem;
+        max-width: 98vw;
+    }
+    .quienes-hero-section {
+        grid-template-columns: 1fr;
+    }
+    .quienes-main h1 {
+        font-size: 2rem;
+    }
+    .quienes-main p {
+        font-size: 1.05rem;
+    }
+}
+@media (max-width: 600px) {
+    .quienes-main {
+        padding: 1rem 0.2rem;
+    }
+    .quienes-main h1 {
+        font-size: 1.6rem;
+    }
+    .quienes-table thead th, .quienes-table tbody td { padding: 0.6rem; }
+    .values-grid { gap: 1rem; }
+    .team-grid { grid-template-columns: 1fr; }
+}
+/* Two columns for values on wide screens */
+@media (min-width: 1100px) {
+    .values-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Reduce left padding on wide screens to move content further left */
+@media (min-width: 1100px) {
+    .quienes-main { padding-left: 0; padding-right: 1rem; }
+}
+
+/* Empuja la sección de equipo más abajo en desktop para que no se vea de inmediato */
+@media (min-width: 1100px) {
+    .team-section { margin-top: 6rem; }
+}

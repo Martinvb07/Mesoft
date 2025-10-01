@@ -1,0 +1,8 @@
+/* Cierre de Caja (Finanzas) */
+:root { --brand:#ff6633; --ink:#222; --muted:#555; --card:#fff; --card-border:#eef2f6; --bg:#f6fafd; --shadow-sm:0 4px 18px rgba(44,62,80,.12); }
+.fin-page{ padding:2rem 1rem; background:var(--bg); min-height:100vh; box-sizing:border-box; }
+.fin-header{ max-width:1200px; margin:0 auto 1rem; }
+.fin-header h1{ margin:0 0 .25rem 0; font-size:2rem; font-weight:800; color:var(--ink); }
+.muted{ color: var(--muted); }
+.fin-card{ max-width:1200px; margin:0 auto 1rem; background:#fff; border:1px solid var(--card-border); border-radius:18px; box-shadow: var(--shadow-sm); padding:1rem; }
+.empty{ background:#fff; border:1px dashed var(--card-border); border-radius:12px; padding:1rem; text-align:center; color:var(--muted); }

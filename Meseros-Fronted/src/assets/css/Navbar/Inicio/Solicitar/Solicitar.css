@@ -1,0 +1,158 @@
+body {
+    background: #f6fafd;
+}
+
+.solicitar-hero-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    /* Animación de entrada similar a Inicio/Quienes Somos */
+    padding-top: 1rem;
+    animation: fadeInUp 1.2s;
+}
+
+.solicitar-hero-left {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(44,62,80,0.13);
+    padding: 2.8rem 2.8rem 2.2rem 2.8rem;
+    max-width: 600px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Efecto de tarjeta que se desplaza hacia arriba */
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeUpCard 0.9s forwards;
+    animation-delay: 0.1s;
+}
+
+
+
+.solicitar-hero-desc {
+    font-size: 1.18rem;
+    color: #555;
+    margin-bottom: 2.2rem;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.solicitar-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+}
+
+.solicitar-form-row {
+    display: flex;
+    gap: 2.5rem;
+    align-items: flex-end;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.solicitar-form-row > div {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.solicitar-label {
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 0.5rem;
+    text-align: left;
+    display: block;
+    font-size: 1.08rem;
+}
+
+.solicitar-input {
+    padding: 0.8rem 1.1rem;
+    font-size: 1.08rem;
+    border-radius: 10px;
+    border: 1.5px solid #e5e7eb;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(44,62,80,0.04);
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.solicitar-input:focus {
+    border-color: #f97316;
+    box-shadow: 0 2px 8px rgba(249,115,22,0.10);
+    outline: none;
+}
+
+.solicitar-textarea {
+    padding: 0.8rem 1.1rem;
+    font-size: 1.08rem;
+    border-radius: 10px;
+    border: 1.5px solid #e5e7eb;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(44,62,80,0.04);
+    width: 100%;
+    resize: vertical;
+}
+
+.solicitar-btn-main {
+    width: 100%;
+    padding: 1rem 0;
+    font-size: 1.18rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(90deg, #f97316 60%, #ea580c 100%);
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(44,62,80,0.10);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    margin-top: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.solicitar-btn-main:hover {
+    background: linear-gradient(90deg, #ea580c 60%, #f97316 100%);
+    box-shadow: 0 4px 16px rgba(44,62,80,0.16);
+    transform: translateY(-2px) scale(1.03);
+}
+
+/* Animaciones */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeUpCard {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+    .solicitar-hero-left {
+        max-width: 98vw;
+        padding: 2rem 0.7rem;
+    }
+    .solicitar-form-row {
+        flex-direction: column;
+        gap: 0.7rem;
+    }
+}
+@media (max-width: 600px) {
+    .solicitar-hero-title {
+        font-size: 1.3rem;
+    }
+    .solicitar-form {
+        gap: 0.7rem;
+    }
+    .solicitar-input, .solicitar-btn-main, .solicitar-textarea {
+        font-size: 1rem;
+        padding: 0.6rem 0.7rem;
+    }
+}
