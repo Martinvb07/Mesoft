@@ -1,31 +1,21 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '');
 
-function getRestaurantId() {
-  try {
-    const fromStorage = localStorage.getItem('restaurant_id') || localStorage.getItem('restaurante_id') || localStorage.getItem('tenant');
-    if (fromStorage) return fromStorage;
-  } catch {}
-  return import.meta.env.VITE_RESTAURANT_ID || '';
+function defaultHeaders() {
+  const rid = localStorage.getItem('restaurant_id');
+  return {
+    'Content-Type': 'application/json',
+    ...(rid ? { 'X-Restaurant-Id': rid } : {}),
+  };
 }
 
-async function request(path, { method = 'GET', body, headers } = {}) {
-  const rid = getRestaurantId();
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(rid ? { 'X-Restaurant-Id': rid } : {}),
-      ...(headers || {}),
-    },
-    credentials: 'include',
-    body: body ? JSON.stringify(body) : undefined,
+export async function request(path, options = {}) {
+  const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...defaultHeaders(), ...(options.headers || {}) },
   });
-  if (!res.ok) {
-    let errText = 'Error de red';
-    try { const j = await res.json(); errText = j.error || JSON.stringify(j); } catch {}
-    throw new Error(`${res.status} ${res.statusText}: ${errText}`);
-  }
-  try { return await res.json(); } catch { return null; }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 export const api = {

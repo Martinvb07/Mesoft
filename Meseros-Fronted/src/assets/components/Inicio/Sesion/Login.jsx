@@ -7,6 +7,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import NavbarInicio from '../NavbarInicio';
 import '../../../css/Navbar/Sesion/Login.css';
 
+const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '');
+
 const Login = () => {
     const navigate = useNavigate();
     const handleEspecialidades = () => {
@@ -24,10 +26,10 @@ const Login = () => {
         const correo = document.getElementById('usuario').value;
         const contrasena = document.getElementById('password').value;
         try {
-            const res = await fetch('http://localhost:3001/usuarios/login', {
+            const res = await fetch(`${API_BASE}/usuarios/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ correo, contrasena })
+                body: JSON.stringify({ correo, contrasena }),
             });
             const data = await res.json();
             if (data.success) {
