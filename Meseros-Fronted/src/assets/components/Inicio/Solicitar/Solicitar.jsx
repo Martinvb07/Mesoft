@@ -3,6 +3,9 @@ import Swal from 'sweetalert2';
 import NavbarInicio from '../NavbarInicio';
 import '../../../css/Navbar/Inicio/Solicitar/Solicitar.css';
 
+// Tomar base de API desde variable de entorno (misma convención que login y client.js)
+const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '');
+
 const Solicitar = () => {
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'auto' });
@@ -27,13 +30,14 @@ const Solicitar = () => {
 		e.preventDefault();
 		setStatus(null);
 		try {
-			const res = await fetch('http://localhost:3001/solicitud', {
+			const res = await fetch(`${API_BASE}/solicitud`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(form)
 			});
-			const data = await res.json();
-			if (data.success) {
+			let data = {};
+			try { data = await res.json(); } catch { /* ignore parse */ }
+			if (res.ok && data.success) {
 				Swal.fire({
 					icon: 'success',
 					title: '¡Solicitud enviada!',
@@ -55,7 +59,7 @@ const Solicitar = () => {
 				Swal.fire({
 					icon: 'error',
 					title: 'Error al enviar',
-					text: data.error || 'Intenta de nuevo.'
+					text: data.error || data.message || 'Intenta de nuevo.'
 				});
 			}
 		} catch (err) {
