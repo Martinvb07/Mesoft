@@ -20,7 +20,6 @@ const meserosRoutes = require('./routes/meseros');
 const resolveTenant = require('./middleware/resolveTenant');
 
 // --------- CORS GLOBAL ---------
-// Admite lista separada por comas en CORS_ORIGIN (ej: https://miapp.com,https://admin.miapp.com)
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map(o => o.trim())
@@ -38,7 +37,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Restaurant-Id', 'Restaurant-Id']
 }));
 
-// Preflight genérico: Express 5 + path-to-regexp v8 es más estricto con '*'
+// Preflight genérico
 app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -54,7 +53,19 @@ app.use('/api/usuarios', usuarioRoutes);
 // Middleware de tenant
 app.use(resolveTenant);
 
-// Resto de rutas bajo /api (requieren tenant)
+// Routes sin prefijo (compatibilidad)
+app.use('/usuarios', usuarioRoutes);
+app.use('/solicitud', solicitudRoutes);
+app.use('/mesas', mesasRoutes);
+app.use('/pedidos', pedidosRoutes);
+app.use('/productos', productosRoutes);
+app.use('/finanzas', finanzasRoutes);
+app.use('/nomina', nominaRoutes);
+app.use('/meseros', meserosRoutes);
+app.get('/healthz', (req, res) => res.status(200).send('ok'));
+app.get('/api/healthz', (req, res) => res.status(200).send('ok'));
+
+// Rutas bajo /api
 app.use('/api/solicitud', solicitudRoutes);
 app.use('/api/mesas', mesasRoutes);
 app.use('/api/pedidos', pedidosRoutes);
@@ -62,9 +73,6 @@ app.use('/api/productos', productosRoutes);
 app.use('/api/finanzas', finanzasRoutes);
 app.use('/api/nomina', nominaRoutes);
 app.use('/api/meseros', meserosRoutes);
-
-// Salud
-app.get('/api/healthz', (req, res) => res.status(200).send('ok'));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
