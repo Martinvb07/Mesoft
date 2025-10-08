@@ -23,52 +23,47 @@ const Login = () => {
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const correo = document.getElementById('usuario').value;
+        const correo = document.getElementById('usuario').value.trim();
         const contrasena = document.getElementById('password').value;
+        if(!correo || !contrasena){
+            Swal.fire({ icon: 'warning', title: 'Campos requeridos', text: 'Ingresa correo y contraseña.' });
+            return;
+        }
+        let res;
         try {
-            const res = await fetch(`${API_BASE}/usuarios/login`, {
+            res = await fetch(`${API_BASE}/usuarios/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ correo, contrasena }),
             });
-            const data = await res.json();
-            if (data.success) {
-                // Persistimos restaurantId para que el cliente API lo envíe en el header X-Restaurant-Id
-                try {
-                    const rid = data.restaurantId || data.usuario?.restaurantId || data.usuario?.restaurant_id;
-                    if (rid) {
-                        localStorage.setItem('restaurant_id', String(rid));
-                    }
-                    if (data.usuario?.restaurante) {
-                        localStorage.setItem('restaurant_name', data.usuario.restaurante);
-                    }
-                } catch {}
-                Swal.fire({
-                    icon: 'success',
-                    title: `Bienvenid@ ${data.usuario.nombre}`,
-                    text: `A tu plataforma: ${data.usuario.restaurante}`
-                }).then(() => {
-                    if (data.usuario.rol === 'admin') {
-                        navigate('/admin/home');
-                    } else if (data.usuario.rol === 'mesero') {
-                        navigate('/mesero/home');
-                    } else {
-                        navigate('/'); 
-                    }
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de acceso',
-                    text: data.error || 'Credenciales incorrectas.'
-                });
-            }
-        } catch (err) {
+        } catch (networkErr){
+            Swal.fire({ icon: 'error', title: 'Sin conexión', text: 'No se pudo contactar al servidor (network error).' });
+            return;
+        }
+        let data;
+        try { data = await res.json(); } catch { data = {}; }
+        if(!res.ok){
+            const msg = data.error || (res.status === 0 ? 'Error desconocido' : `Error ${res.status}`);
+            Swal.fire({ icon: 'error', title: 'Error de acceso', text: msg });
+            return;
+        }
+        if (data.success) {
+            try {
+                const rid = data.restaurantId || data.usuario?.restaurantId || data.usuario?.restaurant_id;
+                if (rid) localStorage.setItem('restaurant_id', String(rid));
+                if (data.usuario?.restaurante) localStorage.setItem('restaurant_name', data.usuario.restaurante);
+            } catch {}
             Swal.fire({
-                icon: 'error',
-                title: 'Error de conexión',
-                text: 'No se pudo conectar al servidor.'
+                icon: 'success',
+                title: `Bienvenid@ ${data.usuario.nombre}`,
+                text: data.usuario?.restaurante ? `A tu plataforma: ${data.usuario.restaurante}` : 'Ingreso exitoso'
+            }).then(() => {
+                if (data.usuario?.rol === 'admin') navigate('/admin/home');
+                else if (data.usuario?.rol === 'mesero') navigate('/mesero/home');
+                else navigate('/');
             });
+        } else {
+            Swal.fire({ icon: 'error', title: 'Credenciales', text: data.error || 'Credenciales incorrectas.' });
         }
     };
     return (

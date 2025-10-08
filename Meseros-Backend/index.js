@@ -19,14 +19,32 @@ const nominaRoutes = require('./routes/nomina');
 const meserosRoutes = require('./routes/meseros');
 const resolveTenant = require('./middleware/resolveTenant');
 
-// CORS: solo en desarrollo para Vite
-if (!isProd) {
-  app.use(cors({
-    origin: ['http://localhost:5173'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true
-  }));
-}
+// --------- CORS GLOBAL ---------
+// Admite lista separada por comas en CORS_ORIGIN (ej: https://miapp.com,https://admin.miapp.com)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // same-site / curl / SSR
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    console.warn('[CORS] Bloqueado origen no permitido:', origin);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Restaurant-Id', 'Restaurant-Id']
+}));
+
+// Preflight genérico: Express 5 + path-to-regexp v8 es más estricto con '*'
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(express.json());
 

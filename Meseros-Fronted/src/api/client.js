@@ -10,12 +10,32 @@ function defaultHeaders() {
 
 export async function request(path, options = {}) {
   const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: { ...defaultHeaders(), ...(options.headers || {}) },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  let { body } = options;
+  const headers = { ...defaultHeaders(), ...(options.headers || {}) };
+  if (body && typeof body === 'object' && !(body instanceof FormData)) {
+    body = JSON.stringify(body);
+  }
+  let res;
+  try {
+    res = await fetch(url, { ...options, body, headers });
+  } catch (networkErr) {
+    throw new Error('NETWORK');
+  }
+  const contentType = res.headers.get('content-type') || '';
+  let payload = null;
+  if (contentType.includes('application/json')) {
+    payload = await res.json().catch(() => null);
+  } else {
+    payload = await res.text().catch(() => '');
+  }
+  if (!res.ok) {
+    const msg = payload?.error || payload?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.payload = payload;
+    throw err;
+  }
+  return payload;
 }
 
 export const api = {
