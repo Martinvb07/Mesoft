@@ -41,6 +41,7 @@ export async function request(path, options = {}) {
 export const api = {
   // Meseros (admin)
   getMeseros: () => request('/meseros'),
+  // data puede incluir: nombre, estado, sueldo_base, correo (opcional), contrasena (si correo)
   crearMesero: (data) => request('/meseros', { method: 'POST', body: data }),
   actualizarMesero: (id, data) => request(`/meseros/${id}`, { method: 'PUT', body: data }),
   eliminarMesero: (id) => request(`/meseros/${id}`, { method: 'DELETE' }),
