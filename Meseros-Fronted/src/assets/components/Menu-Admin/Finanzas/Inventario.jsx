@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
 import { HiCube, HiCheckCircle, HiExclamationTriangle, HiCurrencyDollar, HiBanknotes, HiXMark } from 'react-icons/hi2';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Inventario.css';
+import { api } from '../../../../api/client';
 
 // Utilidades
 const LS_KEY = 'inventario_productos_v1';
@@ -28,20 +29,12 @@ function safeWrite(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* noop */ }
 }
 
-function seedIfEmpty(list) {
-    if (list && list.length) return list;
-    const seed = [
-        { id: crypto.randomUUID?.() || 'p1', sku: 'CAF-ESP-01', nombre: 'Café Espresso', categoria: 'Bebidas', costo: 1500, precio: 4000, stock: 80, minStock: 20, activo: true, createdAt: nowIso(), updatedAt: nowIso() },
-        { id: crypto.randomUUID?.() || 'p2', sku: 'SAN-TRI-01', nombre: 'Sandwich de pollo', categoria: 'Comidas', costo: 4500, precio: 12000, stock: 35, minStock: 10, activo: true, createdAt: nowIso(), updatedAt: nowIso() },
-        { id: crypto.randomUUID?.() || 'p3', sku: 'JUG-NAR-01', nombre: 'Jugo de naranja', categoria: 'Bebidas', costo: 2000, precio: 7000, stock: 12, minStock: 15, activo: true, createdAt: nowIso(), updatedAt: nowIso() },
-    ];
-    safeWrite(LS_KEY, seed);
-    return seed;
-}
+function seedIfEmpty(list) { return Array.isArray(list) ? list : []; }
 
 const Inventario = () => {
     // Estado principal
-    const [productos, setProductos] = useState(() => seedIfEmpty(safeRead(LS_KEY, [])));
+    const [productos, setProductos] = useState([]);
+    const [cargando, setCargando] = useState(false);
     const [busqueda, setBusqueda] = useState('');
     const [fCategoria, setFCategoria] = useState('todas');
     const [fEstado, setFEstado] = useState('todos'); // todos | activos | inactivos
@@ -53,6 +46,35 @@ const Inventario = () => {
     const [form, setForm] = useState({ sku: '', nombre: '', categoria: '', costo: '', precio: '', stock: '', minStock: '', activo: true });
 
     useEffect(() => { safeWrite(LS_KEY, productos); }, [productos]);
+
+    // Cargar desde backend si está disponible
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            setCargando(true);
+            try {
+                const resp = await api.getProductos();
+                const list = Array.isArray(resp?.items) ? resp.items : Array.isArray(resp) ? resp : [];
+                const mapped = list.map(r => ({
+                    id: r.id,
+                    sku: r.sku || `SKU-${r.id}`,
+                    nombre: r.nombre,
+                    categoria: r.categoria || '',
+                    costo: r.costo ?? 0,
+                    precio: r.precio ?? 0,
+                    stock: r.stock ?? 0,
+                    minStock: r.minStock ?? r.min_stock ?? 0,
+                    activo: r.activo ?? true,
+                    createdAt: r.createdAt || r.created_at || nowIso(),
+                    updatedAt: r.updatedAt || r.updated_at || nowIso(),
+                }));
+                if (mounted) setProductos(mapped);
+            } catch (e) {
+                console.error('[inventario] error cargando desde backend:', e?.message || e);
+            } finally { setCargando(false); }
+        })();
+        return () => { mounted = false; };
+    }, []);
 
     // Derivados y métricas
     const categorias = useMemo(() => {
@@ -123,15 +145,22 @@ const Inventario = () => {
         if (!res.isConfirmed) return;
     }
 
-    if (editId) {
-        setProductos(prev => prev.map(p => p.id === editId ? { ...p, sku, nombre, categoria, costo, precio, stock, minStock, activo, updatedAt: nowIso() } : p));
-        Swal.fire({ icon: 'success', title: 'Producto actualizado', timer: 900, showConfirmButton: false });
-    } else {
-        const nuevo = { id: crypto.randomUUID?.() || String(Date.now()), sku, nombre, categoria, costo, precio, stock, minStock, activo, createdAt: nowIso(), updatedAt: nowIso() };
-        setProductos(prev => [nuevo, ...prev]);
-        Swal.fire({ icon: 'success', title: 'Producto creado', timer: 900, showConfirmButton: false });
-    }
+    try {
+        if (editId) {
+            // Intentar en backend
+            try { await api.actualizarProducto(editId, { sku, nombre, categoria, costo, precio, stock, minStock, activo, descripcion: categoria }); } catch {}
+            setProductos(prev => prev.map(p => p.id === editId ? { ...p, sku, nombre, categoria, costo, precio, stock, minStock, activo, updatedAt: nowIso() } : p));
+            Swal.fire({ icon: 'success', title: 'Producto actualizado', timer: 900, showConfirmButton: false });
+        } else {
+            let created = null;
+            try { created = await api.crearProducto({ sku, nombre, categoria, costo, precio, stock, minStock, activo, descripcion: categoria }); } catch {}
+            const nuevo = { id: created?.id || crypto.randomUUID?.() || String(Date.now()), sku, nombre, categoria, costo, precio, stock, minStock, activo, createdAt: nowIso(), updatedAt: nowIso() };
+            setProductos(prev => [nuevo, ...prev]);
+            Swal.fire({ icon: 'success', title: 'Producto creado', timer: 900, showConfirmButton: false });
+        }
+    } finally {
         setShowModal(false);
+    }
     };
 
     const eliminar = async (id) => {
@@ -139,6 +168,7 @@ const Inventario = () => {
         if (!p) return;
         const res = await Swal.fire({ title: `Eliminar ${p.nombre}`, text: `Se eliminará el producto SKU ${p.sku}. Esta acción no se puede deshacer.`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#ef4444' });
         if (!res.isConfirmed) return;
+    try { await api.eliminarProducto(id); } catch {}
         setProductos(prev => prev.filter(x => x.id !== id));
         Swal.fire({ icon: 'success', title: 'Producto eliminado', timer: 900, showConfirmButton: false });
     };
@@ -201,11 +231,12 @@ const Inventario = () => {
                 <option value="inactivos">Inactivos</option>
                 </select>
                 <button className="btn" onClick={exportarCSV}>Exportar CSV</button>
-                <button className="btn danger" onClick={restablecerDemo}>Restablecer demo</button>
             </div>
             </div>
 
-            {filtered.length === 0 ? (
+            {cargando ? (
+            <div className="empty">Cargando inventario…</div>
+            ) : filtered.length === 0 ? (
             <div className="empty">No se encontraron productos con los filtros actuales.</div>
             ) : (
             <div className="table-wrap">

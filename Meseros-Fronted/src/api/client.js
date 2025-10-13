@@ -78,6 +78,12 @@ export const api = {
   obtenerNomina: (mesero_id, desde, hasta) => request(`/nomina/movimientos?mesero_id=${mesero_id}&desde=${desde}&hasta=${hasta}`),
   crearMovimientoNomina: (data) => request('/nomina/movimientos', { method: 'POST', body: data }),
   eliminarMovimientoNomina: (id) => request(`/nomina/movimientos/${id}`, { method: 'DELETE' }),
+
+  // Productos / Inventario
+  getProductos: () => request('/productos'),
+  crearProducto: (data) => request('/productos', { method: 'POST', body: data }),
+  actualizarProducto: (id, data) => request(`/productos/${id}`, { method: 'PUT', body: data }),
+  eliminarProducto: (id) => request(`/productos/${id}`, { method: 'DELETE' }),
 };
 
 export default api;
