@@ -113,15 +113,18 @@ function Meseros() {
     const [nuevoApellido, setNuevoApellido] = useState('');
     const [nuevoCorreo, setNuevoCorreo] = useState('');
     const [nuevoTelefono, setNuevoTelefono] = useState('');
+    const [nuevoPassword, setNuevoPassword] = useState('');
     const [nuevoActivo, setNuevoActivo] = useState(true);
 
         const [showEditar, setShowEditar] = useState(false);
         const [editId, setEditId] = useState(null);
         const [editNombre, setEditNombre] = useState('');
         const [editApellido, setEditApellido] = useState('');
-        const [editCorreo, setEditCorreo] = useState('');
-        const [editTelefono, setEditTelefono] = useState('');
-        const [editActivo, setEditActivo] = useState(true);
+    const [editCorreo, setEditCorreo] = useState('');
+    const [editTelefono, setEditTelefono] = useState('');
+    const [editActivo, setEditActivo] = useState(true);
+    const [editPassword, setEditPassword] = useState('');
+    const [editCorreoConfirm, setEditCorreoConfirm] = useState('');
 
         const [showEliminar, setShowEliminar] = useState(false);
         const [deleteId, setDeleteId] = useState(null);
@@ -129,16 +132,21 @@ function Meseros() {
         const emailExiste = () => false; // Validación backend pendiente (tabla usuarios)
 
         const abrirNuevo = () => {
-            setNuevoNombre(''); setNuevoApellido(''); setNuevoCorreo(''); setNuevoTelefono(''); setNuevoActivo(true); setShowNuevo(true);
+            setNuevoNombre(''); setNuevoApellido(''); setNuevoCorreo(''); setNuevoTelefono(''); setNuevoPassword(''); setNuevoActivo(true); setShowNuevo(true);
         };
         const confirmarNuevo = async () => {
             const nombre = nuevoNombre.trim();
             if (!nombre) return Swal.fire({ icon: 'error', title: 'Nombre requerido' });
             const correo = nuevoCorreo.trim();
-            const emailOk = !correo || /.+@.+\..+/.test(correo);
+            if (!correo) return Swal.fire({ icon: 'error', title: 'Correo requerido' });
+            const emailOk = /.+@.+\..+/.test(correo);
             if (!emailOk) return Swal.fire({ icon: 'error', title: 'Correo inválido' });
+            // Requerir contraseña mínima siempre para permitir login
+            if (!nuevoPassword || nuevoPassword.length < 6) {
+                return Swal.fire({ icon: 'error', title: 'Contraseña requerida', text: 'Mínimo 6 caracteres.' });
+            }
             try {
-                await api.crearMesero({ nombre, estado: nuevoActivo ? 'activo' : 'inactivo' });
+                await api.crearMesero({ nombre, estado: nuevoActivo ? 'activo' : 'inactivo', correo, contrasena: nuevoPassword });
                 setShowNuevo(false);
                 await Swal.fire({ icon: 'success', title: 'Mesero creado', timer: 900, showConfirmButton: false });
                 cargar();
@@ -150,7 +158,7 @@ function Meseros() {
         const abrirEditar = () => {
             if (meseros.length === 0) return Swal.fire({ icon: 'info', title: 'No hay meseros para editar' });
             const first = [...meseros].sort((a,b)=> String(a.nombre).localeCompare(String(b.nombre)))[0];
-            setEditId(first.id); setEditNombre(first.nombre || ''); setEditApellido(first.apellido || ''); setEditCorreo(first.correo || first.email || ''); setEditTelefono(first.telefono || ''); setEditActivo(first.activo === true || first.activo === 1 || `${first.estado||''}`.toLowerCase() === 'activo');
+            setEditId(first.id); setEditNombre(first.nombre || ''); setEditApellido(first.apellido || ''); setEditCorreo(first.correo || first.email || ''); setEditTelefono(first.telefono || ''); setEditActivo(first.activo === true || first.activo === 1 || `${first.estado||''}`.toLowerCase() === 'activo'); setEditPassword(''); setEditCorreoConfirm('');
             setShowEditar(true);
         };
         const onChangeEditarSeleccion = (idStr) => {
@@ -158,17 +166,29 @@ function Meseros() {
             setEditId(id);
             const u = meseros.find(x => Number(x.id) === id);
             if (!u) return;
-            setEditNombre(u.nombre || ''); setEditApellido(u.apellido || ''); setEditCorreo(u.correo || u.email || ''); setEditTelefono(u.telefono || ''); setEditActivo(u.activo === true || u.activo === 1 || `${u.estado||''}`.toLowerCase() === 'activo');
+            setEditNombre(u.nombre || ''); setEditApellido(u.apellido || ''); setEditCorreo(u.correo || u.email || ''); setEditTelefono(u.telefono || ''); setEditActivo(u.activo === true || u.activo === 1 || `${u.estado||''}`.toLowerCase() === 'activo'); setEditPassword(''); setEditCorreoConfirm('');
         };
         const confirmarEditar = async () => {
             if (!editId) return setShowEditar(false);
             const nombre = editNombre.trim();
             if (!nombre) return Swal.fire({ icon: 'error', title: 'Nombre requerido' });
             const correo = String(editCorreo || '').trim();
-            const emailOk = !correo || /.+@.+\..+/.test(correo);
+            if (!correo) return Swal.fire({ icon: 'error', title: 'Correo requerido' });
+            const emailOk = /.+@.+\..+/.test(correo);
             if (!emailOk) return Swal.fire({ icon: 'error', title: 'Correo inválido' });
+            const original = meseros.find(x => Number(x.id) === Number(editId));
+            const originalCorreo = original?.correo || original?.email || '';
+            const wantsUserChange = (editPassword && editPassword.length > 0) || (correo.toLowerCase() !== String(originalCorreo).toLowerCase());
+            if (wantsUserChange) {
+                if (!editCorreoConfirm || editCorreoConfirm.trim().toLowerCase() !== correo.toLowerCase()) {
+                    return Swal.fire({ icon: 'error', title: 'Confirma tu correo', text: 'Para cambiar el correo o la contraseña debes confirmar el correo.'});
+                }
+                if (editPassword && editPassword.length > 0 && editPassword.length < 6) {
+                    return Swal.fire({ icon: 'error', title: 'Contraseña inválida', text: 'La nueva contraseña debe tener al menos 6 caracteres.'});
+                }
+            }
             try {
-                await api.actualizarMesero(editId, { nombre, estado: editActivo ? 'activo' : 'inactivo' });
+                await api.actualizarMesero(editId, { nombre, estado: editActivo ? 'activo' : 'inactivo', correo, contrasena: editPassword || undefined, confirm_correo: editCorreoConfirm || undefined });
                 setShowEditar(false);
                 await Swal.fire({ icon: 'success', title: 'Cambios guardados', timer: 900, showConfirmButton: false });
                 cargar();
@@ -329,6 +349,10 @@ function Meseros() {
                                                 <input type="email" value={nuevoCorreo} onChange={e => setNuevoCorreo(e.target.value)} />
                                             </label>
                                             <label>
+                                                <span>Contraseña</span>
+                                                <input type="password" value={nuevoPassword} onChange={e => setNuevoPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                                            </label>
+                                            <label>
                                                 <span>Teléfono</span>
                                                 <input value={nuevoTelefono} onChange={e => setNuevoTelefono(e.target.value)} />
                                             </label>
@@ -387,6 +411,14 @@ function Meseros() {
                                             <label>
                                                 <span>Correo</span>
                                                 <input type="email" value={editCorreo} onChange={e => setEditCorreo(e.target.value)} />
+                                            </label>
+                                            <label>
+                                                <span>Nueva contraseña</span>
+                                                <input type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="Dejar vacío para no cambiar" />
+                                            </label>
+                                            <label>
+                                                <span>Confirmar correo</span>
+                                                <input type="email" value={editCorreoConfirm} onChange={e => setEditCorreoConfirm(e.target.value)} placeholder="Repite el correo para confirmar" />
                                             </label>
                                             <label>
                                                 <span>Teléfono</span>
