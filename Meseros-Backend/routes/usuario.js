@@ -36,20 +36,36 @@
                 return res.status(401).json({ success: false, error: 'Credenciales incorrectas.' });
             }
 
-            // Extraer nombre de restaurante del registro de usuario (columna 'restaurante')
-            const restauranteNombre = usuario.restaurante || usuario.restaurant || null;
+            // 1) Si el usuario ya tiene restaurant_id numérico, usarlo
+            const rid = Number(usuario.restaurant_id);
+            const hasRid = Number.isFinite(rid) && rid > 0;
 
-            function respond(restaurantId) {
+            function persistAndRespond(restaurantId) {
                 const { contrasena, ...userData } = usuario; // excluir hash
+                // Guardar restaurant_id en el usuario si no lo tiene aún
+                if (!usuario.restaurant_id && Number(restaurantId) > 0) {
+                    db.query('UPDATE usuarios SET restaurant_id = ? WHERE id = ?', [restaurantId, usuario.id], (eUpd) => {
+                        if (eUpd) console.warn('[login] no se pudo persistir restaurant_id para usuario', usuario.id, eUpd.message);
+                        res.json({ success: true, usuario: { ...userData, restaurant_id: restaurantId }, restaurantId });
+                    });
+                    return;
+                }
                 res.json({ success: true, usuario: userData, restaurantId });
             }
 
+            if (hasRid) {
+                return persistAndRespond(rid);
+            }
+
+            // 2) Resolver por nombre (columna 'restaurante' o 'restaurant')
+            const restauranteNombre = usuario.restaurante || usuario.restaurant || null;
+
             if (!restauranteNombre) {
-                // Si el usuario no tiene nombre de restaurante asociado, usar el primero existente como fallback
+                // 3) Fallback: primer restaurante existente
                 db.query('SELECT id FROM restaurantes ORDER BY id ASC LIMIT 1', (e2, rows) => {
                     if (e2) return res.status(500).json({ success: false, error: 'Error obteniendo restaurante.' });
                     const fallbackId = rows[0]?.id || null;
-                    respond(fallbackId);
+                    persistAndRespond(fallbackId);
                 });
                 return;
             }
@@ -58,12 +74,11 @@
             db.query('SELECT id FROM restaurantes WHERE nombre = ? LIMIT 1', [restauranteNombre], (e3, rows) => {
                 if (e3) return res.status(500).json({ success: false, error: 'Error buscando restaurante.' });
                 if (rows.length) {
-                    return respond(rows[0].id);
+                    return persistAndRespond(rows[0].id);
                 }
-                // Crear restaurante si no existe
+                // Crear restaurante si no existe (requiere UNIQUE en nombre para robustez)
                 db.query('INSERT INTO restaurantes (nombre) VALUES (?)', [restauranteNombre], (e4, result) => {
                     if (e4) {
-                        // Condición race: alguien lo creó entre SELECT e INSERT -> intentar leer de nuevo
                         if (e4.code === 'ER_DUP_ENTRY') {
                             return db.query('SELECT id FROM restaurantes WHERE nombre = ? LIMIT 1', [restauranteNombre], (e5, r2) => {
                                 if (e5) return res.status(500).json({ success: false, error: 'Error recuperando restaurante.' });
@@ -72,7 +87,7 @@
                         }
                         return res.status(500).json({ success: false, error: 'Error creando restaurante.' });
                     }
-                    respond(result.insertId);
+                    persistAndRespond(result.insertId);
                 });
             });
         });
