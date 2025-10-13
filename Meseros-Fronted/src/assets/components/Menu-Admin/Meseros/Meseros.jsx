@@ -337,20 +337,20 @@ function Meseros() {
                                         <p className="modal-subtitle">Crea un nuevo perfil de mesero.</p>
                                         <div className="modal-grid">
                                             <label>
-                                                <span>Nombre</span>
-                                                <input value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} />
+                                                <span>Nombre <span className="req">*</span></span>
+                                                <input value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} required aria-required="true" />
                                             </label>
                                             <label>
                                                 <span>Apellido</span>
                                                 <input value={nuevoApellido} onChange={e => setNuevoApellido(e.target.value)} />
                                             </label>
                                             <label>
-                                                <span>Correo</span>
-                                                <input type="email" value={nuevoCorreo} onChange={e => setNuevoCorreo(e.target.value)} />
+                                                <span>Correo <span className="req">*</span></span>
+                                                <input type="email" value={nuevoCorreo} onChange={e => setNuevoCorreo(e.target.value)} required aria-required="true" autoComplete="email" inputMode="email" placeholder="correo@ejemplo.com" />
                                             </label>
                                             <label>
-                                                <span>Contraseña</span>
-                                                <input type="password" value={nuevoPassword} onChange={e => setNuevoPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                                                <span>Contraseña <span className="req">*</span></span>
+                                                <input type="password" value={nuevoPassword} onChange={e => setNuevoPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required aria-required="true" minLength={6} autoComplete="new-password" />
                                             </label>
                                             <label>
                                                 <span>Teléfono</span>
@@ -367,7 +367,17 @@ function Meseros() {
                                     </div>
                                     <div className="modal-footer">
                                         <button className="btn ghost" onClick={() => setShowNuevo(false)}>Cancelar</button>
-                                        <button className="btn primary" onClick={confirmarNuevo}>Crear</button>
+                                        {(() => {
+                                            const nombreOk = String(nuevoNombre || '').trim().length > 0;
+                                            const correoOk = /.+@.+\..+/.test(String(nuevoCorreo || '').trim());
+                                            const passOk = String(nuevoPassword || '').length >= 6;
+                                            const canCrear = nombreOk && correoOk && passOk;
+                                            return (
+                                                <button className="btn primary" onClick={confirmarNuevo} disabled={!canCrear} title={!canCrear ? 'Completa nombre, correo válido y contraseña (≥6)' : undefined}>
+                                                    Crear
+                                                </button>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>
