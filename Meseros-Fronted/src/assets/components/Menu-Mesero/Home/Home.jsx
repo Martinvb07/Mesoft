@@ -45,6 +45,7 @@ const Home = () => {
     const [descuentosMes, setDescuentosMes] = useState(0);
     const [pagosNominaMes, setPagosNominaMes] = useState(0);
     const [sueldoBase, setSueldoBase] = useState(0);
+    const [propinasMes, setPropinasMes] = useState(0);
 
     // Totales por mesa (pedido abierto)
     const [pedidoPorMesa, setPedidoPorMesa] = useState({}); // mesaId -> { total, items }
@@ -135,8 +136,11 @@ const Home = () => {
                 setAdelantosMes(sum('adelanto'));
                 setDescuentosMes(sum('descuento'));
                 setPagosNominaMes(sum('pago'));
+                // Propinas del mes
+                const pr = await api.propinas(meseroInfo.id, desde, hasta).catch(() => ({ propinas: 0 }));
+                setPropinasMes(Number(pr?.propinas || 0));
             } catch {
-                setBonosMes(0); setAdelantosMes(0); setDescuentosMes(0); setPagosNominaMes(0);
+                setBonosMes(0); setAdelantosMes(0); setDescuentosMes(0); setPagosNominaMes(0); setPropinasMes(0);
             }
         };
         loadNomina();
