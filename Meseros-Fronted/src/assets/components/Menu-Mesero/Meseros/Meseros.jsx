@@ -3,30 +3,6 @@ import '../../../css/Navbar/Menu-Meseros/Meseros/Meseros.css';
 import { HiUsers, HiMagnifyingGlass, HiAdjustmentsHorizontal, HiClock, HiUser, HiPhone, HiClipboard } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 
-function crearMeserosBase(total = 8) {
-    const nombres = [
-        'Ana Pérez', 'Luis Gómez', 'María Rodríguez', 'Carlos Díaz',
-        'Sofía López', 'Jorge Ramírez', 'Valentina Torres', 'Miguel Sánchez'
-    ];
-    const base = [];
-    for (let i = 1; i <= total; i++) {
-        const nombre = nombres[i - 1] || `Mesero ${i}`;
-        const [n, a] = String(nombre).split(' ');
-        base.push({
-            id: i,
-            nombre: n || `Mesero`,
-            apellido: a || `${i}`,
-            rol: 'mesero',
-            activo: true,
-            estado: 'activo',
-            correo: `mesero${i}@demo.local`,
-            telefono: '',
-            updatedAt: Date.now(),
-        });
-    }
-    return base;
-}
-
 const Meseros = () => {
     const copyToClipboard = (text) => {
         try {
@@ -45,25 +21,8 @@ const Meseros = () => {
             }
         } catch {}
     };
-    // Usuario actual
-    let miId = 'mesero1';
-    try {
-        const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
-        if (raw) {
-            const u = JSON.parse(raw);
-            miId = u.id || u.userId || u.uid || miId;
-        }
-    } catch {}
-
-    // Carga meseros
-    const [usuariosKey, setUsuariosKey] = useState('usuarios');
-    const [meseros, setMeseros] = useState(() => {
-        try {
-            const raw = localStorage.getItem('usuarios');
-            if (raw) return JSON.parse(raw) || [];
-        } catch {}
-        return crearMeserosBase(0);
-    });
+    // Carga meseros solo desde API
+    const [meseros, setMeseros] = useState([]);
 
     useEffect(() => {
         const load = async () => {
@@ -82,9 +41,6 @@ const Meseros = () => {
                     usuario_id: x.usuario_id ?? null,
                 }));
                 setMeseros(mapped);
-                setUsuariosKey('usuarios');
-                // Mantener compat con vistas que lean local
-                localStorage.setItem('usuarios', JSON.stringify(mapped));
             } catch (e) {
                 // fallback ya está en estado inicial
             }
@@ -92,54 +48,32 @@ const Meseros = () => {
         load();
     }, []);
 
-    // Turnos (solo lectura)
-    const [turnos, setTurnos] = useState(() => {
+    const refresh = async () => {
         try {
-            const raw = localStorage.getItem('turnos');
-            return raw ? (JSON.parse(raw) || []) : [];
-        } catch {
-            return [];
-        }
-    });
-
-    const refresh = () => {
-        try {
-            const rawU = localStorage.getItem(usuariosKey);
-            const arr = rawU ? JSON.parse(rawU) : [];
-            const isMesero = (u = {}) => `${u.rol || u.role || ''}`.toLowerCase().includes('mesero');
-            setMeseros(Array.isArray(arr) ? arr.filter(isMesero) : []);
-            const rawT = localStorage.getItem('turnos');
-            setTurnos(rawT ? (JSON.parse(rawT) || []) : []);
+            const data = await api.getMeseros();
+            const mapped = (Array.isArray(data) ? data : []).map(x => ({
+                id: x.id,
+                nombre: x.nombre,
+                apellido: '',
+                rol: 'mesero',
+                activo: (x.estado || 'activo') === 'activo',
+                estado: x.estado || 'activo',
+                correo: x.correo || '',
+                telefono: '',
+                updatedAt: Date.now(),
+                usuario_id: x.usuario_id ?? null,
+            }));
+            setMeseros(mapped);
         } catch {}
     };
 
-    // Excluir yo mismo
-    const otros = useMemo(() => {
-        // excluir yo mismo por usuario_id si está disponible
-        return meseros.filter(u => {
-            const uid = u.usuario_id ?? u.id ?? u.userId ?? u.uid;
-            return String(uid) !== String(miId);
-        });
-    }, [meseros, miId]);
+    const otros = useMemo(() => meseros, [meseros]);
 
     // Filtros y búsqueda
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('todos'); // todos | en-turno | activos | inactivos
 
-    const turnoById = useMemo(() => {
-        const map = new Map();
-        for (const t of Array.isArray(turnos) ? turnos : []) {
-            const id = t.meseroId ?? t.userId ?? t.id ?? t.uid;
-            if (id == null) continue;
-            const en = (() => {
-                const estado = `${t.estado || t.state || ''}`.toLowerCase();
-                const flag = t.enTurno ?? t.inShift ?? t.onShift;
-                return estado === 'en-turno' || estado === 'activo' || flag === true || flag === 1;
-            })();
-            map.set(Number(id), { enTurno: en, inicioAt: t.inicioAt || t.startedAt || null, mesaId: t.mesaId ?? t.mesa ?? null });
-        }
-        return map;
-    }, [turnos]);
+    const turnoById = useMemo(() => new Map(), []);
 
     const compas = useMemo(() => {
         const q = busqueda.trim().toLowerCase();
@@ -162,7 +96,7 @@ const Meseros = () => {
     }, [otros, busqueda, filtroEstado, turnoById]);
 
     const total = compas.length;
-    const enTurno = compas.filter(u => turnoById.get(Number(u.id))?.enTurno).length;
+    const enTurno = 0;
     const activos = compas.filter(u => (u.activo === 1 || u.activo === true || `${u.estado || ''}`.toLowerCase() === 'activo')).length;
     const inactivos = total - activos;
 
@@ -268,11 +202,11 @@ const Meseros = () => {
                                 </div>
                                 <div className="cap">
                                     <HiClock />
-                                    <span>{t?.inicioAt ? `Inicio turno: ${new Date(t.inicioAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Fuera de turno'}</span>
+                                    <span>Sin datos de turno</span>
                                 </div>
                                 <div className="cap">
                                     <HiUser />
-                                    <span>{t?.mesaId ? `Atendiendo mesa ${t.mesaId}` : 'Sin mesa asignada'}</span>
+                                    <span>—</span>
                                 </div>
                             </div>
                         </div>

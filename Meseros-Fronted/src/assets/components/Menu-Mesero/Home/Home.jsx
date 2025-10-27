@@ -20,20 +20,15 @@ const monthRange = () => {
 };
 
 const Home = () => {
-    // Usuario: usamos el guardado por Login para mostrar perfil y mapear al mesero_id
-    let user = null;
-    try {
-        const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
-        if (raw) user = JSON.parse(raw);
-    } catch {}
-    const nombre = user?.nombre || user?.name || user?.fullName || user?.username || 'Mesero';
-    const apellido = user?.apellido || user?.apellidos || user?.lastName || user?.surname || '';
-    const telefono = user?.telefono || user?.phone || user?.celular || user?.mobile || user?.whatsapp || '';
-    const correo = user?.email || user?.correo || user?.mail || '';
-    const documento = user?.documento || user?.dni || user?.cedula || user?.idNumber || user?.identificacion || '';
-    const usuario = user?.usuario || user?.username || '';
-    const rol = user?.rol || user?.role || 'mesero';
-    const userId = user?.id || user?.userId || user?.uid || null;
+    // Perfil básico (sin localStorage): mostramos información mínima
+    const nombre = 'Mesero';
+    const apellido = '';
+    const telefono = '';
+    const correo = '';
+    const documento = '';
+    const usuario = '';
+    const rol = 'mesero';
+    const userId = null;
     const iniciales = (nombre?.[0] || '').toUpperCase() + (apellido?.[0] || '').toUpperCase();
 
     // Estado principal
@@ -272,7 +267,6 @@ const Home = () => {
                         {documento && (
                             <li className="profile-item"><HiIdentification /><span>{documento}</span></li>
                         )}
-                        <li className="profile-item"><HiUser /><span>ID interno: {miId}</span></li>
                     </ul>
                 </div>
             </div>

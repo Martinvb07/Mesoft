@@ -32,27 +32,9 @@ function todayKey() {
 const Mesas = () => {
     const [mesas, setMesas] = useState([]);
     const [productos, setProductos] = useState([]);
-    const [miNombre, setMiNombre] = useState(() => {
-        try {
-            const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
-            if (raw) {
-                const u = JSON.parse(raw);
-                const name = u.nombre || u.name || u.fullName || u.username || 'Mesero';
-                return name;
-            }
-        } catch {}
-        return 'Mesero';
-    });
-    const [miId, setMiId] = useState(() => {
-        try {
-            const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
-            if (raw) {
-                const u = JSON.parse(raw);
-                return u.id || u.userId || u.uid || 'mesero1';
-            }
-        } catch {}
-        return 'mesero1';
-    });
+    // Identidad local eliminada: el backend controla permisos.
+    const [miNombre] = useState('Mesero');
+    const [miId] = useState(null);
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('todos');
     const [filtroCapacidad, setFiltroCapacidad] = useState('todas');
@@ -64,32 +46,7 @@ const Mesas = () => {
     const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: 1, precio: 0 });
     const [resumenPago, setResumenPago] = useState(null); // { mesaId, mesaNumero, total, abonado, pendiente, recibido, propina, cambio, aplicado }
 
-    // Cargar desde API al montar; mantener localStorage sincronizado
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const data = await api.getMesas();
-                const normalized = (Array.isArray(data) ? data : []).map(m => ({
-                    id: m.id,
-                    numero: m.numero,
-                    capacidad: m.capacidad ?? 2,
-                    estado: m.estado || 'libre',
-                    meseroId: m.mesero_id ?? null,
-                    meseroNombre: m.mesero_nombre || '',
-                    updatedAt: Date.now(),
-                })).sort((a,b)=>a.numero-b.numero);
-                setMesas(normalized);
-                localStorage.setItem('mesas', JSON.stringify(normalized));
-            } catch (e) {
-                // Si falla, dejar las mesas existentes (posible cache local)
-            }
-        };
-        load();
-    }, []);
-
-    useEffect(() => {
-        localStorage.setItem('mesas', JSON.stringify(mesas));
-    }, [mesas]);
+    // Todo viene del backend; no persistimos en local
 
     // Cargar mesas y productos desde backend
     useEffect(() => {
@@ -165,7 +122,7 @@ const Mesas = () => {
                 items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
             }
             setPedidoItems(items);
-            const editable = mesa.meseroId === miId && mesa.estado === 'ocupada';
+            const editable = mesa.estado === 'ocupada';
             setPedidoModal({ mesa, editable });
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'No se pudo abrir el pedido', text: e?.message || 'Error' });
