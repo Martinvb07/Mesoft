@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import '../../css/Navbar/Navbar.css';
 
 const NavbarMesero = () => {
   const navigate = useNavigate();
+
+  // Sin precarga en localStorage; cada pantalla hará sus fetch al backend
 
   const handleSalirClick = (e) => {
     e.preventDefault();
@@ -20,6 +22,8 @@ const NavbarMesero = () => {
         try {
           localStorage.removeItem('currentUser');
           localStorage.removeItem('auth:user');
+          localStorage.removeItem('auth:role');
+          localStorage.removeItem('auth:loginAt');
         } catch {}
         navigate('/login');
       }

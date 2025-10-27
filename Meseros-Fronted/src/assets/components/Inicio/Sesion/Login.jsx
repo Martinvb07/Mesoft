@@ -52,6 +52,11 @@ const Login = () => {
                 const rid = data.restaurantId || data.usuario?.restaurantId || data.usuario?.restaurant_id;
                 if (rid) localStorage.setItem('restaurant_id', String(rid));
                 if (data.usuario?.restaurante) localStorage.setItem('restaurant_name', data.usuario.restaurante);
+                // Persistir info de usuario para menú de mesero y otros módulos
+                localStorage.setItem('currentUser', JSON.stringify(data.usuario));
+                localStorage.setItem('auth:user', JSON.stringify(data.usuario));
+                if (data.usuario?.rol) localStorage.setItem('auth:role', String(data.usuario.rol));
+                localStorage.setItem('auth:loginAt', String(Date.now()));
             } catch {}
             Swal.fire({
                 icon: 'success',

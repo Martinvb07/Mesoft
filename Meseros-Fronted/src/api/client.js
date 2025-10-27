@@ -60,6 +60,12 @@ export const api = {
 
   // Pedidos
   pedidosEnCurso: () => request('/pedidos/en-curso'),
+  getPedidoAbiertoDeMesa: (mesaId) => request(`/mesas/${mesaId}/pedido-abierto`),
+  getPedido: (pedidoId) => request(`/pedidos/${pedidoId}`),
+  getPedidoItems: (pedidoId) => request(`/pedidos/${pedidoId}/items`),
+  addPedidoItem: (pedidoId, data) => request(`/pedidos/${pedidoId}/items`, { method: 'POST', body: data }),
+  deletePedidoItem: (pedidoId, itemId) => request(`/pedidos/${pedidoId}/items/${itemId}`, { method: 'DELETE' }),
+  pagarPedido: (pedidoId, data) => request(`/pedidos/${pedidoId}/pagar`, { method: 'POST', body: data }),
 
   // Finanzas
   ventasHoy: () => request('/finanzas/ventas-hoy'),

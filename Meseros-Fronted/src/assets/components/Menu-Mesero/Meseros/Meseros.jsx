@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Meseros/Meseros/Meseros.css';
 import { HiUsers, HiMagnifyingGlass, HiAdjustmentsHorizontal, HiClock, HiUser, HiPhone, HiClipboard } from 'react-icons/hi2';
+import { api } from '../../../../api/client';
 
 function crearMeserosBase(total = 8) {
     const nombres = [
@@ -58,21 +59,38 @@ const Meseros = () => {
     const [usuariosKey, setUsuariosKey] = useState('usuarios');
     const [meseros, setMeseros] = useState(() => {
         try {
-            const keys = ['usuarios', 'users', 'app:usuarios'];
-            for (const k of keys) {
-                const raw = localStorage.getItem(k);
-                if (!raw) continue;
-                const data = JSON.parse(raw) || [];
-                setUsuariosKey(k);
-                const isMesero = (u = {}) => `${u.rol || u.role || ''}`.toLowerCase().includes('mesero');
-                if (Array.isArray(data)) return data.filter(isMesero);
-            }
+            const raw = localStorage.getItem('usuarios');
+            if (raw) return JSON.parse(raw) || [];
         } catch {}
-        const seed = crearMeserosBase(8);
-        localStorage.setItem('usuarios', JSON.stringify(seed));
-        setUsuariosKey('usuarios');
-        return seed;
+        return crearMeserosBase(0);
     });
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const data = await api.getMeseros();
+                const mapped = (Array.isArray(data) ? data : []).map(x => ({
+                    id: x.id,
+                    nombre: x.nombre,
+                    apellido: '',
+                    rol: 'mesero',
+                    activo: (x.estado || 'activo') === 'activo',
+                    estado: x.estado || 'activo',
+                    correo: x.correo || '',
+                    telefono: '',
+                    updatedAt: Date.now(),
+                    usuario_id: x.usuario_id ?? null,
+                }));
+                setMeseros(mapped);
+                setUsuariosKey('usuarios');
+                // Mantener compat con vistas que lean local
+                localStorage.setItem('usuarios', JSON.stringify(mapped));
+            } catch (e) {
+                // fallback ya está en estado inicial
+            }
+        };
+        load();
+    }, []);
 
     // Turnos (solo lectura)
     const [turnos, setTurnos] = useState(() => {
@@ -96,7 +114,13 @@ const Meseros = () => {
     };
 
     // Excluir yo mismo
-    const otros = useMemo(() => meseros.filter(u => String(u.id ?? u.userId ?? u.uid) !== String(miId)), [meseros, miId]);
+    const otros = useMemo(() => {
+        // excluir yo mismo por usuario_id si está disponible
+        return meseros.filter(u => {
+            const uid = u.usuario_id ?? u.id ?? u.userId ?? u.uid;
+            return String(uid) !== String(miId);
+        });
+    }, [meseros, miId]);
 
     // Filtros y búsqueda
     const [busqueda, setBusqueda] = useState('');

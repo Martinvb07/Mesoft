@@ -10,6 +10,7 @@ import {
     HiUser,
     HiArrowPath,
 } from 'react-icons/hi2';
+import { api } from '../../../../api/client';
 
 const ESTADOS = {
     libre: { key: 'libre', label: 'Libre', color: 'free' },
@@ -26,30 +27,11 @@ function todayKey() {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-function crearMesasBase(total = 24) {
-    const base = [];
-    for (let i = 1; i <= total; i++) {
-        base.push({
-            id: i,
-            numero: i,
-            capacidad: i % 6 === 0 ? 6 : i % 4 === 0 ? 4 : 2,
-            estado: 'libre',
-            meseroId: null,
-            meseroNombre: '',
-            updatedAt: Date.now(),
-        });
-    }
-    return base;
-}
+// No seed local; todo viene del backend
 
 const Mesas = () => {
-    const [mesas, setMesas] = useState(() => {
-        try {
-            const stored = localStorage.getItem('mesas');
-            if (stored) return JSON.parse(stored);
-        } catch {}
-        return crearMesasBase(24);
-    });
+    const [mesas, setMesas] = useState([]);
+    const [productos, setProductos] = useState([]);
     const [miNombre, setMiNombre] = useState(() => {
         try {
             const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
@@ -82,21 +64,56 @@ const Mesas = () => {
     const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: 1, precio: 0 });
     const [resumenPago, setResumenPago] = useState(null); // { mesaId, mesaNumero, total, abonado, pendiente, recibido, propina, cambio, aplicado }
 
+    // Cargar desde API al montar; mantener localStorage sincronizado
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const data = await api.getMesas();
+                const normalized = (Array.isArray(data) ? data : []).map(m => ({
+                    id: m.id,
+                    numero: m.numero,
+                    capacidad: m.capacidad ?? 2,
+                    estado: m.estado || 'libre',
+                    meseroId: m.mesero_id ?? null,
+                    meseroNombre: m.mesero_nombre || '',
+                    updatedAt: Date.now(),
+                })).sort((a,b)=>a.numero-b.numero);
+                setMesas(normalized);
+                localStorage.setItem('mesas', JSON.stringify(normalized));
+            } catch (e) {
+                // Si falla, dejar las mesas existentes (posible cache local)
+            }
+        };
+        load();
+    }, []);
+
     useEffect(() => {
         localStorage.setItem('mesas', JSON.stringify(mesas));
     }, [mesas]);
 
+    // Cargar mesas y productos desde backend
     useEffect(() => {
-        const onStorage = (e) => {
-            if (e.key === 'mesas') {
-                try {
-                    const next = JSON.parse(e.newValue);
-                    if (Array.isArray(next)) setMesas(next);
-                } catch {}
+        const load = async () => {
+            try {
+                const [ms, prods] = await Promise.all([
+                    api.getMesas(),
+                    api.getProductos().then(r => Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : [])),
+                ]);
+                const normalized = (Array.isArray(ms) ? ms : []).map(m => ({
+                    id: m.id,
+                    numero: m.numero,
+                    capacidad: m.capacidad ?? 2,
+                    estado: m.estado || 'libre',
+                    meseroId: m.mesero_id ?? null,
+                    meseroNombre: m.mesero_nombre || '',
+                })).sort((a,b)=>a.numero-b.numero);
+                setMesas(normalized);
+                setProductos(prods);
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'No se pudieron cargar las mesas', text: e?.message || 'Error' });
             }
         };
-        window.addEventListener('storage', onStorage);
-        return () => window.removeEventListener('storage', onStorage);
+        load();
     }, []);
 
     const handleAsignar = (mesa) => { setModalMesa(mesa); setModalAccion('asignar'); };
@@ -104,246 +121,142 @@ const Mesas = () => {
     const handleLimpieza = (mesa) => { setModalMesa(mesa); setModalAccion('limpieza'); };
     const handleLimpiezaDone = (mesa) => { setModalMesa(mesa); setModalAccion('limpieza-done'); };
 
-    const confirmarAccion = () => {
+    const confirmarAccion = async () => {
         if (!modalMesa) return;
         try {
-            const raw = localStorage.getItem('mesas');
-            const shared = raw ? JSON.parse(raw) : [];
-            const current = shared.find(x => x.id === modalMesa.id) || modalMesa;
+            const id = modalMesa.id;
             if (modalAccion === 'asignar') {
-                if (current.estado !== 'libre') {
-                    Swal.fire({ icon: 'info', title: 'Mesa no disponible', text: 'Otro mesero ya tomó esta mesa.' });
-                    setModalMesa(null); setModalAccion('');
-                    setMesas(shared);
-                    return;
-                }
-                const updated = shared.map(m => m.id === current.id ? { ...m, estado: 'ocupada', meseroId: miId, meseroNombre: miNombre, updatedAt: Date.now() } : m);
-                localStorage.setItem('mesas', JSON.stringify(updated));
-                setMesas(updated);
+                await api.asignarMesa(id, {});
             } else if (modalAccion === 'liberar') {
-                if (current.meseroId !== miId) {
-                    Swal.fire({ icon: 'warning', title: 'No puedes liberar esta mesa', text: 'Solo el mesero asignado puede liberarla.' });
-                    setModalMesa(null); setModalAccion('');
-                    setMesas(shared);
-                    return;
-                }
-                const updated = shared.map(m => m.id === current.id ? { ...m, estado: 'libre', meseroId: null, meseroNombre: '', updatedAt: Date.now() } : m);
-                localStorage.setItem('mesas', JSON.stringify(updated));
-                setMesas(updated);
+                await api.liberarMesa(id);
             } else if (modalAccion === 'limpieza') {
-                if (current.estado === 'ocupada' && current.meseroId !== miId) {
-                    Swal.fire({ icon: 'warning', title: 'No puedes cambiar estado', text: 'Esta mesa está ocupada por otro mesero.' });
-                    setModalMesa(null); setModalAccion('');
-                    setMesas(shared);
-                    return;
-                }
-                const updated = shared.map(m => m.id === current.id ? { ...m, estado: 'limpieza', meseroId: miId, meseroNombre: miNombre, updatedAt: Date.now() } : m);
-                localStorage.setItem('mesas', JSON.stringify(updated));
-                setMesas(updated);
+                await api.limpiezaMesa(id);
             } else if (modalAccion === 'limpieza-done') {
-                if (current.estado !== 'limpieza' || current.meseroId !== miId) {
-                    Swal.fire({ icon: 'warning', title: 'Acción no permitida', text: 'Solo el mesero que puso la mesa en limpieza puede finalizarla.' });
-                    setModalMesa(null); setModalAccion('');
-                    setMesas(shared);
-                    return;
-                }
-                const updated = shared.map(m => m.id === current.id ? { ...m, estado: 'libre', meseroId: null, meseroNombre: '', updatedAt: Date.now() } : m);
-                localStorage.setItem('mesas', JSON.stringify(updated));
-                setMesas(updated);
+                await api.finLimpiezaMesa(id);
             }
-        } catch {}
-        setModalMesa(null);
-        setModalAccion('');
+            const data = await api.getMesas();
+            const normalized = (Array.isArray(data) ? data : []).map(m => ({
+                id: m.id,
+                numero: m.numero,
+                capacidad: m.capacidad ?? 2,
+                estado: m.estado || 'libre',
+                meseroId: m.mesero_id ?? null,
+                meseroNombre: m.mesero_nombre || '',
+            })).sort((a,b)=>a.numero-b.numero);
+            setMesas(normalized);
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'No se pudo aplicar la acción', text: e?.message || 'Error' });
+        } finally {
+            setModalMesa(null);
+            setModalAccion('');
+        }
     };
     const cancelarAccion = () => { setModalMesa(null); setModalAccion(''); };
 
-    const abrirPedido = (mesa) => {
+    const [pedidoActual, setPedidoActual] = useState(null); // { id }
+    const abrirPedido = async (mesa) => {
         if (!mesa) return;
-        const keys = [
-            `pedidos:mesa:${mesa.id}`,
-            `pedidos:mesa:${mesa.numero}`,
-            `mesa:${mesa.id}:pedidos`,
-            `mesa:${mesa.numero}:pedidos`,
-        ];
-        let items = [];
-        for (const k of keys) {
-            try {
-                const raw = localStorage.getItem(k);
-                if (!raw) continue;
-                const data = JSON.parse(raw);
-                if (Array.isArray(data)) { items = data; break; }
-                if (Array.isArray(data?.items)) { items = data.items; break; }
-                if (Array.isArray(data?.pedidos)) { items = data.pedidos; break; }
-                if (Array.isArray(data?.ordenes)) { items = data.ordenes; break; }
-            } catch {}
+        try {
+            const pedido = await api.getPedidoAbiertoDeMesa(mesa.id);
+            setPedidoActual(pedido);
+            let items = [];
+            if (pedido?.id) {
+                const rows = await api.getPedidoItems(pedido.id);
+                items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
+            }
+            setPedidoItems(items);
+            const editable = mesa.meseroId === miId && mesa.estado === 'ocupada';
+            setPedidoModal({ mesa, editable });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'No se pudo abrir el pedido', text: e?.message || 'Error' });
         }
-        setPedidoItems(items.map(it => ({
-            nombre: it.nombre || it.producto || it.name || 'Producto',
-            cantidad: Number(it.cantidad ?? it.qty ?? it.quantity ?? 1) || 1,
-            precio: Number(it.precio ?? it.price ?? it.unitPrice ?? 0) || 0,
-        })));
-        const editable = mesa.meseroId === miId && mesa.estado === 'ocupada';
-        setPedidoModal({ mesa, editable });
     };
     const cerrarPedido = () => { setPedidoModal({ mesa: null, editable: false }); setNuevoItem({ nombre: '', cantidad: 1, precio: 0 }); };
-    const agregarItem = () => {
+    const [productoSel, setProductoSel] = useState('');
+    const agregarItem = async () => {
         if (!pedidoModal.editable) return;
-        const nombre = (nuevoItem.nombre || '').trim();
+        if (!pedidoActual?.id) return Swal.fire({ icon: 'error', title: 'No hay pedido abierto' });
+        const pid = pedidoActual.id;
         const cantidad = Number(nuevoItem.cantidad || 1);
-        const precio = Number(nuevoItem.precio || 0);
-        if (!nombre) return Swal.fire({ icon: 'error', title: 'Ingresa el nombre del producto' });
+        const producto_id = Number(productoSel || 0);
+        if (!producto_id) return Swal.fire({ icon: 'error', title: 'Selecciona un producto' });
         if (cantidad <= 0) return Swal.fire({ icon: 'error', title: 'Cantidad inválida' });
-        if (precio < 0) return Swal.fire({ icon: 'error', title: 'Precio inválido' });
-        setPedidoItems(prev => [...prev, { nombre, cantidad, precio }]);
-        setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
-    };
-    const quitarItem = (idx) => { if (!pedidoModal.editable) return; setPedidoItems(prev => prev.filter((_, i) => i !== idx)); };
-    const guardarPedido = () => {
-        if (!pedidoModal.mesa) return;
-        const key = `pedidos:mesa:${pedidoModal.mesa.id}`;
-        localStorage.setItem(key, JSON.stringify(pedidoItems));
-        Swal.fire({ icon: 'success', title: 'Pedido guardado', timer: 900, showConfirmButton: false });
-    };
-
-    const leerPagosMesa = (mesaId) => {
         try {
-            const raw = localStorage.getItem(`pagos:mesa:${mesaId}`);
-            const arr = raw ? JSON.parse(raw) : [];
-            return Array.isArray(arr) ? arr : [];
-        } catch { return []; }
+            await api.addPedidoItem(pid, { producto_id, cantidad });
+            const rows = await api.getPedidoItems(pid);
+            const items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
+            setPedidoItems(items);
+            setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
+            setProductoSel('');
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'No se pudo agregar', text: e?.message || 'Error' });
+        }
     };
+    const quitarItem = async (idx) => {
+        if (!pedidoModal.editable) return;
+        if (!pedidoActual?.id) return;
+        const item = pedidoItems[idx];
+        if (!item?.id) return;
+        try {
+            await api.deletePedidoItem(pedidoActual.id, item.id);
+            const rows = await api.getPedidoItems(pedidoActual.id);
+            const items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
+            setPedidoItems(items);
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || 'Error' });
+        }
+    };
+    const guardarPedido = () => { /* ya se guarda en el backend por item */ Swal.fire({ icon: 'success', title: 'Actualizado', timer: 700, showConfirmButton: false }); };
+
+    // Pagos se registran vía backend; no se usa almacenamiento local
 
     const registrarPago = async () => {
         if (!pedidoModal.mesa) return;
         const mesa = pedidoModal.mesa;
-        const total = pedidoItems.reduce((s,it)=> s + (Number(it.cantidad||0)*Number(it.precio||0)), 0);
-        const pagos = leerPagosMesa(mesa.id);
-        const abonado = pagos.reduce((s,p)=> s + Number(p.monto||0), 0);
-        const pendiente = Math.max(0, total - abonado);
-        if (pendiente <= 0) {
-            return Swal.fire({ icon:'info', title:'Sin saldo pendiente', text:'Esta mesa ya está saldada.' });
-        }
+        if (!pedidoActual?.id) return Swal.fire({ icon: 'error', title: 'No hay pedido abierto' });
+        const pid = pedidoActual.id;
 
         const result = await Swal.fire({
             title: `Registrar pago - Mesa ${mesa.numero}`,
             input: 'number',
-            inputLabel: `Pendiente: $${pendiente.toLocaleString('es-CO')} · Puedes ingresar más para propina o cambio`,
+            inputLabel: 'Monto recibido (COP)',
             inputPlaceholder: 'Monto en COP',
             inputAttributes: { min: 1, step: 'any' },
             showCancelButton: true,
             confirmButtonText: 'Registrar',
-            preConfirm: (value) => {
-                const n = Math.round(Number(value));
-                if (isNaN(n) || n <= 0) return Swal.showValidationMessage('Ingresa un monto válido');
-                return n;
-            }
         });
-
         if (!result.isConfirmed) return;
         const monto = Math.round(Number(result.value));
+        if (!monto || monto <= 0) return Swal.fire({ icon: 'error', title: 'Monto inválido' });
 
-        let montoAplicado = Math.min(monto, pendiente);
-        let excedente = Math.max(0, monto - pendiente);
+        // Propina opcional
+        const tipRes = await Swal.fire({
+            title: 'Propina (opcional)',
+            input: 'number',
+            inputLabel: 'Ingresa la propina (COP)',
+            inputPlaceholder: '0',
+            inputValue: 0,
+            inputAttributes: { min: 0, step: 'any' },
+            showCancelButton: true,
+            confirmButtonText: 'Continuar',
+            cancelButtonText: 'Sin propina',
+        });
+        const propina = tipRes.isDismissed ? 0 : Math.max(0, Math.round(Number(tipRes.value || 0)));
 
-        if (excedente > 0) {
-            // Propina independiente del excedente (puede ser menor o igual al excedente)
-            const tipRes = await Swal.fire({
-                title: 'Propina (opcional)',
-                input: 'number',
-                inputLabel: `Pendiente: $${pendiente.toLocaleString('es-CO')} · Recibido: $${monto.toLocaleString('es-CO')} · Excedente: $${excedente.toLocaleString('es-CO')}`,
-                inputPlaceholder: `0 - $${excedente.toLocaleString('es-CO')}`,
-                inputValue: 0,
-                inputAttributes: { min: 0, max: excedente, step: 'any' },
-                showCancelButton: true,
-                confirmButtonText: 'Continuar',
-                cancelButtonText: 'Sin propina',
-                preConfirm: (v) => {
-                    const n = Math.round(Number(v));
-                    if (isNaN(n) || n < 0) return Swal.showValidationMessage('Ingresa un monto válido');
-                    if (n > excedente) return Swal.showValidationMessage('La propina no puede exceder el excedente');
-                    return n;
-                }
-            });
-
-            const propina = tipRes.isDismissed ? 0 : Math.round(Number(tipRes.value || 0));
-            const cambio = Math.max(0, excedente - propina);
-
-            // Ingresos: venta por el monto aplicado; propina por el valor ingresado (si > 0)
-            try {
-                const rawIng = localStorage.getItem('finanzas:ingresos');
-                const ingresos = rawIng ? JSON.parse(rawIng) : [];
-                ingresos.push({ id: `ing-${Date.now()}`, fecha: todayKey(), monto: pendiente, tipo:'venta', fuente:'mesa', mesaId: mesa.id, mesaNumero: mesa.numero, meseroId: miId, meseroNombre: miNombre, createdAt: Date.now() });
-                if (propina > 0) {
-                    ingresos.push({ id: `prop-${Date.now()}`, fecha: todayKey(), monto: propina, tipo:'propina', fuente:'mesa', mesaId: mesa.id, mesaNumero: mesa.numero, meseroId: miId, meseroNombre: miNombre, createdAt: Date.now() });
-                }
-                localStorage.setItem('finanzas:ingresos', JSON.stringify(ingresos));
-            } catch {}
-
-            // Registrar pago aplicado a la cuenta (solo pendiente)
-            try {
-                const pagosArr = leerPagosMesa(mesa.id);
-                pagosArr.push({ monto: pendiente, fecha: todayKey(), ts: Date.now() });
-                localStorage.setItem(`pagos:mesa:${mesa.id}`, JSON.stringify(pagosArr));
-            } catch {}
-
-            // Abrir modal propio con resumen de cambio/propina y opciones
-            setResumenPago({
-                mesaId: mesa.id,
-                mesaNumero: mesa.numero,
-                total,
-                abonado,
-                pendiente,
-                recibido: monto,
-                propina,
-                cambio,
-                aplicado: pendiente
-            });
-            return;
-        }
-
-        // Caso normal: monto <= pendiente
-        // Persistir en finanzas:ingresos (venta)
         try {
-            const rawIng = localStorage.getItem('finanzas:ingresos');
-            const ingresos = rawIng ? JSON.parse(rawIng) : [];
-            ingresos.push({ id: `ing-${Date.now()}`, fecha: todayKey(), monto: montoAplicado, tipo:'venta', fuente:'mesa', mesaId: mesa.id, mesaNumero: mesa.numero, meseroId: miId, meseroNombre: miNombre, createdAt: Date.now() });
-            localStorage.setItem('finanzas:ingresos', JSON.stringify(ingresos));
-        } catch {}
-
-        // Registrar pago por mesa (monto aplicado)
-        try {
-            const pagosArr = leerPagosMesa(mesa.id);
-            pagosArr.push({ monto: montoAplicado, fecha: todayKey(), ts: Date.now() });
-            localStorage.setItem(`pagos:mesa:${mesa.id}`, JSON.stringify(pagosArr));
-        } catch {}
-
-        Swal.fire({ icon:'success', title:'Pago registrado', timer: 900, showConfirmButton:false });
-
-        const nuevoPendiente = pendiente - montoAplicado;
-        if (nuevoPendiente <= 0) {
-            const ok = await Swal.fire({
-                icon:'question',
-                title:'Cuenta saldada',
-                text:'¿Liberar la mesa y pasar a limpieza? Se vaciará el pedido.',
-                showCancelButton:true,
-                confirmButtonText:'Sí, liberar',
-                cancelButtonText:'No, luego'
-            });
-            if (ok.isConfirmed) {
-                try {
-                    // Vaciar pedido
-                    localStorage.setItem(`pedidos:mesa:${mesa.id}`, JSON.stringify([]));
-                    setPedidoItems([]);
-                    // Actualizar mesa a limpieza
-                    const raw = localStorage.getItem('mesas');
-                    const shared = raw ? JSON.parse(raw) : [];
-                    const current = shared.find(x => x.id === mesa.id) || mesa;
-                    const updated = shared.map(m => m.id === current.id ? { ...m, estado: 'limpieza', meseroId: miId, meseroNombre: miNombre, updatedAt: Date.now() } : m);
-                    localStorage.setItem('mesas', JSON.stringify(updated));
-                    setMesas(updated);
-                    cerrarPedido();
-                } catch {}
-            }
+            await api.pagarPedido(pid, { recibido: monto, propina, mesero_id: null });
+            Swal.fire({ icon:'success', title:'Pago registrado', timer: 900, showConfirmButton:false });
+            // Refrescar mesas (la mesa pasa a limpieza) y cerrar modal
+            const data = await api.getMesas();
+            const normalized = (Array.isArray(data) ? data : []).map(m => ({
+                id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2, estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || ''
+            })).sort((a,b)=>a.numero-b.numero);
+            setMesas(normalized);
+            setPedidoItems([]);
+            setPedidoActual(null);
+            cerrarPedido();
+        } catch (e) {
+            Swal.fire({ icon:'error', title:'No se pudo registrar el pago', text: e?.message || 'Error' });
         }
     };
 
@@ -369,7 +282,13 @@ const Mesas = () => {
                     <p className="muted">Visualiza y gestiona tus mesas asignadas.</p>
                 </div>
                 <div className="header-actions">
-                    <button className="btn ghost" onClick={() => setMesas(crearMesasBase(24))} title="Resetear a estado base"><HiArrowPath /> Reset</button>
+                                        <button className="btn ghost" onClick={async ()=>{
+                                                try {
+                                                    const data = await api.getMesas();
+                                                    const normalized = (Array.isArray(data) ? data : []).map(m => ({ id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2, estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || ''})).sort((a,b)=>a.numero-b.numero);
+                                                    setMesas(normalized);
+                                                } catch {}
+                                            }} title="Refrescar desde servidor"><HiArrowPath /> Refrescar</button>
                 </div>
             </div>
 
@@ -516,15 +435,16 @@ const Mesas = () => {
                             <div className="modal-grid">
                                 <label>
                                     <span>Producto</span>
-                                    <input value={nuevoItem.nombre} onChange={e=>setNuevoItem(prev=>({...prev, nombre: e.target.value}))} disabled={!pedidoModal.editable} />
+                                    <select value={productoSel} onChange={e=>setProductoSel(e.target.value)} disabled={!pedidoModal.editable}>
+                                        <option value="">Selecciona un producto</option>
+                                        {productos.map(p => (
+                                            <option key={p.id} value={p.id}>{p.nombre} · ${Number(p.precio||0).toLocaleString('es-CO')}</option>
+                                        ))}
+                                    </select>
                                 </label>
                                 <label>
                                     <span>Cantidad</span>
                                     <input type="number" min="1" value={nuevoItem.cantidad} onChange={e=>setNuevoItem(prev=>({...prev, cantidad: Number(e.target.value||1)}))} disabled={!pedidoModal.editable} />
-                                </label>
-                                <label>
-                                    <span>Precio</span>
-                                    <input type="number" min="0" value={nuevoItem.precio} onChange={e=>setNuevoItem(prev=>({...prev, precio: Number(e.target.value||0)}))} disabled={!pedidoModal.editable} />
                                 </label>
                                 <div style={{alignSelf:'end'}}>
                                     <button className="btn" onClick={agregarItem} disabled={!pedidoModal.editable}>Agregar</button>
@@ -562,7 +482,7 @@ const Mesas = () => {
                                     <tfoot>
                                         <tr>
                                             <td colSpan={3} className="td-right"><strong>Total</strong></td>
-                                            <td className="td-right" colSpan={pedidoModal.editable ? 2 : 1}><strong>${pedidoItems.reduce((s,it)=>s+it.cantidad*it.precio,0).toLocaleString('es-CO')}</strong></td>
+                                            <td className="td-right" colSpan={pedidoModal.editable ? 2 : 1}><strong>${pedidoItems.reduce((s,it)=>s+(it.subtotal ?? it.cantidad*it.precio),0).toLocaleString('es-CO')}</strong></td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -577,49 +497,7 @@ const Mesas = () => {
                 </div>
             )}
 
-            {resumenPago && (
-                <div className="modal-overlay" role="dialog" aria-modal="true">
-                    <div className="modal-card">
-                        <div className="modal-header">
-                            <h3>Resumen de pago · Mesa {resumenPago.mesaNumero}</h3>
-                            <button className="close-btn" onClick={() => setResumenPago(null)} aria-label="Cerrar">×</button>
-                        </div>
-                        <div className="modal-body">
-                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.5rem'}}>
-                                <div><strong>Total:</strong><br/>${resumenPago.total.toLocaleString('es-CO')}</div>
-                                <div><strong>Abonado antes:</strong><br/>${resumenPago.abonado.toLocaleString('es-CO')}</div>
-                                <div><strong>Aplicado ahora:</strong><br/>${resumenPago.aplicado.toLocaleString('es-CO')}</div>
-                                <div><strong>Recibido:</strong><br/>${resumenPago.recibido.toLocaleString('es-CO')}</div>
-                                <div><strong>Propina:</strong><br/>${resumenPago.propina.toLocaleString('es-CO')}</div>
-                                <div><strong>Cambio:</strong><br/>${resumenPago.cambio.toLocaleString('es-CO')}</div>
-                            </div>
-                            <div className="empty" style={{marginTop:'1rem'}}>La cuenta quedó saldada.</div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn" onClick={() => setResumenPago(null)}>Cerrar</button>
-                            <button className="btn primary" onClick={() => {
-                                try {
-                                    const mesaId = resumenPago.mesaId;
-                                    // Vaciar pedido
-                                    localStorage.setItem(`pedidos:mesa:${mesaId}`, JSON.stringify([]));
-                                    setPedidoItems([]);
-                                    // Actualizar mesa a limpieza
-                                    const raw = localStorage.getItem('mesas');
-                                    const shared = raw ? JSON.parse(raw) : [];
-                                    const current = shared.find(x => x.id === mesaId);
-                                    if (current) {
-                                        const updated = shared.map(m => m.id === current.id ? { ...m, estado: 'limpieza', meseroId: miId, meseroNombre: miNombre, updatedAt: Date.now() } : m);
-                                        localStorage.setItem('mesas', JSON.stringify(updated));
-                                        setMesas(updated);
-                                    }
-                                    setResumenPago(null);
-                                    cerrarPedido();
-                                } catch {}
-                            }}>Liberar y limpieza</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Sin resumen local de pago; backend ya cierra pedido y pone mesa en limpieza */}
         </div>
     );
 };

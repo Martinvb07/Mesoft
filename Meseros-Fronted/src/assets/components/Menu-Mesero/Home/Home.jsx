@@ -1,225 +1,196 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Meseros/Home/Home.css';
 import { Link } from 'react-router-dom';
-import { HiSquares2X2, HiCheckCircle, HiUsers, HiArrowRightCircle, HiBanknotes, HiCreditCard, HiCalculator, HiUser, HiEnvelope, HiPhone, HiIdentification } from 'react-icons/hi2';
-import Swal from 'sweetalert2';
+import { HiSquares2X2, HiUsers, HiBanknotes, HiCreditCard, HiCalculator, HiUser, HiEnvelope, HiPhone, HiIdentification } from 'react-icons/hi2';
+import { api } from '../../../../api/client';
 
-const getMesas = () => {
-    try {
-        const raw = localStorage.getItem('mesas');
-        if (raw) return JSON.parse(raw);
-    } catch {}
-    return [];
-};
-
-const todayKey = () => {
-    const d = new Date();
+// Helpers de fecha
+const fmtDate = (d) => {
     const yyyy = d.getFullYear();
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
 };
-
-const monthKey = () => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    return `${yyyy}-${mm}`;
+const todayKey = () => fmtDate(new Date());
+const monthRange = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { desde: fmtDate(start), hasta: fmtDate(end) };
 };
-
-const isToday = (ts) => {
-    if (!ts) return false;
-    const d = new Date(ts);
-    return d.toISOString().slice(0,10) === todayKey();
-};
-
-const readArray = (key) => {
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return [];
-        const v = JSON.parse(raw);
-        return Array.isArray(v) ? v : [];
-    } catch { return []; }
-};
-
-const sumByDate = (arr, dateKey) => arr.reduce((acc, it) => acc + (it.fecha === dateKey ? Number(it.monto || it.amount || 0) : 0), 0);
 
 const Home = () => {
-    const mesas = useMemo(() => getMesas(), []);
-    const [refreshKey, setRefreshKey] = useState(0);
-
-    // Pedido modal state
-    const [pedidoModal, setPedidoModal] = useState({ mesa: null, editable: false });
-    const [pedidoItems, setPedidoItems] = useState([]);
-    const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: 1, precio: 0 });
-
-    // Usuario actual (si existe en localStorage)
-    let nombre = 'Mesero';
-    let apellido = '';
-    let telefono = '';
-    let correo = '';
-    let documento = '';
-    let usuario = '';
-    let rol = '';
-    let miId = 'mesero1';
-    let sueldoBase = 0;
+    // Usuario: usamos el guardado por Login para mostrar perfil y mapear al mesero_id
+    let user = null;
     try {
         const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
-        if (raw) {
-            const u = JSON.parse(raw);
-            nombre = u.nombre || u.name || u.fullName || u.username || nombre;
-            apellido = u.apellido || u.apellidos || u.lastName || u.surname || '';
-            telefono = u.telefono || u.phone || u.celular || u.mobile || u.whatsapp || '';
-            correo = u.email || u.correo || u.mail || '';
-            documento = u.documento || u.dni || u.cedula || u.idNumber || u.identificacion || '';
-            usuario = u.usuario || u.username || '';
-            rol = u.rol || u.role || '';
-            miId = u.id || u.userId || u.uid || miId;
-            sueldoBase = Number(u.sueldo || u.salario || u.salary || u.sueldoBase || 0) || 0;
-        }
+        if (raw) user = JSON.parse(raw);
     } catch {}
-
+    const nombre = user?.nombre || user?.name || user?.fullName || user?.username || 'Mesero';
+    const apellido = user?.apellido || user?.apellidos || user?.lastName || user?.surname || '';
+    const telefono = user?.telefono || user?.phone || user?.celular || user?.mobile || user?.whatsapp || '';
+    const correo = user?.email || user?.correo || user?.mail || '';
+    const documento = user?.documento || user?.dni || user?.cedula || user?.idNumber || user?.identificacion || '';
+    const usuario = user?.usuario || user?.username || '';
+    const rol = user?.rol || user?.role || 'mesero';
+    const userId = user?.id || user?.userId || user?.uid || null;
     const iniciales = (nombre?.[0] || '').toUpperCase() + (apellido?.[0] || '').toUpperCase();
+
+    // Estado principal
+    const [mesas, setMesas] = useState([]);
+    const [meseroInfo, setMeseroInfo] = useState(null); // { id, nombre, sueldo_base }
+    const [ventasHoy, setVentasHoy] = useState(0);
+    const [propinasHoy, setPropinasHoy] = useState(0);
+    const [balanceHoy, setBalanceHoy] = useState(0);
+    const [mesasHoy, setMesasHoy] = useState(0);
+
+    // Nómina
+    const [bonosMes, setBonosMes] = useState(0);
+    const [adelantosMes, setAdelantosMes] = useState(0);
+    const [descuentosMes, setDescuentosMes] = useState(0);
+    const [pagosNominaMes, setPagosNominaMes] = useState(0);
+    const [sueldoBase, setSueldoBase] = useState(0);
+
+    // Totales por mesa (pedido abierto)
+    const [pedidoPorMesa, setPedidoPorMesa] = useState({}); // mesaId -> { total, items }
+    const [pedidoModal, setPedidoModal] = useState({ mesa: null });
+
+    // Cargar mesas
+    useEffect(() => {
+        const loadMesas = async () => {
+            try {
+                const data = await api.getMesas();
+                setMesas(Array.isArray(data) ? data : []);
+            } catch (e) {
+                setMesas([]);
+            }
+        };
+        loadMesas();
+    }, []);
+
+    // Resolver mesero actual por usuario_id
+    useEffect(() => {
+        if (!userId) return;
+        const loadMesero = async () => {
+            try {
+                const list = await api.getMeseros();
+                const me = (Array.isArray(list) ? list : []).find(m => Number(m.usuario_id) === Number(userId));
+                if (me) {
+                    setMeseroInfo({ id: me.id, nombre: me.nombre, sueldo_base: Number(me.sueldo_base || 0) });
+                    setSueldoBase(Number(me.sueldo_base || 0));
+                } else {
+                    setMeseroInfo(null);
+                }
+            } catch {
+                setMeseroInfo(null);
+            }
+        };
+        loadMesero();
+    }, [userId]);
+
+    // KPIs del día (ventas, propinas, balance, mesas atendidas)
+    useEffect(() => {
+        const loadKpis = async () => {
+            try {
+                const [v, b] = await Promise.all([
+                    api.ventasHoy().catch(() => ({ ventas: 0 })),
+                    api.balanceHoy().catch(() => ({ balance: 0 })),
+                ]);
+                setVentasHoy(Number(v?.ventas || 0));
+                setBalanceHoy(Number(b?.balance || 0));
+            } catch {}
+        };
+        loadKpis();
+    }, []);
+
+    useEffect(() => {
+        const loadPropinasYMesasHoy = async () => {
+            if (!meseroInfo?.id) return;
+            const hoy = todayKey();
+            try {
+                // Propinas de hoy por mesero
+                const p = await api.propinas(meseroInfo.id, hoy, hoy).catch(() => ({ propinas: 0 }));
+                setPropinasHoy(Number(p?.propinas || 0));
+
+                // Mesas atendidas hoy (aprox): pedidos en curso hoy de este mesero
+                const enCurso = await api.pedidosEnCurso().catch(() => ({ pedidos: [] }));
+                const count = (enCurso?.pedidos || []).filter(pe => {
+                    const fh = pe?.fecha_hora ? new Date(pe.fecha_hora) : null;
+                    const sameDay = fh ? fmtDate(fh) === hoy : false;
+                    return sameDay && Number(pe.mesero_id || 0) === Number(meseroInfo.id);
+                }).length;
+                setMesasHoy(count);
+            } catch {
+                setPropinasHoy(0);
+                setMesasHoy(0);
+            }
+        };
+        loadPropinasYMesasHoy();
+    }, [meseroInfo?.id]);
+
+    // Nómina (mes actual) desde API
+    useEffect(() => {
+        const loadNomina = async () => {
+            if (!meseroInfo?.id) return;
+            const { desde, hasta } = monthRange();
+            try {
+                const movs = await api.obtenerNomina(meseroInfo.id, desde, hasta).catch(() => []);
+                const sum = (tipo) => movs.filter(m => String(m.tipo || '').toLowerCase() === tipo).reduce((s, m) => s + Number(m.monto || 0), 0);
+                setBonosMes(sum('bono'));
+                setAdelantosMes(sum('adelanto'));
+                setDescuentosMes(sum('descuento'));
+                setPagosNominaMes(sum('pago'));
+            } catch {
+                setBonosMes(0); setAdelantosMes(0); setDescuentosMes(0); setPagosNominaMes(0);
+            }
+        };
+        loadNomina();
+    }, [meseroInfo?.id]);
+
+    // Mis mesas (asignadas a mi) y totales via API
+    const misMesasBase = useMemo(() => {
+        if (!meseroInfo?.id) return [];
+        return mesas.filter(m => Number(m.mesero_id || 0) === Number(meseroInfo.id)).sort((a, b) => a.numero - b.numero);
+    }, [mesas, meseroInfo?.id]);
+
+    useEffect(() => {
+        const loadTotales = async () => {
+            if (!misMesasBase.length) { setPedidoPorMesa({}); return; }
+            const acc = {};
+            for (const m of misMesasBase) {
+                try {
+                    const ped = await api.getPedidoAbiertoDeMesa(m.id);
+                    if (!ped || !ped.id) { acc[m.id] = { total: 0, items: [] }; continue; }
+                    const items = await api.getPedidoItems(ped.id).catch(() => []);
+                    const total = (Array.isArray(items) ? items : []).reduce((s, it) => s + Number(it.subtotal || (it.cantidad || 0) * (it.precio || 0)), 0);
+                    acc[m.id] = { total, items };
+                } catch {
+                    acc[m.id] = { total: 0, items: [] };
+                }
+            }
+            setPedidoPorMesa(acc);
+        };
+        loadTotales();
+    }, [misMesasBase.length]);
+
+    const abrirPedido = (mesa) => {
+        if (!mesa) return;
+        setPedidoModal({ mesa });
+    };
+    const cerrarPedido = () => setPedidoModal({ mesa: null });
 
     const total = mesas.length;
     const libres = mesas.filter(m => m.estado === 'libre').length;
     const ocupadas = mesas.filter(m => m.estado === 'ocupada').length;
     const enLimpieza = mesas.filter(m => m.estado === 'limpieza').length;
-
-    // Mesas atendidas hoy (aprox): mesas que cambiaron estado hoy y están/estuvieron asignadas a mi
-    const mesasHoy = mesas.filter(m => m.meseroId === miId && isToday(m.updatedAt)).length;
-
-    // Finanzas (según Admin): leer finanzas:ingresos y finanzas:egresos
-    const [ingresosArr, setIngresosArr] = useState(() => readArray('finanzas:ingresos'));
-    const [egresosArr, setEgresosArr] = useState(() => readArray('finanzas:egresos'));
-    const today = todayKey();
-    const ventasHoy = useMemo(() => ingresosArr.reduce((acc, it) => {
-        const fechaOk = it && it.fecha === today;
-        const tipo = it?.tipo || 'venta';
-        return acc + (fechaOk && tipo === 'venta' ? Number(it.monto || it.amount || 0) : 0);
-    }, 0), [ingresosArr]);
-    const propinasHoy = useMemo(() => ingresosArr.reduce((acc, it) => {
-        const fechaOk = it && it.fecha === today;
-        return acc + (fechaOk && it?.tipo === 'propina' && it?.meseroId === miId ? Number(it.monto || it.amount || 0) : 0);
-    }, 0), [ingresosArr, miId]);
-    const egresosHoy = useMemo(() => sumByDate(egresosArr, today), [egresosArr]);
-    const balanceHoy = ventasHoy - egresosHoy;
-
-    // Nómina (mes actual)
-    const mKey = monthKey();
-    const matchesMonth = (fecha, m) => {
-        if (!fecha) return false;
-        try {
-            if (typeof fecha === 'string') return fecha.startsWith(m);
-            const d = new Date(fecha);
-            if (isNaN(d.getTime())) return false;
-            const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            return mk === m;
-        } catch { return false; }
-    };
-    const sumNomina = (key) => {
-        const arr = readArray(key);
-        return arr.reduce((acc, it) => acc + ((it?.meseroId === miId && matchesMonth(it?.fecha, mKey)) ? Number(it.monto || it.amount || 0) : 0), 0);
-    };
-    const bonosMes = useMemo(() => sumNomina('nomina:bonos'), [refreshKey, miId]);
-    const adelantosMes = useMemo(() => sumNomina('nomina:adelantos'), [refreshKey, miId]);
-    const descuentosMes = useMemo(() => sumNomina('nomina:descuentos'), [refreshKey, miId]);
-    const pagosNominaMes = useMemo(() => sumNomina('nomina:pagos'), [refreshKey, miId]);
-    const propinasMes = useMemo(() => ingresosArr.reduce((acc, it) => acc + ((it?.meseroId === miId && it?.tipo === 'propina' && matchesMonth(it?.fecha, mKey)) ? Number(it.monto || it.amount || 0) : 0), 0), [ingresosArr, miId, refreshKey]);
     const sueldoNetoMes = sueldoBase + bonosMes - adelantosMes - descuentosMes;
     const saldoPorPagarMes = Math.max(0, sueldoNetoMes - pagosNominaMes);
 
-    // Escuchar cambios de storage para actualizar ingresos/egresos y mesas/pedidos pagos
-    useEffect(() => {
-        const onStorage = (e) => {
-            if (e.key === 'finanzas:ingresos') {
-                setIngresosArr(() => readArray('finanzas:ingresos'));
-            } else if (e.key === 'finanzas:egresos') {
-                setEgresosArr(() => readArray('finanzas:egresos'));
-            } else if (e.key && (e.key.startsWith('pedidos:mesa:') || e.key.startsWith('pagos:mesa:') || e.key === 'mesas')) {
-                setRefreshKey(k => k + 1);
-            }
-        };
-        window.addEventListener('storage', onStorage);
-        return () => window.removeEventListener('storage', onStorage);
-    }, []);
-
-    // Mis mesas: mesas asignadas a mi, con total de pedido
-    const misMesas = useMemo(() => {
-        const list = mesas.filter(m => m.meseroId === miId);
-        return list.map(m => {
-            const key = `pedidos:mesa:${m.id}`;
-            let items = [];
-            try {
-                const raw = localStorage.getItem(key);
-                const data = raw ? JSON.parse(raw) : [];
-                items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-            } catch {}
-            const total = items.reduce((s, it) => s + (Number(it.cantidad||0) * Number(it.precio||0)), 0);
-            // pagos abonados
-            let pagos = [];
-            try {
-                const rawP = localStorage.getItem(`pagos:mesa:${m.id}`);
-                const arr = rawP ? JSON.parse(rawP) : [];
-                pagos = Array.isArray(arr) ? arr : [];
-            } catch {}
-            const abonado = pagos.reduce((s,p)=> s + Number(p.monto||0), 0);
-            const pendiente = Math.max(0, total - abonado);
-            return { ...m, totalPedido: total, abonado, pendiente };
-        })
-        .sort((a,b) => a.numero - b.numero);
-    }, [mesas, miId, refreshKey]);
-
-    // Pedido modal functions (mirroring Mesas)
-    const abrirPedido = (mesa) => {
-        if (!mesa) return;
-        const keys = [
-            `pedidos:mesa:${mesa.id}`,
-            `pedidos:mesa:${mesa.numero}`,
-            `mesa:${mesa.id}:pedidos`,
-            `mesa:${mesa.numero}:pedidos`,
-        ];
-        let items = [];
-        for (const k of keys) {
-            try {
-                const raw = localStorage.getItem(k);
-                if (!raw) continue;
-                const data = JSON.parse(raw);
-                if (Array.isArray(data)) { items = data; break; }
-                if (Array.isArray(data?.items)) { items = data.items; break; }
-                if (Array.isArray(data?.pedidos)) { items = data.pedidos; break; }
-                if (Array.isArray(data?.ordenes)) { items = data.ordenes; break; }
-            } catch {}
-        }
-        setPedidoItems(items.map(it => ({
-            nombre: it.nombre || it.producto || it.name || 'Producto',
-            cantidad: Number(it.cantidad ?? it.qty ?? it.quantity ?? 1) || 1,
-            precio: Number(it.precio ?? it.price ?? it.unitPrice ?? 0) || 0,
-        })));
-        const editable = mesa.meseroId === miId && mesa.estado === 'ocupada';
-        setPedidoModal({ mesa, editable });
-    };
-    const cerrarPedido = () => { setPedidoModal({ mesa: null, editable: false }); setNuevoItem({ nombre: '', cantidad: 1, precio: 0 }); };
-    const agregarItem = () => {
-        if (!pedidoModal.editable) return;
-        const nombre = (nuevoItem.nombre || '').trim();
-        const cantidad = Number(nuevoItem.cantidad || 1);
-        const precio = Number(nuevoItem.precio || 0);
-        if (!nombre) return Swal.fire({ icon: 'error', title: 'Ingresa el nombre del producto' });
-        if (cantidad <= 0) return Swal.fire({ icon: 'error', title: 'Cantidad inválida' });
-        if (precio < 0) return Swal.fire({ icon: 'error', title: 'Precio inválido' });
-        setPedidoItems(prev => [...prev, { nombre, cantidad, precio }]);
-        setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
-    };
-    const quitarItem = (idx) => { if (!pedidoModal.editable) return; setPedidoItems(prev => prev.filter((_, i) => i !== idx)); };
-    const guardarPedido = () => {
-        if (!pedidoModal.mesa) return;
-        const key = `pedidos:mesa:${pedidoModal.mesa.id}`;
-        localStorage.setItem(key, JSON.stringify(pedidoItems));
-        Swal.fire({ icon: 'success', title: 'Pedido guardado', timer: 900, showConfirmButton: false });
-        // refresh totals in Mis mesas
-        setRefreshKey(k => k + 1);
-    };
+    const misMesas = misMesasBase.map(m => {
+        const info = pedidoPorMesa[m.id] || { total: 0 };
+        const pendiente = info.total; // no manejamos pagos parciales por ahora
+        return { ...m, totalPedido: info.total, pendiente };
+    });
 
     return (
         <div className="home-page">
@@ -235,7 +206,7 @@ const Home = () => {
                 </div>
             </div>
 
-            <div className="home-metrics">
+                    <div className="home-metrics">
                 <div className="metric-card">
                     <div className="metric-icon"><HiSquares2X2 /></div>
                     <div className="metric-info">
@@ -373,7 +344,7 @@ const Home = () => {
                         </div>
                         <div className="panel">
                             <h3>Notas</h3>
-                            <div className="empty">La nómina usa registros locales: nomina:bonos, nomina:adelantos, nomina:descuentos y nomina:pagos.</div>
+                            <div className="empty">La nómina se calcula desde los movimientos registrados en el backend.</div>
                         </div>
                     </div>
                 </div>
@@ -387,26 +358,7 @@ const Home = () => {
                             <button className="close-btn" onClick={cerrarPedido} aria-label="Cerrar">×</button>
                         </div>
                         <div className="modal-body">
-                            {!pedidoModal.editable && (
-                                <p className="muted" style={{marginTop:0}}>Solo lectura: esta mesa no está asignada a ti.</p>
-                            )}
-                            <div className="modal-grid">
-                                <label>
-                                    <span>Producto</span>
-                                    <input value={nuevoItem.nombre} onChange={e=>setNuevoItem(prev=>({...prev, nombre: e.target.value}))} disabled={!pedidoModal.editable} />
-                                </label>
-                                <label>
-                                    <span>Cantidad</span>
-                                    <input type="number" min="1" value={nuevoItem.cantidad} onChange={e=>setNuevoItem(prev=>({...prev, cantidad: Number(e.target.value||1)}))} disabled={!pedidoModal.editable} />
-                                </label>
-                                <label>
-                                    <span>Precio</span>
-                                    <input type="number" min="0" value={nuevoItem.precio} onChange={e=>setNuevoItem(prev=>({...prev, precio: Number(e.target.value||0)}))} disabled={!pedidoModal.editable} />
-                                </label>
-                                <div style={{alignSelf:'end'}}>
-                                    <button className="btn" onClick={agregarItem} disabled={!pedidoModal.editable}>Agregar</button>
-                                </div>
-                            </div>
+                            <p className="muted" style={{marginTop:0}}>Vista de solo lectura. Para gestionar pedidos, ve a la pantalla de Mesas.</p>
                             <div className="consumos-wrap" style={{marginTop:'1rem'}}>
                                 <table className="table-consumos">
                                     <thead>
@@ -415,31 +367,27 @@ const Home = () => {
                                             <th>Cant.</th>
                                             <th>Precio</th>
                                             <th>Subtotal</th>
-                                            {pedidoModal.editable && <th></th>}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {pedidoItems.map((it, idx) => (
+                                        {(pedidoPorMesa[pedidoModal.mesa.id]?.items || []).map((it, idx) => (
                                             <tr key={idx}>
-                                                <td>{it.nombre}</td>
+                                                <td>{it.nombre || it.producto_nombre || '-'}</td>
                                                 <td className="td-right">{it.cantidad}</td>
-                                                <td className="td-right">${it.precio.toLocaleString('es-CO')}</td>
-                                                <td className="td-right">${(it.cantidad*it.precio).toLocaleString('es-CO')}</td>
-                                                {pedidoModal.editable && (
-                                                    <td className="td-right"><button className="btn ghost" onClick={() => quitarItem(idx)}>Quitar</button></td>
-                                                )}
+                                                <td className="td-right">${Number(it.precio || 0).toLocaleString('es-CO')}</td>
+                                                <td className="td-right">${Number(it.subtotal || ((it.cantidad||0)*(it.precio||0))).toLocaleString('es-CO')}</td>
                                             </tr>
                                         ))}
-                                        {pedidoItems.length === 0 && (
+                                        {(pedidoPorMesa[pedidoModal.mesa.id]?.items || []).length === 0 && (
                                             <tr>
-                                                <td colSpan={pedidoModal.editable ? 5 : 4}><div className="empty" style={{margin:0}}>Sin productos.</div></td>
+                                                <td colSpan={4}><div className="empty" style={{margin:0}}>Sin productos.</div></td>
                                             </tr>
                                         )}
                                     </tbody>
                                     <tfoot>
                                         <tr>
                                             <td colSpan={3} className="td-right"><strong>Total</strong></td>
-                                            <td className="td-right" colSpan={pedidoModal.editable ? 2 : 1}><strong>${pedidoItems.reduce((s,it)=>s+it.cantidad*it.precio,0).toLocaleString('es-CO')}</strong></td>
+                                            <td className="td-right"><strong>${Number(pedidoPorMesa[pedidoModal.mesa.id]?.total || 0).toLocaleString('es-CO')}</strong></td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -447,7 +395,7 @@ const Home = () => {
                         </div>
                         <div className="modal-footer">
                             <button className="btn" onClick={cerrarPedido}>Cerrar</button>
-                            {pedidoModal.editable && <button className="btn primary" onClick={guardarPedido}>Guardar</button>}
+                            <Link className="btn primary" to="/mesero/mesas">Gestionar en Mesas</Link>
                         </div>
                     </div>
                 </div>
