@@ -6,6 +6,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "build": "echo Backend Node (Express) sin paso de compilacion.",
+    "hash:usuarios": "node scripts/hash-usuarios.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

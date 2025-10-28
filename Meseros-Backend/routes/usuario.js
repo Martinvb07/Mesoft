@@ -2,6 +2,7 @@
     const router = express.Router();
     const Usuario = require('../models/usuario');
     const db = require('../config/db');
+    const bcrypt = require('bcrypt');
 
     // 🧩 Obtener todos los usuarios
     router.get('/', (req, res) => {
@@ -21,10 +22,31 @@
 
     // 🧩 Crear usuario manualmente (poco usado, solo admins)
     router.post('/', (req, res) => {
-    Usuario.create(req.body, (err, results) => {
+    const payload = { ...(req.body || {}) };
+    const raw = String(payload.contrasena || '');
+    const looksHashed = raw.startsWith('$2');
+
+    // Asegurar rol por defecto si no se pasa
+    if (!payload.rol) payload.rol = 'mesero';
+
+    const doCreate = (finalPayload) => {
+        Usuario.create(finalPayload, (err, results) => {
         if (err) return res.status(500).json({ error: err });
-        res.json({ id: results.insertId, ...req.body });
-    });
+        res.json({ id: results.insertId, ...finalPayload });
+        });
+    };
+
+    if (raw && !looksHashed) {
+        // Hashear la contraseña si viene en texto plano
+        bcrypt.hash(raw, 10, (eH, hash) => {
+        if (eH) return res.status(500).json({ error: 'Error generando hash' });
+        payload.contrasena = hash;
+        doCreate(payload);
+        });
+        return;
+    }
+    // Si ya parece hash o no hay contraseña, crear tal cual
+    doCreate(payload);
     });
 
     // 🧩 Login

@@ -139,14 +139,30 @@ const Mesas = () => {
         if (!producto_id) return Swal.fire({ icon: 'error', title: 'Selecciona un producto' });
         if (cantidad <= 0) return Swal.fire({ icon: 'error', title: 'Cantidad inválida' });
         try {
-            await api.addPedidoItem(pid, { producto_id, cantidad });
+            const resp = await api.addPedidoItem(pid, { producto_id, cantidad });
             const rows = await api.getPedidoItems(pid);
             const items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
             setPedidoItems(items);
             setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
             setProductoSel('');
+            // Aviso para mesero: bajo stock
+            if (resp?.warnings?.lowStock) {
+                const w = resp.warnings;
+                Swal.fire({ icon: 'info', title: 'Stock bajo', text: `${w.nombre || 'Producto'}: quedan ${w.restante} (mínimo ${w.min_stock})`, timer: 2000, showConfirmButton: false });
+            }
         } catch (e) {
-            Swal.fire({ icon: 'error', title: 'No se pudo agregar', text: e?.message || 'Error' });
+            if (e?.status === 409 && (e?.payload?.code === 'STOCK_INSUFICIENTE' || /Stock insuficiente/i.test(e?.message || ''))) {
+                const disponible = e?.payload?.disponible;
+                const text = typeof disponible === 'number' ? `Disponible: ${disponible}` : 'No hay inventario suficiente para la cantidad solicitada.';
+                Swal.fire({ icon: 'warning', title: 'Stock insuficiente', text });
+            } else {
+                Swal.fire({ icon: 'error', title: 'No se pudo agregar', text: e?.message || 'Error' });
+            }
+            // Refrescar productos para ver stocks actuales (si el backend los expone)
+            try {
+                const prods = await api.getProductos().then(r => Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : []));
+                setProductos(prods);
+            } catch {}
         }
     };
     const quitarItem = async (idx) => {

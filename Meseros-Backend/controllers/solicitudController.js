@@ -66,7 +66,10 @@ exports.sendSolicitud = async (req, res) => {
     }
 
     const mailOptions = {
-        from: correo,
+        // Desde la cuenta autenticada; Gmail rechaza remitentes que no coinciden si no está configurado send-as
+        from: process.env.MAIL_USER || 'no-reply@example.com',
+        // Para poder responderle al solicitante cómodamente
+        replyTo: correo,
         to: process.env.MAIL_TO || 'owner@example.com',
         subject: 'Nueva solicitud de acceso',
         text: `Nombre: ${nombre} ${apellido}\nCorreo: ${correo}\nEmpresa: ${empresa}\nCargo: ${cargo}\nNIT: ${nit}\nMensaje: ${mensaje}`
