@@ -20,6 +20,7 @@ function Home() {
     const [pedidosEnCurso, setPedidosEnCurso] = useState(0);
     const [pedidosDetalle, setPedidosDetalle] = useState([]); // [{id, mesa_id, mesero_id, total, fecha_hora, items: []}]
     const [pedidosCargando, setPedidosCargando] = useState(false);
+    const [showPedidosModal, setShowPedidosModal] = useState(false);
     const [meserosActivosCount, setMeserosActivosCount] = useState(0);
 
     useEffect(() => {
@@ -182,7 +183,7 @@ function Home() {
                             <div className="metric-label">Meseros Activos</div>
                         </div>
                     </div>
-                    <div className="metric-card">
+                    <div className="metric-card clickable" onClick={()=>setShowPedidosModal(true)} title="Ver pedidos en curso">
                         <div className="metric-icon">
                             <HiClipboardDocumentList size={28} style={{ color: 'var(--brand)' }} />
                         </div>
@@ -397,6 +398,73 @@ function Home() {
                     </div>
                 </div>
             </div>
+        {showPedidosModal && (
+            <div className="modal-overlay" role="dialog" aria-modal="true">
+                <div className="modal-card">
+                    <div className="modal-header">
+                        <h3>Pedidos en curso {pedidosCargando ? '(cargando...)' : `(${pedidosEnCurso})`}</h3>
+                        <button className="close-btn" onClick={()=>setShowPedidosModal(false)} aria-label="Cerrar">×</button>
+                    </div>
+                    <div className="modal-body">
+                        <div style={{display:'flex', justifyContent:'flex-end', marginBottom:'.5rem'}}>
+                            <button className="btn ghost" onClick={async ()=>{
+                                setPedidosCargando(true);
+                                try {
+                                    const pk = await api.pedidosEnCurso();
+                                    setPedidosEnCurso(Number(pk?.count || 0));
+                                    const arr = Array.isArray(pk?.pedidos) ? pk.pedidos : [];
+                                    const det = await Promise.all(arr.map(async (p) => {
+                                        try {
+                                            const items = await api.getPedidoItems(p.id);
+                                            return { ...p, items: Array.isArray(items) ? items : [] };
+                                        } catch {
+                                            return { ...p, items: [] };
+                                        }
+                                    }));
+                                    setPedidosDetalle(det);
+                                } finally {
+                                    setPedidosCargando(false);
+                                }
+                            }}>Refrescar</button>
+                        </div>
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th>Pedido</th>
+                                    <th>Mesa</th>
+                                    <th>Mesero</th>
+                                    <th>Items</th>
+                                    <th className="td-right">Total</th>
+                                    <th>Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {pedidosDetalle.map((p)=>{
+                                    const resumen = (p.items||[]).map(it=>`${it.nombre} x${it.cantidad}`).join(', ');
+                                    const hora = p.fecha_hora ? new Date(p.fecha_hora).toLocaleTimeString('es-CO',{hour:'2-digit', minute:'2-digit'}) : '';
+                                    return (
+                                        <tr key={p.id}>
+                                            <td>#{p.id}</td>
+                                            <td>{p.mesa_id}</td>
+                                            <td>{p.mesero_id ?? '-'}</td>
+                                            <td style={{maxWidth: '360px'}}><span title={resumen}>{resumen || '—'}</span></td>
+                                            <td className="td-right">${Number(p.total||0).toLocaleString('es-CO')}</td>
+                                            <td>{hora}</td>
+                                        </tr>
+                                    );
+                                })}
+                                {!pedidosDetalle.length && (
+                                    <tr><td colSpan={6} className="muted">No hay pedidos abiertos.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="modal-footer">
+                        <button className="btn" onClick={()=>setShowPedidosModal(false)}>Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        )}
         </div>
     );
 }
