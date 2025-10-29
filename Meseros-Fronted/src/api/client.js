@@ -121,6 +121,7 @@ export const api = {
   obtenerNomina: (mesero_id, desde, hasta) => request(`/nomina/movimientos?mesero_id=${mesero_id}&desde=${desde}&hasta=${hasta}`),
   crearMovimientoNomina: (data) => request('/nomina/movimientos', { method: 'POST', body: data }),
   eliminarMovimientoNomina: (id) => request(`/nomina/movimientos/${id}`, { method: 'DELETE' }),
+  marcarPagoNomina: (data) => request('/nomina/pago', { method: 'POST', body: data }),
 
   // Productos / Inventario
   getProductos: () => request('/productos'),

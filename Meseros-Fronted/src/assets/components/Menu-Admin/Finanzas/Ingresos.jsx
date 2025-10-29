@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
+import './ReportesToolbar.css';
 import { api } from '../../../../api/client';
 import {
     flexRender,
@@ -9,7 +10,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { HiArrowsUpDown, HiChevronLeft, HiChevronRight, HiCube, HiTag, HiHashtag, HiCurrencyDollar } from 'react-icons/hi2';
+import { HiArrowsUpDown, HiChevronLeft, HiChevronRight, HiCube, HiTag, HiHashtag, HiCurrencyDollar, HiMagnifyingGlass } from 'react-icons/hi2';
 
 const Ingresos = () => {
     const [desde, setDesde] = useState(()=>{
@@ -95,16 +96,27 @@ const Ingresos = () => {
     <div className="fin-page finz-reportes">
         <div className="fin-header"><h1>Finanzas · Ingresos</h1><p className="muted">Ventas por producto en el rango seleccionado.</p></div>
         <div className="fin-card">
-            <div className="toolbar">
-                <div className="left">
-                    <label>Desde <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} /></label>
-                    <label>Hasta <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} /></label>
+            <div className="rpt-toolbar">
+                <h3 className="rpt-title">Ingresos</h3>
+                <div className="rpt-items">
+                    <div className="rpt-field">
+                        <label>Desde</label>
+                        <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} />
+                    </div>
+                    <div className="rpt-field">
+                        <label>Hasta</label>
+                        <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} />
+                    </div>
+                    <div className="rpt-search">
+                        <HiMagnifyingGlass />
+                        <input placeholder="Buscar producto…" value={q} onChange={e=>setQ(e.target.value)} />
+                    </div>
+                    <button className="rpt-btn primary" onClick={exportCSV}>Exportar CSV</button>
                 </div>
-                <div className="right">
-                    <input className="input" placeholder="Buscar producto" value={q} onChange={e=>setQ(e.target.value)} />
-                    <div className="kpis-inline">Unidades: <strong>{totalUnidades.toLocaleString('es-CO')}</strong> · Total: <strong>{money(totalIngresos)}</strong></div>
-                    <button className="btn" onClick={exportCSV}>Exportar CSV</button>
-                </div>
+            </div>
+            <div className="kpis">
+                <div className="kpi"><div className="kpi-label">Total Ingresos</div><div className="kpi-value">{money(totalIngresos)}</div></div>
+                <div className="kpi"><div className="kpi-label">Unidades</div><div className="kpi-value">{totalUnidades.toLocaleString('es-CO')}</div></div>
             </div>
             {cargando ? (
                 <div className="empty">Cargando…</div>

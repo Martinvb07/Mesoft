@@ -218,33 +218,36 @@ function Mesas() {
     const cerrarReservadasModal = () => setShowReservadasModal(false);
 
     const abrirDetalleMesa = async (mesa) => {
-        let meseroNombre = '—';
+        // Priorizar el mismo nombre que mostramos en la tarjeta para evitar inconsistencias
+        let meseroNombre = mesa.meseroNombre || '—';
         let asignadaAt = null;
         try {
-            const rawTurnos = localStorage.getItem('turnos');
-            if (rawTurnos) {
-                const turnos = JSON.parse(rawTurnos) || [];
-                const t = turnos.find(tu => {
-                    const mesaMatch = (tu.mesaId ?? tu.mesa ?? tu.tableId ?? tu.mesaNumero ?? tu.tableNumber) === mesa.id || (tu.mesaNumero ?? tu.tableNumber) === mesa.numero;
-                    const meseroMatch = (tu.meseroId ?? tu.id ?? tu.userId ?? tu.uid) === mesa.meseroId;
-                    return mesaMatch || meseroMatch;
-                });
-                if (t) {
-                    meseroNombre = t.nombre || t.name || t.fullName || t.usuario || t.username || t.correo || meseroNombre;
-                    asignadaAt = t.asignadaAt || t.assignedAt || t.inicioMesaAt || t.startedTableAt || t.inicioAt || t.startedAt || null;
+            // Solo usar storages locales si no vino desde backend
+            if ((meseroNombre === '—' || !meseroNombre)) {
+                const rawTurnos = localStorage.getItem('turnos');
+                if (rawTurnos) {
+                    const turnos = JSON.parse(rawTurnos) || [];
+                    const t = turnos.find(tu => {
+                        const mesaMatch = (tu.mesaId ?? tu.mesa ?? tu.tableId ?? tu.mesaNumero ?? tu.tableNumber) === mesa.id || (tu.mesaNumero ?? tu.tableNumber) === mesa.numero;
+                        const meseroMatch = (tu.meseroId ?? tu.id ?? tu.userId ?? tu.uid) === mesa.meseroId;
+                        return mesaMatch || meseroMatch;
+                    });
+                    if (t) {
+                        meseroNombre = t.nombre || t.name || t.fullName || t.usuario || t.username || t.correo || meseroNombre;
+                        asignadaAt = t.asignadaAt || t.assignedAt || t.inicioMesaAt || t.startedTableAt || t.inicioAt || t.startedAt || null;
+                    }
+                }
+                if ((meseroNombre === '—' || !meseroNombre) && mesa.meseroId != null) {
+                    const keys = ['usuarios', 'users', 'app:usuarios'];
+                    for (const k of keys) {
+                        const raw = localStorage.getItem(k);
+                        if (!raw) continue;
+                        const arr = JSON.parse(raw) || [];
+                        const u = arr.find(x => (x.id ?? x.userId ?? x.uid) === mesa.meseroId);
+                        if (u) { meseroNombre = `${u.nombre || u.name || ''} ${u.apellido || ''}`.trim() || meseroNombre; break; }
+                    }
                 }
             }
-            if (meseroNombre === '—' && mesa.meseroId != null) {
-                const keys = ['usuarios', 'users', 'app:usuarios'];
-                for (const k of keys) {
-                    const raw = localStorage.getItem(k);
-                    if (!raw) continue;
-                    const arr = JSON.parse(raw) || [];
-                    const u = arr.find(x => (x.id ?? x.userId ?? x.uid) === mesa.meseroId);
-                    if (u) { meseroNombre = `${u.nombre || u.name || ''} ${u.apellido || ''}`.trim() || meseroNombre; break; }
-                }
-            }
-            if (meseroNombre === '—' && mesa.meseroNombre) meseroNombre = mesa.meseroNombre;
         } catch {}
 
         // Intentar obtener consumos desde el backend (pedido abierto)
@@ -265,8 +268,8 @@ function Mesas() {
                 // Preferir total del pedido si existe, si no sumar subtotales
                 total = Number(pedido.total || 0);
                 if (!total) total = consumos.reduce((s, it) => s + Number(it.subtotal || 0), 0);
-                // Si no teníamos meseroNombre y el pedido trae mesero_nombre, usarlo
-                if ((meseroNombre === '—' || !meseroNombre) && pedido.mesero_nombre) {
+                // Si el backend del pedido trae mesero_nombre, úsalo como fuente de verdad
+                if (pedido.mesero_nombre) {
                     meseroNombre = pedido.mesero_nombre;
                 }
             }

@@ -236,12 +236,17 @@ const Mesas = () => {
             cancelButtonText: 'Sin propina',
         });
         const propina = tipRes.isDismissed ? 0 : Math.max(0, Math.round(Number(tipRes.value || 0)));
+        const subtotalCalc = pedidoItems.reduce((s,it)=> s + (it.subtotal ?? it.cantidad*it.precio), 0);
+        const totalRequerido = subtotalCalc + propina;
+        if (monto < totalRequerido) {
+            return Swal.fire({ icon: 'warning', title: 'Monto insuficiente', html: `Total a pagar: <strong>$${totalRequerido.toLocaleString('es-CO')}</strong><br/>Recibido: $${monto.toLocaleString('es-CO')}`, confirmButtonText: 'Entendido' });
+        }
 
         try {
             await api.pagarPedido(pid, { recibido: monto, propina, mesero_id: null });
             // Preparar factura con los items actuales
             const items = [...pedidoItems];
-            const subtotal = items.reduce((s,it)=> s + (it.subtotal ?? it.cantidad*it.precio), 0);
+            const subtotal = subtotalCalc;
             const total = subtotal + propina;
             const cambio = Math.max(0, monto - total);
             const waiterName = (pedidoActual && pedidoActual.mesero_nombre) || (pedidoModal.mesa && pedidoModal.mesa.meseroNombre) || '';

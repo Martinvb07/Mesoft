@@ -49,7 +49,10 @@ const Nominas = () => {
         const desde = `${y}-${m}-01`;
         const hasta = `${y}-${m}-31`;
         const data = await api.obtenerNomina('', desde, hasta);
-        if (!cancel) setNominas(Array.isArray(data) ? data.map(row => ({
+        const rows = Array.isArray(data) ? data : [];
+        // Detectar pagos por mesero+fecha (marcan estado pagado)
+        const pagos = new Set(rows.filter(r => r.tipo === 'pago').map(r => `${r.mesero_id}|${String(r.fecha).slice(0,10)}`));
+        if (!cancel) setNominas(rows.map(row => ({
           id: row.id,
           empleadoId: row.mesero_id,
           inicio: String(row.fecha).slice(0,10),
@@ -57,11 +60,11 @@ const Nominas = () => {
           sueldoBase: row.tipo === 'sueldo' ? Number(row.monto) : 0,
           extras: row.tipo === 'extra' ? Number(row.monto) : 0,
           bonos: row.tipo === 'bono' ? Number(row.monto) : 0,
-          deducciones: row.tipo === 'deduccion' ? Number(row.monto) : 0,
-          estado: 'pagado', // los movimientos son hechos; podemos extender con un campo
+          deducciones: (row.tipo === 'deduccion' || row.tipo === 'descuento') ? Number(row.monto) : 0,
+          estado: pagos.has(`${row.mesero_id}|${String(row.fecha).slice(0,10)}`) ? 'pagado' : 'pendiente',
           createdAt: row.fecha,
           updatedAt: row.fecha,
-        })) : []);
+        })));
       } catch (e) {
         if (!cancel) setError('No se pudo cargar la nómina');
       } finally {
@@ -181,7 +184,23 @@ const Nominas = () => {
     }
   };
 
-  const marcarPago = () => {};
+  const marcarPago = async (id, pagar) => {
+    const n = nominas.find(x => x.id === id);
+    if (!n) return;
+    try {
+      if (pagar) {
+        await api.marcarPagoNomina({ mesero_id: n.empleadoId, fecha: n.inicio, pagado: true, monto: totalDe(n), descripcion: `Pago nómina ${n.inicio} - ${n.fin}` });
+        Swal.fire({ icon: 'success', title: 'Marcado como pagado', timer: 800, showConfirmButton: false });
+        setNominas(prev => prev.map(x => x.id === id ? { ...x, estado: 'pagado' } : x));
+      } else {
+        await api.marcarPagoNomina({ mesero_id: n.empleadoId, fecha: n.inicio, pagado: false });
+        Swal.fire({ icon: 'success', title: 'Marcado como pendiente', timer: 800, showConfirmButton: false });
+        setNominas(prev => prev.map(x => x.id === id ? { ...x, estado: 'pendiente' } : x));
+      }
+    } catch (e) {
+      Swal.fire('Error', e.message || 'No se pudo cambiar el estado', 'error');
+    }
+  };
 
   const exportarCSV = () => {
     const headers = ['Empleado','Inicio','Fin','SueldoBase','Extras','Bonos','Deducciones','Total','Estado','Creado','Actualizado'];
