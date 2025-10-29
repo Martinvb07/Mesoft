@@ -32,9 +32,9 @@ function todayKey() {
 const Mesas = () => {
     const [mesas, setMesas] = useState([]);
     const [productos, setProductos] = useState([]);
-    // Identidad local eliminada: el backend controla permisos.
-    const [miNombre] = useState('Mesero');
-    const [miId] = useState(null);
+    // Identidad del mesero actual (desde backend)
+    const [miNombre, setMiNombre] = useState('Mesero');
+    const [miId, setMiId] = useState(null);
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('todos');
     const [filtroCapacidad, setFiltroCapacidad] = useState('todas');
@@ -64,14 +64,19 @@ const Mesas = () => {
 
     // Todo viene del backend; no persistimos en local
 
-    // Cargar mesas y productos desde backend
+    // Cargar identidad del mesero + mesas y productos desde backend
     useEffect(() => {
         const load = async () => {
             try {
-                const [ms, prods] = await Promise.all([
+                const [me, ms, prods] = await Promise.all([
+                    api.getMiMesero().catch(() => null),
                     api.getMesas(),
                     api.getProductos().then(r => Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : [])),
                 ]);
+                if (me && (me.id || me.mesero_id)) {
+                    setMiId(me.id ?? me.mesero_id);
+                    setMiNombre(me.nombre || 'Mesero');
+                }
                 const normalized = (Array.isArray(ms) ? ms : []).map(m => ({
                     id: m.id,
                     numero: m.numero,
@@ -99,7 +104,7 @@ const Mesas = () => {
         try {
             const id = modalMesa.id;
             if (modalAccion === 'asignar') {
-                await api.asignarMesa(id, {});
+                await api.asignarMesa(id, { mesero_id: miId || undefined });
             } else if (modalAccion === 'liberar') {
                 await api.liberarMesa(id);
             } else if (modalAccion === 'limpieza') {

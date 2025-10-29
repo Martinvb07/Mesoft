@@ -3,12 +3,12 @@ import './ReportesToolbar.css';
 import { HiMagnifyingGlass, HiBanknotes, HiCurrencyDollar } from 'react-icons/hi2';
 
 const ReportesToolbar = ({ q, onQChange, desde, hasta, onDesde, onHasta, filterKey, onFilterKeyChange, onExportCSV }) => {
-  const placeholder = filterKey === 'pedido' ? 'Buscar por # pedido…'
+  const placeholder = filterKey === 'pedido' ? 'Buscar por # ticket…'
     : filterKey === 'mesa' ? 'Buscar por mesa…'
     : filterKey === 'mesero' ? 'Buscar por mesero…'
     : filterKey === 'fecha' ? 'Buscar por fecha (dd/mm/aaaa)…'
     : filterKey === 'hora' ? 'Buscar por hora (hh:mm)…'
-    : 'Buscar (pedido, mesa, mesero, fecha)';
+    : 'Buscar (ticket, mesa, mesero, fecha)';
 
   return (
     <div className="rpt-toolbar">

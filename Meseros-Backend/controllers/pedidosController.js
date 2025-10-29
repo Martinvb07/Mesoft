@@ -252,31 +252,49 @@ exports.registrarPago = (req, res) => {
     resolveUsuarioId((resErr, usuarioIdMov0) => {
       if (resErr) return res.status(500).json({ error: resErr.message });
       const usuarioIdMov = usuarioIdMov0 || req.userId || null;
-      // Inserción de venta
-      const insVenta = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (NOW(), \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
-      const ventaDesc = `Venta pedido #${pedidoId} mesa ${pedido.mesa_id}`;
-      db.query(insVenta, ['venta', total, ventaDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err2) => {
-        if (err2) return res.status(500).json({ error: err2.message });
-        const next = () => {
-          // Cerrar pedido y marcar mesa a limpieza
-          db.query('UPDATE pedidos SET estado = \'cerrado\' WHERE id = ? AND restaurant_id = ?', [pedidoId, rid], (err4) => {
-            if (err4) return res.status(500).json({ error: err4.message });
-            db.query('UPDATE mesas SET estado = \'limpieza\' WHERE id = ? AND restaurant_id = ?', [pedido.mesa_id, rid], (err5) => {
-              if (err5) return res.status(500).json({ error: err5.message });
-              res.json({ ok: true, cambio, total, propina: propinaNum });
-            });
-          });
-        };
-        if (propinaNum > 0) {
-          const insProp = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (NOW(), \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
-          const propDesc = `Propina pedido #${pedidoId} mesa ${pedido.mesa_id}`;
-          db.query(insProp, ['propina', propinaNum, propDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err3) => {
-            if (err3) return res.status(500).json({ error: err3.message });
-            next();
-          });
-        } else {
-          next();
+      // Asegurar que el pedido tenga mesero_id persistido si aún está NULL
+      const ensureMesero = (cb) => {
+        if (pedido.mesero_id) return cb();
+        if (mesero_id) {
+          return db.query('UPDATE pedidos SET mesero_id = ? WHERE id = ?', [mesero_id, pedidoId], () => cb());
         }
+        if (usuarioIdMov) {
+          return db.query('SELECT id FROM meseros WHERE usuario_id = ? LIMIT 1', [usuarioIdMov], (e, r) => {
+            const mid = r?.[0]?.id || null;
+            if (!mid) return cb();
+            db.query('UPDATE pedidos SET mesero_id = ? WHERE id = ?', [mid, pedidoId], () => cb());
+          });
+        }
+        cb();
+      };
+
+      ensureMesero(() => {
+        // Inserción de venta
+        const insVenta = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (NOW(), \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
+        const ventaDesc = `Venta pedido #${pedidoId} mesa ${pedido.mesa_id}`;
+        db.query(insVenta, ['venta', total, ventaDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err2) => {
+          if (err2) return res.status(500).json({ error: err2.message });
+          const next = () => {
+            // Cerrar pedido y marcar mesa a limpieza
+            db.query('UPDATE pedidos SET estado = \'cerrado\' WHERE id = ? AND restaurant_id = ?', [pedidoId, rid], (err4) => {
+              if (err4) return res.status(500).json({ error: err4.message });
+              db.query('UPDATE mesas SET estado = \'limpieza\' WHERE id = ? AND restaurant_id = ?', [pedido.mesa_id, rid], (err5) => {
+                if (err5) return res.status(500).json({ error: err5.message });
+                res.json({ ok: true, cambio, total, propina: propinaNum });
+              });
+            });
+          };
+          if (propinaNum > 0) {
+            const insProp = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (NOW(), \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
+            const propDesc = `Propina pedido #${pedidoId} mesa ${pedido.mesa_id}`;
+            db.query(insProp, ['propina', propinaNum, propDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err3) => {
+              if (err3) return res.status(500).json({ error: err3.message });
+              next();
+            });
+          } else {
+            next();
+          }
+        });
       });
     });
   });

@@ -39,20 +39,40 @@ const Reportes = () => {
     const filtered = useMemo(()=>{
         const term = q.trim().toLowerCase();
         if (!term) return facturas;
+        const toDateStr = (d)=>{
+            if(!d) return '';
+            const dt = new Date(d);
+            const dd = String(dt.getDate()).padStart(2,'0');
+            const mm = String(dt.getMonth()+1).padStart(2,'0');
+            const yyyy = dt.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        };
+        const toTimeStr = (d)=>{
+            if(!d) return '';
+            const dt = new Date(d);
+            const hh = String(dt.getHours()).padStart(2,'0');
+            const mi = String(dt.getMinutes()).padStart(2,'0');
+            return `${hh}:${mi}`;
+        };
         const matchers = {
-            pedido: (f) => String(f.pedido_id||'').toLowerCase().includes(term) || `#${f.pedido_id}`.includes(term),
-            mesa:   (f) => String(f.mesa_id||'').toLowerCase().includes(term),
+            // Buscar por el número visible en la UI (ticket). Si no existe, caer al id de pedido.
+            pedido: (f) => {
+                const visible = String(f.ticket ?? f.pedido_id ?? '').toLowerCase();
+                return visible.includes(term) || (`#${visible}`).includes(term);
+            },
+            mesa:   (f) => String(f.mesa_numero ?? f.mesa_id ?? '').toLowerCase().includes(term),
             mesero: (f) => String(f.mesero_nombre||f.mesero_id||'').toLowerCase().includes(term),
-            fecha:  (f) => (f.pagado_en ? new Date(f.pagado_en).toLocaleDateString('es-CO') : '').toLowerCase().includes(term),
-            hora:   (f) => (f.pagado_en ? new Date(f.pagado_en).toLocaleTimeString('es-CO') : '').toLowerCase().includes(term),
+            fecha:  (f) => toDateStr(f.pagado_en).toLowerCase().includes(term),
+            hora:   (f) => toTimeStr(f.pagado_en).toLowerCase().includes(term),
             todo:   (f) => {
                 const parts = [
-                    `#${f.pedido_id}`,
-                    String(f.pedido_id||'') ,
-                    String(f.mesa_id||'') ,
+                    `#${f.ticket ?? f.pedido_id ?? ''}`,
+                    String((f.ticket ?? f.pedido_id) || '') ,
+                    String((f.mesa_numero ?? f.mesa_id) || '') ,
                     String(f.mesero_nombre||'') ,
                     String(f.mesero_id||'') ,
-                    (f.pagado_en ? new Date(f.pagado_en).toLocaleString('es-CO') : '')
+                    toDateStr(f.pagado_en),
+                    toTimeStr(f.pagado_en)
                 ].join(' ').toLowerCase();
                 return parts.includes(term);
             }
