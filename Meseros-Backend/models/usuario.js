@@ -2,22 +2,22 @@ const db = require('../config/db');
 const bcrypt = require('bcrypt');
 
 module.exports = {
-  // 🧩 Obtener todos los usuarios
+  //  Obtener todos los usuarios
   getAll: (callback) => {
     db.query('SELECT * FROM usuarios', callback);
   },
 
-  // 🧩 Obtener usuario por ID
+  //  Obtener usuario por ID
   getById: (id, callback) => {
     db.query('SELECT * FROM usuarios WHERE id = ?', [id], callback);
   },
 
-  // 🧩 Crear usuario
+  //  Crear usuario
   create: (usuario, callback) => {
     db.query('INSERT INTO usuarios SET ?', usuario, callback);
   },
 
-  // 🧩 Buscar usuario por correo
+  //  Buscar usuario por correo
   findByCorreo: (correo, callback) => {
     db.query('SELECT * FROM usuarios WHERE correo = ?', [correo], (err, results) => {
       if (err) return callback(err);
@@ -25,7 +25,7 @@ module.exports = {
     });
   },
 
-  // 🧩 Validar login (soporta contraseñas con hash y sin hash)
+  //  Validar login (soporta contraseñas con hash y sin hash)
   validateLogin: (correo, contrasena, callback) => {
     db.query('SELECT * FROM usuarios WHERE correo = ?', [correo], async (err, results) => {
       if (err) return callback(err);
@@ -43,7 +43,7 @@ module.exports = {
 
         // 🔹 Si la contraseña es texto plano (antigua)
         if (hash === contrasena) {
-          // ✅ Actualizar automáticamente a hash seguro
+          //  Actualizar automáticamente a hash seguro
           const nuevoHash = await bcrypt.hash(contrasena, 10);
           db.query('UPDATE usuarios SET contrasena = ? WHERE id = ?', [nuevoHash, usuario.id], () => {
             console.log(`🔐 Usuario ${usuario.id} actualizado a hash bcrypt`);
@@ -51,7 +51,7 @@ module.exports = {
           return callback(null, usuario);
         }
 
-        // ❌ Si no coincide
+        // Si no coincide
         return callback(null, false);
       } catch (error) {
         console.error('Error en validación de login:', error);

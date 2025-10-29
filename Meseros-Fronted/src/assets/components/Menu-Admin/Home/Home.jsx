@@ -18,6 +18,8 @@ function Home() {
     const [topProductos, setTopProductos] = useState([]);
     const [mesas, setMesas] = useState([]);
     const [pedidosEnCurso, setPedidosEnCurso] = useState(0);
+    const [pedidosDetalle, setPedidosDetalle] = useState([]); // [{id, mesa_id, mesero_id, total, fecha_hora, items: []}]
+    const [pedidosCargando, setPedidosCargando] = useState(false);
     const [meserosActivosCount, setMeserosActivosCount] = useState(0);
 
     useEffect(() => {
@@ -72,11 +74,29 @@ function Home() {
                     const ms = await api.getMesas();
                     if (!cancel) setMesas(Array.isArray(ms) ? ms : []);
                 } catch {}
-                // Pedidos en curso
+                // Pedidos en curso (conteo y detalle)
                 try {
+                    setPedidosCargando(true);
                     const pk = await api.pedidosEnCurso();
                     if (!cancel) setPedidosEnCurso(Number(pk?.count || 0));
-                } catch {}
+                    const arr = Array.isArray(pk?.pedidos) ? pk.pedidos : [];
+                    const det = await Promise.all(arr.map(async (p) => {
+                        try {
+                            const items = await api.getPedidoItems(p.id);
+                            return { ...p, items: Array.isArray(items) ? items : [] };
+                        } catch {
+                            return { ...p, items: [] };
+                        }
+                    }));
+                    if (!cancel) setPedidosDetalle(det);
+                } catch {
+                    if (!cancel) {
+                        setPedidosDetalle([]);
+                        setPedidosEnCurso(0);
+                    }
+                } finally {
+                    if (!cancel) setPedidosCargando(false);
+                }
                 // (Ya cargados arriba)
                 // Costos e Insumos (egresos por categoría hoy)
                 try {
@@ -255,6 +275,62 @@ function Home() {
                 {/* Fila centrada con 2 columnas iguales para Costos e Insumos y Top Productos */}
                 <div className="grid-row-2col">
                     <div className="two-col-cards">
+                        {/* Pedidos en curso - detalle */}
+                        <div className="card">
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                                <h3>Pedidos en curso {pedidosCargando ? '(cargando...)' : `(${pedidosEnCurso})`}</h3>
+                                <button className="btn ghost" onClick={async ()=>{
+                                    setPedidosCargando(true);
+                                    try {
+                                        const pk = await api.pedidosEnCurso();
+                                        setPedidosEnCurso(Number(pk?.count || 0));
+                                        const arr = Array.isArray(pk?.pedidos) ? pk.pedidos : [];
+                                        const det = await Promise.all(arr.map(async (p) => {
+                                            try {
+                                                const items = await api.getPedidoItems(p.id);
+                                                return { ...p, items: Array.isArray(items) ? items : [] };
+                                            } catch {
+                                                return { ...p, items: [] };
+                                            }
+                                        }));
+                                        setPedidosDetalle(det);
+                                    } finally {
+                                        setPedidosCargando(false);
+                                    }
+                                }}>Refrescar</button>
+                            </div>
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th>Pedido</th>
+                                        <th>Mesa</th>
+                                        <th>Mesero</th>
+                                        <th>Items</th>
+                                        <th className="td-right">Total</th>
+                                        <th>Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pedidosDetalle.map((p)=>{
+                                        const resumen = (p.items||[]).map(it=>`${it.nombre} x${it.cantidad}`).join(', ');
+                                        const hora = p.fecha_hora ? new Date(p.fecha_hora).toLocaleTimeString('es-CO',{hour:'2-digit', minute:'2-digit'}) : '';
+                                        return (
+                                            <tr key={p.id}>
+                                                <td>#{p.id}</td>
+                                                <td>{p.mesa_id}</td>
+                                                <td>{p.mesero_id ?? '-'}</td>
+                                                <td style={{maxWidth: '360px'}}><span title={resumen}>{resumen || '—'}</span></td>
+                                                <td className="td-right">${Number(p.total||0).toLocaleString('es-CO')}</td>
+                                                <td>{hora}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {!pedidosDetalle.length && (
+                                        <tr><td colSpan={6} className="muted">No hay pedidos abiertos.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                         {/* Costos e Insumos (tabla profesional) */}
                         <div className="card">
                             <h3>Costos e Insumos (hoy)</h3>

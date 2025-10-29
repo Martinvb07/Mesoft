@@ -69,7 +69,9 @@ exports.agregarItem = (req, res) => {
             precio: Number(prod.precio || 0),
             stock: Number(prod.stock ?? 0),
             min_stock: (prod.min_stock == null ? null : Number(prod.min_stock)),
-            hasStock: prod.stock != null
+            // Consideramos que hay gestión de stock si la columna existe, aunque su valor sea NULL.
+            // Esto permite inicializar de facto el stock en 0 y aplicar reglas/alertas.
+            hasStock: Object.prototype.hasOwnProperty.call(prod, 'stock')
           });
         });
       };
@@ -88,11 +90,12 @@ exports.agregarItem = (req, res) => {
 
         // 2) Intentar decrementar stock de forma atómica si hay gestión de stock
         const updateStock = (cb) => {
-          if (!info.hasStock) return cb(); // si la columna es null (no gestionado), no restamos
-          const sqlUpdRid = 'UPDATE productos SET stock = stock - ? WHERE id = ? AND restaurant_id = ? AND stock >= ?';
+          if (!info.hasStock) return cb(); // si la tabla no tiene columna stock, no gestionamos
+          // Tratamos NULL como 0 para permitir gestión desde 0 unidades.
+          const sqlUpdRid = 'UPDATE productos SET stock = IFNULL(stock,0) - ? WHERE id = ? AND restaurant_id = ? AND IFNULL(stock,0) >= ?';
           mysql.query(sqlUpdRid, [cant, producto_id, rid, cant], (eU, rU) => {
             if (eU && eU.code === 'ER_BAD_FIELD_ERROR') {
-              const sqlUpd = 'UPDATE productos SET stock = stock - ? WHERE id = ? AND stock >= ?';
+              const sqlUpd = 'UPDATE productos SET stock = IFNULL(stock,0) - ? WHERE id = ? AND IFNULL(stock,0) >= ?';
               return mysql.query(sqlUpd, [cant, producto_id, cant], (eU2, rU2) => {
                 if (eU2) return cb(eU2);
                 if (!rU2.affectedRows) {
@@ -178,10 +181,10 @@ exports.eliminarItem = (req, res) => {
         mysql.query('DELETE FROM detallepedido WHERE id = ? AND pedido_id = ?', [itemId, pedidoId], (errDel) => {
           if (errDel) return mysql.rollback(() => res.status(500).json({ error: errDel.message }));
           // 3) Devolver stock (si existe columna)
-          const sqlUpRid = 'UPDATE productos SET stock = stock + ? WHERE id = ? AND restaurant_id = ?';
+          const sqlUpRid = 'UPDATE productos SET stock = IFNULL(stock,0) + ? WHERE id = ? AND restaurant_id = ?';
           mysql.query(sqlUpRid, [cant, pid, rid], (eUp, rUp) => {
             if (eUp && eUp.code === 'ER_BAD_FIELD_ERROR') {
-              return mysql.query('UPDATE productos SET stock = stock + ? WHERE id = ?', [cant, pid], (eUp2) => {
+              return mysql.query('UPDATE productos SET stock = IFNULL(stock,0) + ? WHERE id = ?', [cant, pid], (eUp2) => {
                 if (eUp2) return mysql.rollback(() => res.status(500).json({ error: eUp2.message }));
                 recalcPedidoTotal(pedidoId, (eT, total) => {
                   if (eT) return mysql.rollback(() => res.status(500).json({ error: eT.message }));

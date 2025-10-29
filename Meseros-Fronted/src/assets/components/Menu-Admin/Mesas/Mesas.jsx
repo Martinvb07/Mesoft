@@ -217,7 +217,7 @@ function Mesas() {
     const abrirReservadasModal = () => { cargarReservas(); setShowReservadasModal(true); };
     const cerrarReservadasModal = () => setShowReservadasModal(false);
 
-    const abrirDetalleMesa = (mesa) => {
+    const abrirDetalleMesa = async (mesa) => {
         let meseroNombre = '—';
         let asignadaAt = null;
         try {
@@ -247,44 +247,64 @@ function Mesas() {
             if (meseroNombre === '—' && mesa.meseroNombre) meseroNombre = mesa.meseroNombre;
         } catch {}
 
-        // Consumidos desde storages locales (si hubiera)
-        const consumos = [];
+        // Intentar obtener consumos desde el backend (pedido abierto)
+        let consumos = [];
         let total = 0;
         try {
-            const keys = ['pedidos', 'ordenes', 'orders', 'consumos'];
-            const dynamicKeys = [
-                `pedidos:mesa:${mesa.id}`,
-                `pedidos:mesa:${mesa.numero}`,
-                `mesa:${mesa.id}:pedidos`,
-                `mesa:${mesa.numero}:pedidos`,
-                `orders:table:${mesa.id}`,
-                `orders:table:${mesa.numero}`,
-            ];
-            const allKeys = [...keys, ...dynamicKeys];
-            for (const k of allKeys) {
-                const raw = localStorage.getItem(k);
-                if (!raw) continue;
-                const data = JSON.parse(raw);
-                const arr = Array.isArray(data) ? data : (Array.isArray(data?.pedidos) ? data.pedidos : Array.isArray(data?.ordenes) ? data.ordenes : Array.isArray(data?.orders) ? data.orders : []);
-                const matches = arr.filter(p => {
-                    const mid = (p.mesaId ?? p.mesa ?? p.tableId ?? p.mesaNumero ?? p.tableNumber);
-                    return mid === mesa.id || mid === mesa.numero;
-                });
-                const items = matches.flatMap(p => {
-                    const it = Array.isArray(p.items) ? p.items : (Array.isArray(p.detalles) ? p.detalles : Array.isArray(p.productos) ? p.productos : Array.isArray(p.lines) ? p.lines : Array.isArray(p.cart) ? p.cart : []);
-                    return it;
-                });
-                for (const it of items) {
-                    const nombre = it.nombre || it.producto || it.name || it.title || 'Producto';
-                    const cant = Number(it.cantidad ?? it.qty ?? it.quantity ?? 1) || 1;
-                    const precio = Number(it.precio ?? it.price ?? it.unitPrice ?? it.valor ?? 0) || 0;
-                    const subtotal = Number(it.subtotal ?? it.total ?? cant * precio) || cant * precio;
-                    total += subtotal;
-                    consumos.push({ nombre, cantidad: cant, precio, subtotal });
-                }
-                if (consumos.length) break;
+            const pedido = await api.getPedidoAbiertoDeMesa(mesa.id).catch(() => null);
+            if (pedido?.id) {
+                const rows = await api.getPedidoItems(pedido.id).catch(() => []);
+                consumos = Array.isArray(rows)
+                    ? rows.map(r => ({
+                        nombre: r.nombre,
+                        cantidad: Number(r.cantidad || 0),
+                        precio: Number(r.precio || 0),
+                        subtotal: Number(r.subtotal || (Number(r.cantidad||0)*Number(r.precio||0)))
+                    }))
+                    : [];
+                // Preferir total del pedido si existe, si no sumar subtotales
+                total = Number(pedido.total || 0);
+                if (!total) total = consumos.reduce((s, it) => s + Number(it.subtotal || 0), 0);
             }
         } catch {}
+        // Fallback a storages locales si backend no devolvió items
+        if (!consumos.length) {
+            try {
+                const keys = ['pedidos', 'ordenes', 'orders', 'consumos'];
+                const dynamicKeys = [
+                    `pedidos:mesa:${mesa.id}`,
+                    `pedidos:mesa:${mesa.numero}`,
+                    `mesa:${mesa.id}:pedidos`,
+                    `mesa:${mesa.numero}:pedidos`,
+                    `orders:table:${mesa.id}`,
+                    `orders:table:${mesa.numero}`,
+                ];
+                const allKeys = [...keys, ...dynamicKeys];
+                for (const k of allKeys) {
+                    const raw = localStorage.getItem(k);
+                    if (!raw) continue;
+                    const data = JSON.parse(raw);
+                    const arr = Array.isArray(data) ? data : (Array.isArray(data?.pedidos) ? data.pedidos : Array.isArray(data?.ordenes) ? data.ordenes : Array.isArray(data?.orders) ? data.orders : []);
+                    const matches = arr.filter(p => {
+                        const mid = (p.mesaId ?? p.mesa ?? p.tableId ?? p.mesaNumero ?? p.tableNumber);
+                        return mid === mesa.id || mid === mesa.numero;
+                    });
+                    const items = matches.flatMap(p => {
+                        const it = Array.isArray(p.items) ? p.items : (Array.isArray(p.detalles) ? p.detalles : Array.isArray(p.productos) ? p.productos : Array.isArray(p.lines) ? p.lines : Array.isArray(p.cart) ? p.cart : []);
+                        return it;
+                    });
+                    for (const it of items) {
+                        const nombre = it.nombre || it.producto || it.name || it.title || 'Producto';
+                        const cant = Number(it.cantidad ?? it.qty ?? it.quantity ?? 1) || 1;
+                        const precio = Number(it.precio ?? it.price ?? it.unitPrice ?? it.valor ?? 0) || 0;
+                        const subtotal = Number(it.subtotal ?? it.total ?? cant * precio) || cant * precio;
+                        total += subtotal;
+                        consumos.push({ nombre, cantidad: cant, precio, subtotal });
+                    }
+                    if (consumos.length) break;
+                }
+            } catch {}
+        }
 
         setDetalleMesa({ ...mesa, meseroNombre, consumos, total, asignadaAt });
         setShowDetalleModal(true);
