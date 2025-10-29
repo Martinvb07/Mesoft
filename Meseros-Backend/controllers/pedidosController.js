@@ -249,8 +249,9 @@ exports.registrarPago = (req, res) => {
       }
     };
 
-    resolveUsuarioId((resErr, usuarioIdMov) => {
+    resolveUsuarioId((resErr, usuarioIdMov0) => {
       if (resErr) return res.status(500).json({ error: resErr.message });
+      const usuarioIdMov = usuarioIdMov0 || req.userId || null;
       // Inserción de venta
       const insVenta = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (NOW(), \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
       const ventaDesc = `Venta pedido #${pedidoId} mesa ${pedido.mesa_id}`;
@@ -302,15 +303,17 @@ exports.listarFacturas = (req, res) => {
   else if (hasta) { whereDate = ' AND DATE(m.fecha) <= ?'; params.push(hasta); }
 
   const sql = `
-    SELECT p.id AS pedido_id, p.mesa_id, p.mesero_id, me.nombre AS mesero_nombre,
+    SELECT p.id AS pedido_id, p.mesa_id, p.mesero_id,
+           COALESCE(me.nombre, meu.nombre) AS mesero_nombre,
            m.monto AS total, m.fecha AS pagado_en,
            COALESCE(SUM(mp.monto),0) AS propina
     FROM movimientoscontables m
     JOIN pedidos p ON p.id = m.pedido_id
     LEFT JOIN meseros me ON me.id = p.mesero_id
+    LEFT JOIN meseros meu ON meu.usuario_id = m.usuario_id
     LEFT JOIN movimientoscontables mp ON mp.pedido_id = p.id AND mp.tipo='ingreso' AND mp.categoria='propina'
     WHERE m.restaurant_id = ? AND m.tipo='ingreso' AND m.categoria='venta' ${whereDate}
-    GROUP BY p.id, p.mesa_id, p.mesero_id, me.nombre, m.monto, m.fecha
+    GROUP BY p.id, p.mesa_id, p.mesero_id, mesero_nombre, m.monto, m.fecha
     ORDER BY m.fecha DESC
     LIMIT ${Number(limit) || 100}`;
 

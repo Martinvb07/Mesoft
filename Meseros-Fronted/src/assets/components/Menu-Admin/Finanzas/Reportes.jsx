@@ -20,6 +20,7 @@ const Reportes = () => {
     const [cargando, setCargando] = useState(false);
     const [facturas, setFacturas] = useState([]);
     const [q, setQ] = useState('');
+    const [filterKey, setFilterKey] = useState('todo'); // todo|pedido|mesa|mesero|fecha|hora
     const [view, setView] = useState(null); // factura seleccionada
     const [sorting, setSorting] = useState([{ id: 'pedido_id', desc: true }]);
 
@@ -37,18 +38,27 @@ const Reportes = () => {
     const filtered = useMemo(()=>{
         const term = q.trim().toLowerCase();
         if (!term) return facturas;
-        return facturas.filter(f => {
-            const parts = [
-                `#${f.pedido_id}`,
-                String(f.pedido_id||'') ,
-                String(f.mesa_id||'') ,
-                String(f.mesero_nombre||'') ,
-                String(f.mesero_id||'') ,
-                (f.pagado_en ? new Date(f.pagado_en).toLocaleString('es-CO') : '')
-            ].join(' ').toLowerCase();
-            return parts.includes(term);
-        });
-    }, [facturas, q]);
+        const matchers = {
+            pedido: (f) => String(f.pedido_id||'').toLowerCase().includes(term) || `#${f.pedido_id}`.includes(term),
+            mesa:   (f) => String(f.mesa_id||'').toLowerCase().includes(term),
+            mesero: (f) => String(f.mesero_nombre||f.mesero_id||'').toLowerCase().includes(term),
+            fecha:  (f) => (f.pagado_en ? new Date(f.pagado_en).toLocaleDateString('es-CO') : '').toLowerCase().includes(term),
+            hora:   (f) => (f.pagado_en ? new Date(f.pagado_en).toLocaleTimeString('es-CO') : '').toLowerCase().includes(term),
+            todo:   (f) => {
+                const parts = [
+                    `#${f.pedido_id}`,
+                    String(f.pedido_id||'') ,
+                    String(f.mesa_id||'') ,
+                    String(f.mesero_nombre||'') ,
+                    String(f.mesero_id||'') ,
+                    (f.pagado_en ? new Date(f.pagado_en).toLocaleString('es-CO') : '')
+                ].join(' ').toLowerCase();
+                return parts.includes(term);
+            }
+        };
+        const fn = matchers[filterKey] || matchers.todo;
+        return facturas.filter(fn);
+    }, [facturas, q, filterKey]);
 
     const totalVentas = useMemo(()=> filtered.reduce((s,f)=> s + Number(f.total||0), 0), [filtered]);
     const totalPropinas = useMemo(()=> filtered.reduce((s,f)=> s + Number(f.propina||0), 0), [filtered]);
@@ -130,13 +140,31 @@ const Reportes = () => {
     return (
         <div className="fin-page">
             <div className="fin-header"><h1>Finanzas · Reportes</h1><p className="muted">Cortes, tendencias y exportaciones.</p></div>
-            <div className="fin-card">
+                <div className="fin-card">
                 <div className="fin-toolbar">
                     <h3 style={{margin:0}}>Facturas</h3>
                     <div className="toolbar-items">
+                        <div className="input">
+                            <label>Filtro</label>
+                            <select value={filterKey} onChange={e=>setFilterKey(e.target.value)}>
+                                <option value="todo">General</option>
+                                <option value="pedido"># Pedido</option>
+                                <option value="mesa">Mesa</option>
+                                <option value="mesero">Mesero</option>
+                                <option value="fecha">Fecha</option>
+                                <option value="hora">Hora</option>
+                            </select>
+                        </div>
                         <div className="input with-icon">
                             <HiMagnifyingGlass />
-                            <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar (pedido, mesa, mesero, fecha)..." />
+                            <input value={q} onChange={e=>setQ(e.target.value)} placeholder={
+                                filterKey==='pedido' ? 'Buscar por # pedido…' :
+                                filterKey==='mesa' ? 'Buscar por mesa…' :
+                                filterKey==='mesero' ? 'Buscar por mesero…' :
+                                filterKey==='fecha' ? 'Buscar por fecha (dd/mm/aaaa)…' :
+                                filterKey==='hora' ? 'Buscar por hora (hh:mm)…' :
+                                'Buscar (pedido, mesa, mesero, fecha)'
+                            } />
                         </div>
                         <div className="input">
                             <label>Desde</label>

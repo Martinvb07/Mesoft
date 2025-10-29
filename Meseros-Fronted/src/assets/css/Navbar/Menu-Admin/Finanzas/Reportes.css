@@ -12,7 +12,7 @@
 .toolbar-items{ display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; }
 .input{ display:flex; flex-direction:column; gap:.25rem; }
 .input label{ font-size:.8rem; color:var(--muted); font-weight:700; }
-.input input[type="date"], .input input[type="text"], .toolbar .search input{ border:1px solid var(--card-border); border-radius:12px; padding:.45rem .6rem; outline:none; }
+.input input[type="date"], .input input[type="text"], .input select, .toolbar .search input{ border:1px solid var(--card-border); border-radius:12px; padding:.45rem .6rem; outline:none; background:#fff; }
 .input.with-icon{ flex-direction:row; align-items:center; border:1px solid var(--card-border); border-radius:12px; padding:.35rem .6rem; gap:.35rem; background:#fff; }
 .input.with-icon input{ border:none; outline:none; min-width:260px; }
 .btn.primary{ background: linear-gradient(90deg, var(--brand), #ff5a21); color:#fff; border-color: transparent; }
