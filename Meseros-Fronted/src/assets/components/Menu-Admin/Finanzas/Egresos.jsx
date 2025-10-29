@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
+import './ReportesToolbar.css';
 import { api } from '../../../../api/client';
-import { HiCalendarDays, HiTag, HiListBullet, HiCurrencyDollar } from 'react-icons/hi2';
+import Swal from 'sweetalert2';
+import { HiCalendarDays, HiTag, HiListBullet, HiCurrencyDollar, HiMagnifyingGlass } from 'react-icons/hi2';
 
 const Egresos = () => {
     const [rows, setRows] = useState([]); // categorias agregadas
@@ -46,7 +48,10 @@ const Egresos = () => {
 
     const openModal = ()=>{ setForm({ concepto:'', monto:'', fecha: new Date().toISOString().slice(0,10), categoria:'', descripcion:'' }); setModalOpen(true); };
     const submitModal = async ()=>{
-        if (!form.monto) return alert('El monto es obligatorio');
+        if (!form.concepto?.trim()) return Swal.fire({ icon:'error', title:'Concepto requerido', text:'Ingresa un concepto.' });
+        if (!form.monto || Number(form.monto) <= 0) return Swal.fire({ icon:'error', title:'Monto inválido', text:'Ingresa un monto mayor a 0.' });
+        if (!form.fecha) return Swal.fire({ icon:'error', title:'Fecha requerida' });
+        if (!form.categoria) return Swal.fire({ icon:'warning', title:'Categoría requerida', text:'Selecciona una categoría.' });
         try{
             await api.crearEgreso({
                 categoria: form.categoria || null,
@@ -61,20 +66,30 @@ const Egresos = () => {
                 api.egresos({ desde, hasta }),
             ]);
             setRows(cats || []); setDetalles(det || []); setQ('');
-        } catch(e){ alert('Error guardando egreso'); }
+        } catch(e){ Swal.fire({ icon:'error', title:'Error guardando egreso', text: e?.message || 'Intenta nuevamente.' }); }
     };
 
     return (
     <div className="fin-page finz-reportes">
         <div className="fin-header"><h1>Finanzas · Egresos</h1><p className="muted">Gastos por categoría en el rango seleccionado.</p></div>
         <div className="fin-card">
-            <div className="toolbar">
-                <div className="left">
-                    <label>Desde <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} /></label>
-                    <label>Hasta <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} /></label>
+            <div className="rpt-toolbar">
+                <h3 className="rpt-title">Egresos</h3>
+                <div className="rpt-items">
+                    <div className="rpt-field">
+                        <label>Desde</label>
+                        <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} />
+                    </div>
+                    <div className="rpt-field">
+                        <label>Hasta</label>
+                        <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} />
+                    </div>
+                    <div className="rpt-search">
+                        <HiMagnifyingGlass />
+                        <input placeholder="Buscar egresos…" value={q} onChange={e=>setQ(e.target.value)} />
+                    </div>
+                    <button className="rpt-btn primary" onClick={openModal}>+ Nuevo Egreso</button>
                 </div>
-                <input className="input" placeholder="Buscar egresos..." value={q} onChange={e=>setQ(e.target.value)} />
-                <button className="btn primary" onClick={openModal}>+ Nuevo Egreso</button>
             </div>
             <div className="kpis">
                 <div className="kpi"><div className="kpi-label">Total Egresos</div><div className="kpi-value">{money(total)}</div></div>
@@ -141,7 +156,7 @@ const Egresos = () => {
                                     <option>Gastos Operativos</option>
                                     <option>Servicios</option>
                                     <option>Arriendo</option>
-                                    <option>Insumos</option>
+                                    <option>Inventario</option>
                                     <option>Otros</option>
                                 </select>
                             </label>
