@@ -302,20 +302,31 @@ exports.listarFacturas = (req, res) => {
   else if (desde) { whereDate = ' AND DATE(m.fecha) >= ?'; params.push(desde); }
   else if (hasta) { whereDate = ' AND DATE(m.fecha) <= ?'; params.push(hasta); }
 
+  // Usamos subconsulta ordenada ascendente para numerar consecutivos por restaurante
   const sql = `
-    SELECT p.id AS pedido_id, p.mesa_id, p.mesero_id,
-           COALESCE(me.nombre, meu.nombre) AS mesero_nombre,
-           m.monto AS total, m.fecha AS pagado_en,
-           COALESCE(SUM(mp.monto),0) AS propina
-    FROM movimientoscontables m
-    JOIN pedidos p ON p.id = m.pedido_id
-    LEFT JOIN meseros me ON me.id = p.mesero_id
-    LEFT JOIN meseros meu ON meu.usuario_id = m.usuario_id
-    LEFT JOIN movimientoscontables mp ON mp.pedido_id = p.id AND mp.tipo='ingreso' AND mp.categoria='propina'
-    WHERE m.restaurant_id = ? AND m.tipo='ingreso' AND m.categoria='venta' ${whereDate}
-    GROUP BY p.id, p.mesa_id, p.mesero_id, mesero_nombre, m.monto, m.fecha
-    ORDER BY m.fecha DESC
-    LIMIT ${Number(limit) || 100}`;
+    SELECT t.*, ms.numero AS mesa_numero
+    FROM (
+      SELECT (@rn:=@rn+1) AS ticket,
+             base.pedido_id, base.mesa_id, base.mesero_id, base.mesero_nombre,
+             base.total, base.pagado_en, base.propina
+      FROM (
+        SELECT p.id AS pedido_id, p.mesa_id, p.mesero_id,
+               COALESCE(me.nombre, meu.nombre) AS mesero_nombre,
+               m.monto AS total, m.fecha AS pagado_en,
+               COALESCE(SUM(mp.monto),0) AS propina
+        FROM movimientoscontables m
+        JOIN pedidos p ON p.id = m.pedido_id
+        LEFT JOIN meseros me ON me.id = p.mesero_id
+        LEFT JOIN meseros meu ON meu.usuario_id = m.usuario_id
+        LEFT JOIN movimientoscontables mp ON mp.pedido_id = p.id AND mp.tipo='ingreso' AND mp.categoria='propina'
+        WHERE m.restaurant_id = ? AND m.tipo='ingreso' AND m.categoria='venta' ${whereDate}
+        GROUP BY p.id, p.mesa_id, p.mesero_id, mesero_nombre, m.monto, m.fecha
+        ORDER BY m.fecha ASC
+        LIMIT ${Number(limit) || 100}
+      ) base, (SELECT @rn:=0) r
+    ) t
+    JOIN mesas ms ON ms.id = t.mesa_id
+    ORDER BY t.pagado_en DESC`;
 
   db.query(sql, params, async (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });

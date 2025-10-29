@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
+import ReportesToolbar from './ReportesToolbar';
 import { api } from '../../../../api/client';
 import {
     flexRender,
@@ -64,11 +65,11 @@ const Reportes = () => {
     const totalPropinas = useMemo(()=> filtered.reduce((s,f)=> s + Number(f.propina||0), 0), [filtered]);
 
     const exportCSV = () => {
-        const header = ['pedido_id','fecha','mesa','mesero','total','propina'];
+        const header = ['ticket','fecha','mesa','mesero','total','propina'];
         const rows = filtered.map(f => [
-            f.pedido_id,
+            f.ticket || f.pedido_id,
             f.pagado_en ? new Date(f.pagado_en).toISOString() : '',
-            f.mesa_id,
+            f.mesa_numero ?? f.mesa_id,
             f.mesero_nombre || f.mesero_id || '',
             Number(f.total||0),
             Number(f.propina||0)
@@ -88,9 +89,9 @@ const Reportes = () => {
     // TanStack Table setup
     const columns = useMemo(() => [
         {
-            accessorKey: 'pedido_id',
+            accessorKey: 'ticket',
             header: () => '#',
-            cell: info => `#${info.getValue()}`,
+            cell: info => `#${info.getValue() || info.row.original.pedido_id}`,
         },
         {
             accessorKey: 'pagado_en',
@@ -98,7 +99,7 @@ const Reportes = () => {
             cell: info => info.getValue() ? new Date(info.getValue()).toLocaleString('es-CO') : '',
         },
         {
-            accessorKey: 'mesa_id',
+            accessorKey: 'mesa_numero',
             header: () => 'Mesa',
         },
         {
@@ -138,45 +139,20 @@ const Reportes = () => {
     });
 
     return (
-        <div className="fin-page">
+        <div className="fin-page finz-reportes">
             <div className="fin-header"><h1>Finanzas · Reportes</h1><p className="muted">Cortes, tendencias y exportaciones.</p></div>
                 <div className="fin-card">
-                <div className="fin-toolbar">
-                    <h3 style={{margin:0}}>Facturas</h3>
-                    <div className="toolbar-items">
-                        <div className="input">
-                            <label>Filtro</label>
-                            <select value={filterKey} onChange={e=>setFilterKey(e.target.value)}>
-                                <option value="todo">General</option>
-                                <option value="pedido"># Pedido</option>
-                                <option value="mesa">Mesa</option>
-                                <option value="mesero">Mesero</option>
-                                <option value="fecha">Fecha</option>
-                                <option value="hora">Hora</option>
-                            </select>
-                        </div>
-                        <div className="input with-icon">
-                            <HiMagnifyingGlass />
-                            <input value={q} onChange={e=>setQ(e.target.value)} placeholder={
-                                filterKey==='pedido' ? 'Buscar por # pedido…' :
-                                filterKey==='mesa' ? 'Buscar por mesa…' :
-                                filterKey==='mesero' ? 'Buscar por mesero…' :
-                                filterKey==='fecha' ? 'Buscar por fecha (dd/mm/aaaa)…' :
-                                filterKey==='hora' ? 'Buscar por hora (hh:mm)…' :
-                                'Buscar (pedido, mesa, mesero, fecha)'
-                            } />
-                        </div>
-                        <div className="input">
-                            <label>Desde</label>
-                            <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} />
-                        </div>
-                        <div className="input">
-                            <label>Hasta</label>
-                            <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} />
-                        </div>
-                        <button className="btn primary" onClick={exportCSV} title="Exportar CSV">Exportar CSV</button>
-                    </div>
-                </div>
+                    <ReportesToolbar
+                        q={q}
+                        onQChange={setQ}
+                        desde={desde}
+                        hasta={hasta}
+                        onDesde={setDesde}
+                        onHasta={setHasta}
+                        filterKey={filterKey}
+                        onFilterKeyChange={setFilterKey}
+                        onExportCSV={exportCSV}
+                    />
 
                 <div className="fin-kpis">
                     <div className="kpi-card">
@@ -240,7 +216,7 @@ const Reportes = () => {
                 <div className="modal-overlay" role="dialog" aria-modal="true">
                     <div className="modal-card invoice">
                         <div className="modal-header">
-                            <h3>Factura #{view.pedido_id}</h3>
+                            <h3>Factura #{view.ticket || view.pedido_id}</h3>
                             <button className="close-btn" onClick={()=>setView(null)} aria-label="Cerrar">×</button>
                         </div>
                         <div className="modal-body">

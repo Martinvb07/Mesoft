@@ -1,0 +1,23 @@
+:root { --brand:#ff6633; --ink:#222; --muted:#555; --card-border:#eef2f6; --bg:#f6fafd; }
+
+/* Toolbar scoped styles (won't bleed elsewhere) */
+.rpt-toolbar{ display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; flex-wrap:wrap; padding:.25rem 0 .75rem 0; }
+.rpt-title{ margin:0; font-weight:800; color:var(--ink); }
+.rpt-items{ display:flex; align-items:flex-end; flex-wrap:wrap; gap:.6rem; }
+
+.rpt-field{ display:flex; flex-direction:column; gap:.25rem; }
+.rpt-field label{ font-size:.8rem; color:var(--muted); font-weight:700; }
+.rpt-field select, .rpt-field input[type="date"]{ border:1px solid var(--card-border); border-radius:12px; padding:.45rem .6rem; background:#fff; outline:none; }
+
+/* Search */
+.rpt-search{ display:flex; align-items:center; gap:.35rem; border:1px solid var(--card-border); border-radius:12px; padding:.4rem .6rem; background:#fff; }
+.rpt-search input{ border:none; outline:none; min-width:260px; }
+
+/* Buttons */
+.rpt-btn{ appearance:none; border:1px solid var(--card-border); background:#fff; color:#222; border-radius:12px; padding:.45rem .75rem; font-weight:700; cursor:pointer; }
+.rpt-btn.primary{ background: linear-gradient(90deg, var(--brand), #ff5a21); color:#fff; border-color:transparent; }
+
+/* Responsive tweaks */
+@media (max-width: 720px){
+  .rpt-search input{ min-width:180px; }
+}
