@@ -208,3 +208,143 @@ exports.metaHoy = (req, res) => {
     res.json({ meta, ventas, progresoPct });
   });
 };
+
+// Ventas por producto en un rango: sin límite, por restaurante
+exports.ventasPorProducto = (req, res) => {
+  const { desde, hasta, categoria } = req.query;
+  let range = null;
+  if (desde && hasta) {
+    const r1 = parseDateOnly(desde); const r2 = parseDateOnly(hasta);
+    if (r1 && r2) range = { start: r1.start, end: r2.end };
+  }
+  if (!range) {
+    // por defecto últimos 7 días
+    const to = dayRange(0); const from = dayRange(-6);
+    range = { start: from.start, end: to.end };
+  }
+  const rid = req.restaurantId;
+  const params = [range.start, range.end, rid];
+  let catSQL = '';
+  if (categoria) { catSQL = ' AND p.categoria = ?'; params.push(categoria); }
+  const sql = `SELECT dp.producto_id, p.nombre, p.categoria, 
+                      COALESCE(SUM(dp.cantidad),0) AS unidades,
+                      COALESCE(SUM(dp.subtotal),0) AS ingresos,
+                      CASE WHEN COALESCE(SUM(dp.cantidad),0) > 0 
+                           THEN COALESCE(SUM(dp.subtotal),0) / COALESCE(SUM(dp.cantidad),0)
+                           ELSE 0 END AS precio_unit,
+                      p.precio AS precio_actual
+               FROM detallepedido dp
+               JOIN pedidos pe ON pe.id = dp.pedido_id
+               JOIN productos p ON p.id = dp.producto_id
+               WHERE pe.fecha_hora BETWEEN ? AND ? AND pe.restaurant_id = ?${catSQL}
+               GROUP BY dp.producto_id
+               ORDER BY unidades DESC`;
+  db.query(sql, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows.map(r => ({
+      producto_id: r.producto_id,
+      nombre: r.nombre,
+      categoria: r.categoria,
+      unidades: Number(r.unidades || 0),
+      ingresos: Number(r.ingresos || 0),
+      precio_unit: Number(r.precio_unit || 0),
+      precio_actual: Number(r.precio_actual || 0),
+    })));
+  });
+};
+
+// Egresos: listar por rango (detalle)
+exports.egresosListar = (req, res) => {
+  const { desde, hasta, categoria } = req.query;
+  let range = null;
+  if (desde && hasta) {
+    const r1 = parseDateOnly(desde); const r2 = parseDateOnly(hasta);
+    if (r1 && r2) range = { start: r1.start, end: r2.end };
+  }
+  if (!range) { const { start, end } = todayRange(); range = { start, end }; }
+  const rid = req.restaurantId;
+  const params = [rid, range.start, range.end];
+  let catSQL = '';
+  if (categoria) { catSQL = ' AND categoria = ?'; params.push(categoria); }
+  const sql = `SELECT id, fecha, categoria, monto, descripcion, usuario_id
+               FROM movimientoscontables
+               WHERE tipo='egreso' AND restaurant_id = ? AND fecha BETWEEN ? AND ?${catSQL}
+               ORDER BY fecha DESC, id DESC`;
+  db.query(sql, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+};
+
+// Egresos: crear
+exports.egresoCrear = (req, res) => {
+  const { categoria, monto, descripcion, fecha } = req.body || {};
+  if (!monto) return res.status(400).json({ error: 'monto requerido' });
+  const rid = req.restaurantId;
+  const uid = req.userId || null;
+  const when = fecha ? new Date(fecha) : new Date();
+  const toSQL = (dt)=> {
+    const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0');
+    const hh=String(dt.getHours()).padStart(2,'0'); const mm=String(dt.getMinutes()).padStart(2,'0'); const ss=String(dt.getSeconds()).padStart(2,'0');
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  };
+  const sql = `INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, usuario_id, restaurant_id)
+               VALUES (?, 'egreso', ?, ?, ?, ?, ?)`;
+  db.query(sql, [toSQL(when), categoria || null, Number(monto), descripcion || null, uid, rid], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ id: result.insertId });
+  });
+};
+
+// Egresos: actualizar
+exports.egresoActualizar = (req, res) => {
+  const { id } = req.params;
+  const { categoria, monto, descripcion, fecha } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'id requerido' });
+  const rid = req.restaurantId;
+  const fields = [];
+  const params = [];
+  if (fecha) { fields.push('fecha = ?'); params.push(fecha); }
+  if (categoria !== undefined) { fields.push('categoria = ?'); params.push(categoria); }
+  if (monto !== undefined) { fields.push('monto = ?'); params.push(Number(monto)); }
+  if (descripcion !== undefined) { fields.push('descripcion = ?'); params.push(descripcion); }
+  if (!fields.length) return res.status(400).json({ error: 'sin cambios' });
+  const sql = `UPDATE movimientoscontables SET ${fields.join(', ')} WHERE id = ? AND restaurant_id = ? AND tipo='egreso'`;
+  db.query(sql, [...params, id, rid], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ ok: true });
+  });
+};
+
+// Egresos: eliminar
+exports.egresoEliminar = (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: 'id requerido' });
+  const rid = req.restaurantId;
+  const sql = `DELETE FROM movimientoscontables WHERE id = ? AND restaurant_id = ? AND tipo='egreso'`;
+  db.query(sql, [id, rid], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ ok: true });
+  });
+};
+
+// Egresos por categoría en un rango
+exports.egresosCategorias = (req, res) => {
+  const { desde, hasta } = req.query;
+  let range = null;
+  if (desde && hasta) {
+    const r1 = parseDateOnly(desde); const r2 = parseDateOnly(hasta);
+    if (r1 && r2) range = { start: r1.start, end: r2.end };
+  }
+  if (!range) { const { start, end } = todayRange(); range = { start, end }; }
+  const rid = req.restaurantId;
+  const sql = `SELECT IFNULL(categoria,'(sin categoria)') AS categoria, COUNT(*) AS movimientos, COALESCE(SUM(monto),0) AS total
+               FROM movimientoscontables
+               WHERE tipo='egreso' AND restaurant_id = ? AND fecha BETWEEN ? AND ?
+               GROUP BY categoria
+               ORDER BY total DESC`;
+  db.query(sql, [rid, range.start, range.end], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+};

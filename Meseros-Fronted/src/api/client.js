@@ -96,7 +96,25 @@ export const api = {
     const qs = q.toString();
     return request(`/finanzas/top-productos${qs ? `?${qs}` : ''}`);
   },
+  ventasPorProducto: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v!=null && v!==''));
+    const qs = q.toString();
+    return request(`/finanzas/ventas-por-producto${qs ? `?${qs}` : ''}`);
+  },
   egresosCategoriasHoy: () => request('/finanzas/egresos-categorias-hoy'),
+  egresosCategorias: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v!=null && v!==''));
+    const qs = q.toString();
+    return request(`/finanzas/egresos-categorias${qs ? `?${qs}` : ''}`);
+  },
+  egresos: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v!=null && v!==''));
+    const qs = q.toString();
+    return request(`/finanzas/egresos${qs ? `?${qs}` : ''}`);
+  },
+  crearEgreso: (data) => request('/finanzas/egresos', { method: 'POST', body: data }),
+  actualizarEgreso: (id, data) => request(`/finanzas/egresos/${id}`, { method: 'PUT', body: data }),
+  eliminarEgreso: (id) => request(`/finanzas/egresos/${id}`, { method: 'DELETE' }),
   metaHoy: () => request('/finanzas/meta-hoy'),
 
   // Nomina
