@@ -290,3 +290,50 @@ exports.listarEnCurso = (req, res) => {
     res.json({ count: rows.length, pedidos: rows });
   });
 };
+
+// Facturas (ventas cerradas) con items y propina.
+exports.listarFacturas = (req, res) => {
+  const rid = req.restaurantId;
+  const { desde, hasta, limit = 100 } = req.query || {};
+  const params = [rid];
+  let whereDate = '';
+  if (desde && hasta) { whereDate = ' AND DATE(m.fecha) BETWEEN ? AND ?'; params.push(desde, hasta); }
+  else if (desde) { whereDate = ' AND DATE(m.fecha) >= ?'; params.push(desde); }
+  else if (hasta) { whereDate = ' AND DATE(m.fecha) <= ?'; params.push(hasta); }
+
+  const sql = `
+    SELECT p.id AS pedido_id, p.mesa_id, p.mesero_id, me.nombre AS mesero_nombre,
+           m.monto AS total, m.fecha AS pagado_en,
+           COALESCE(SUM(mp.monto),0) AS propina
+    FROM movimientoscontables m
+    JOIN pedidos p ON p.id = m.pedido_id
+    LEFT JOIN meseros me ON me.id = p.mesero_id
+    LEFT JOIN movimientoscontables mp ON mp.pedido_id = p.id AND mp.tipo='ingreso' AND mp.categoria='propina'
+    WHERE m.restaurant_id = ? AND m.tipo='ingreso' AND m.categoria='venta' ${whereDate}
+    GROUP BY p.id, p.mesa_id, p.mesero_id, me.nombre, m.monto, m.fecha
+    ORDER BY m.fecha DESC
+    LIMIT ${Number(limit) || 100}`;
+
+  db.query(sql, params, async (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const facturas = rows || [];
+    if (!facturas.length) return res.json([]);
+    // Traer items por pedido
+    const getItems = (pedidoId) => new Promise((resolve) => {
+      const q = `SELECT d.cantidad, d.subtotal, pr.nombre, pr.precio
+                 FROM detallepedido d
+                 LEFT JOIN productos pr ON pr.id = d.producto_id
+                 WHERE d.pedido_id = ?
+                 ORDER BY d.id ASC`;
+      db.query(q, [pedidoId], (e, r) => {
+        if (e) return resolve([]);
+        resolve(r || []);
+      });
+    });
+    const enriched = await Promise.all(facturas.map(async f => ({
+      ...f,
+      items: await getItems(f.pedido_id),
+    })));
+    res.json(enriched);
+  });
+};

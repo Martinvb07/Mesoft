@@ -6,3 +6,25 @@
 .muted{ color: var(--muted); }
 .fin-card{ max-width:1200px; margin:0 auto 1rem; background:#fff; border:1px solid var(--card-border); border-radius:18px; box-shadow: var(--shadow-sm); padding:1rem; }
 .empty{ background:#fff; border:1px dashed var(--card-border); border-radius:12px; padding:1rem; text-align:center; color:var(--muted); }
+
+/* Tabla y modales reutilizados (alineados a estilo Finanza) */
+.table { width:100%; border-collapse: collapse; }
+.table th, .table td { border-top:1px solid var(--card-border); padding:.5rem; font-size:.95rem; }
+.table thead th { text-align:left; color:var(--muted); font-weight:700; background:#f9fafb; }
+.td-right { text-align:right; }
+.btn { appearance:none; border:1px solid var(--card-border); background:#fff; color:#222; border-radius:12px; padding:.4rem .6rem; font-weight:700; cursor:pointer; }
+.btn.primary { background: linear-gradient(90deg, var(--brand), #ff5a21); color:#fff; border-color: transparent; }
+.pill { display:inline-flex; gap:.35rem; align-items:center; padding:.25rem .5rem; border-radius:999px; font-weight:700; }
+
+.toolbar { display:flex; gap:.5rem; align-items:flex-end; }
+.toolbar .search { display:flex; align-items:center; border:1px solid var(--card-border); border-radius:12px; padding:.35rem .6rem; background:#fff; }
+.toolbar .search input { border:none; outline:none; min-width: 260px; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding: 1rem; z-index: 50; }
+.modal-card { width: 100%; max-width: 720px; background: #fff; border:1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.modal-card.invoice .modal-header{ border-bottom:3px solid var(--brand); }
+.modal-header { display:flex; align-items:center; justify-content: space-between; padding: 1rem 1rem .75rem 1rem; border-bottom: 1px solid var(--card-border); }
+.modal-header h3 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #222; }
+.close-btn { appearance:none; border:none; background:transparent; font-size: 1.4rem; line-height:1; cursor:pointer; color: var(--muted); }
+.modal-body { padding: 1rem; }
+.modal-footer { padding: .75rem 1rem 1rem 1rem; display:flex; justify-content:flex-end; gap:.5rem; }

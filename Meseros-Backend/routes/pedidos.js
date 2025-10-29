@@ -3,6 +3,7 @@ const router = express.Router();
 const pedidosController = require('../controllers/pedidosController');
 
 router.get('/en-curso', pedidosController.listarEnCurso);
+router.get('/facturas', pedidosController.listarFacturas);
 router.get('/:id', pedidosController.obtenerPedido);
 router.get('/:id/items', pedidosController.listarItems);
 router.post('/:id/items', pedidosController.agregarItem);

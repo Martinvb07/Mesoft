@@ -265,6 +265,10 @@ function Mesas() {
                 // Preferir total del pedido si existe, si no sumar subtotales
                 total = Number(pedido.total || 0);
                 if (!total) total = consumos.reduce((s, it) => s + Number(it.subtotal || 0), 0);
+                // Si no teníamos meseroNombre y el pedido trae mesero_nombre, usarlo
+                if ((meseroNombre === '—' || !meseroNombre) && pedido.mesero_nombre) {
+                    meseroNombre = pedido.mesero_nombre;
+                }
             }
         } catch {}
         // Fallback a storages locales si backend no devolvió items

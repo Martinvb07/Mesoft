@@ -20,7 +20,12 @@ function getRestaurantId(req) {
 
 exports.listarMesas = (req, res) => {
   const restaurantId = req.restaurantId;
-  db.query('SELECT * FROM mesas WHERE restaurant_id = ? ORDER BY numero ASC', [restaurantId], (err, rows) => {
+  const sql = `SELECT m.*, me.nombre AS mesero_nombre
+               FROM mesas m
+               LEFT JOIN meseros me ON me.id = m.mesero_id
+               WHERE m.restaurant_id = ?
+               ORDER BY m.numero ASC`;
+  db.query(sql, [restaurantId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
@@ -32,7 +37,7 @@ exports.listarMisMesas = (req, res) => {
   const uid = req.userId;
   if (!restaurantId) return res.status(400).json({ error: 'restaurantId no resuelto' });
   if (!uid) return res.status(400).json({ error: 'usuario_id requerido (X-Usuario-Id)' });
-  const sql = `SELECT m.*
+  const sql = `SELECT m.*, me.nombre AS mesero_nombre
                FROM mesas m
                INNER JOIN meseros me ON me.id = m.mesero_id
                WHERE me.usuario_id = ? AND m.restaurant_id = ?
@@ -87,7 +92,9 @@ exports.eliminarMesa = (req, res) => {
 exports.obtenerPedidoAbiertoDeMesa = (req, res) => {
   const restaurantId = req.restaurantId;
   const mesaId = req.params.id;
-  const sql = `SELECT * FROM pedidos p
+  const sql = `SELECT p.*, me.nombre AS mesero_nombre
+               FROM pedidos p
+               LEFT JOIN meseros me ON me.id = p.mesero_id
                WHERE p.mesa_id = ?
                  AND p.estado IN ('en proceso', 'entregado')
                  AND p.restaurant_id = ?
@@ -105,8 +112,9 @@ exports.asignarMesa = (req, res) => {
 
   const resolveMeseroId = (cb) => {
     if (mesero_id) return cb(null, mesero_id);
-    if (usuario_id) {
-      db.query('SELECT id FROM meseros WHERE usuario_id = ?', [usuario_id], (e, r) => {
+    const uid = usuario_id || req.userId || null;
+    if (uid) {
+      db.query('SELECT id FROM meseros WHERE usuario_id = ?', [uid], (e, r) => {
         if (e) return cb(e);
         const mid = r[0]?.id || null;
         cb(null, mid);
@@ -119,8 +127,11 @@ exports.asignarMesa = (req, res) => {
   resolveMeseroId((errMid, meseroId) => {
     if (errMid) return res.status(500).json({ error: errMid.message });
     // Cambia estado a 'ocupada' y abre pedido si no hay
-    const setMesa = 'UPDATE mesas SET estado = \'ocupada\' WHERE id = ? AND restaurant_id = ?';
-    db.query(setMesa, [mesaId, restaurantId], (err) => {
+    const setMesa = meseroId
+      ? 'UPDATE mesas SET estado = \'ocupada\', mesero_id = ? WHERE id = ? AND restaurant_id = ?'
+      : 'UPDATE mesas SET estado = \'ocupada\' WHERE id = ? AND restaurant_id = ?';
+    const setMesaParams = meseroId ? [meseroId, mesaId, restaurantId] : [mesaId, restaurantId];
+    db.query(setMesa, setMesaParams, (err) => {
       if (err) return res.status(500).json({ error: err.message });
       const find = 'SELECT id, mesero_id FROM pedidos WHERE mesa_id = ? AND restaurant_id = ? AND estado IN (\'en proceso\', \'entregado\') ORDER BY fecha_hora DESC LIMIT 1';
       db.query(find, [mesaId, restaurantId], (err2, rows) => {

@@ -239,12 +239,14 @@ const Mesas = () => {
             const subtotal = items.reduce((s,it)=> s + (it.subtotal ?? it.cantidad*it.precio), 0);
             const total = subtotal + propina;
             const cambio = Math.max(0, monto - total);
+            const waiterName = (pedidoActual && pedidoActual.mesero_nombre) || (pedidoModal.mesa && pedidoModal.mesa.meseroNombre) || '';
             setFactura({
                 visible: true,
                 data: {
                     restaurante: getRestaurantName(),
                     pedidoId: pid,
                     mesaNumero: mesa.numero,
+                    meseroNombre: waiterName,
                     fecha: new Date(),
                     items,
                     subtotal,
@@ -523,6 +525,9 @@ const Mesas = () => {
                                         <div>
                                             <div style={{fontSize:'1.25rem', fontWeight:700}}>{factura.data.restaurante}</div>
                                             <div style={{fontSize:'.85rem', color:'#6b7280'}}>Factura #{factura.data.pedidoId}</div>
+                                            {factura.data.meseroNombre && (
+                                                <div style={{fontSize:'.85rem', color:'#374151'}}>Mesero: {factura.data.meseroNombre}</div>
+                                            )}
                                         </div>
                                         <div style={{textAlign:'right'}}>
                                             <div style={{fontSize:'.9rem'}}>Mesa {factura.data.mesaNumero}</div>

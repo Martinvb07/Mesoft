@@ -2,9 +2,19 @@ const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '');
 
 function defaultHeaders() {
   const rid = localStorage.getItem('restaurant_id');
+  let uid = null;
+  try {
+    const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
+    if (raw) {
+      const u = JSON.parse(raw);
+      const cand = u?.id ?? u?.usuario_id ?? u?.userId ?? null;
+      if (cand != null) uid = String(cand);
+    }
+  } catch {}
   return {
     'Content-Type': 'application/json',
     ...(rid ? { 'X-Restaurant-Id': rid } : {}),
+    ...(uid ? { 'X-Usuario-Id': uid } : {}),
   };
 }
 
@@ -63,6 +73,11 @@ export const api = {
 
   // Pedidos
   pedidosEnCurso: () => request('/pedidos/en-curso'),
+  facturas: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v!=null && v!==''));
+    const qs = q.toString();
+    return request(`/pedidos/facturas${qs ? `?${qs}` : ''}`);
+  },
   getPedidoAbiertoDeMesa: (mesaId) => request(`/mesas/${mesaId}/pedido-abierto`),
   getPedido: (pedidoId) => request(`/pedidos/${pedidoId}`),
   getPedidoItems: (pedidoId) => request(`/pedidos/${pedidoId}/items`),
