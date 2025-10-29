@@ -20,7 +20,17 @@ function getRestaurantId(req) {
 
 exports.listarMesas = (req, res) => {
   const restaurantId = req.restaurantId;
+  // Exponer además el mesero_id del último pedido activo (en proceso/entregado)
   const sql = `SELECT m.*,
+                  (
+                    SELECT p.mesero_id
+                    FROM pedidos p
+                    WHERE p.mesa_id = m.id
+                      AND p.restaurant_id = m.restaurant_id
+                      AND p.estado IN ('en proceso','entregado')
+                    ORDER BY p.fecha_hora DESC
+                    LIMIT 1
+                  ) AS mesero_id,
                   (
                     SELECT me.nombre
                     FROM pedidos p

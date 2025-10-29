@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import '../../../css/Navbar/Menu-Admin/Finanzas/Ingresos.css';
+import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
 import { api } from '../../../../api/client';
 import {
     flexRender,
@@ -9,7 +9,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { HiArrowsUpDown, HiChevronLeft, HiChevronRight } from 'react-icons/hi2';
+import { HiArrowsUpDown, HiChevronLeft, HiChevronRight, HiCube, HiTag, HiHashtag, HiCurrencyDollar } from 'react-icons/hi2';
 
 const Ingresos = () => {
     const [desde, setDesde] = useState(()=>{
@@ -64,14 +64,14 @@ const Ingresos = () => {
         a.click(); URL.revokeObjectURL(url);
     };
 
-        const columns = useMemo(()=> [
-                { accessorKey:'nombre', header: ()=> 'Producto' },
-                { accessorKey:'categoria', header: ()=> 'Categoría' },
-        { accessorKey:'unidades', header: ()=> <div style={{textAlign:'right'}}>Cant.</div>,
+    const columns = useMemo(()=> [
+        { accessorKey:'nombre', header: ()=> (<div style={{display:'flex',alignItems:'center',gap:'.35rem'}}><HiCube/> Producto</div>) },
+        { accessorKey:'categoria', header: ()=> (<div style={{display:'flex',alignItems:'center',gap:'.35rem'}}><HiTag/> Categoría</div>) },
+    { accessorKey:'unidades', header: ()=> <div style={{display:'flex',alignItems:'center',gap:'.35rem',justifyContent:'flex-end'}}><HiHashtag/> Cant.</div>,
           cell: info=> <div className="td-right">{Number(info.getValue()||0).toLocaleString('es-CO')}</div> },
-                { accessorKey:'precio_unit', header: ()=> <div style={{textAlign:'right'}}>Precio</div>,
+        { accessorKey:'precio_unit', header: ()=> <div style={{display:'flex',alignItems:'center',gap:'.35rem',justifyContent:'flex-end'}}><HiCurrencyDollar/> Precio</div>,
           cell: info=> <div className="td-right">{money(info.getValue())}</div> },
-        { accessorKey:'ingresos', header: ()=> <div style={{textAlign:'right'}}>Total</div>,
+    { accessorKey:'ingresos', header: ()=> <div style={{display:'flex',alignItems:'center',gap:'.35rem',justifyContent:'flex-end'}}><HiCurrencyDollar/> Total</div>,
           cell: info=> <div className="td-right">{money(info.getValue())}</div> },
                 // precio_actual opcional
                 // { accessorKey:'precio_actual', header: ()=> <div style={{textAlign:'right'}}>Precio actual</div>,
@@ -92,7 +92,7 @@ const Ingresos = () => {
     });
 
     return (
-        <div className="fin-page">
+    <div className="fin-page finz-reportes">
         <div className="fin-header"><h1>Finanzas · Ingresos</h1><p className="muted">Ventas por producto en el rango seleccionado.</p></div>
         <div className="fin-card">
             <div className="toolbar">

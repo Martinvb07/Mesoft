@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import '../../../css/Navbar/Menu-Admin/Finanzas/Egresos.css';
+import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
 import { api } from '../../../../api/client';
+import { HiCalendarDays, HiTag, HiListBullet, HiCurrencyDollar } from 'react-icons/hi2';
 
 const Egresos = () => {
     const [rows, setRows] = useState([]); // categorias agregadas
@@ -64,7 +65,7 @@ const Egresos = () => {
     };
 
     return (
-        <div className="fin-page fin-egresos">
+    <div className="fin-page finz-reportes">
         <div className="fin-header"><h1>Finanzas · Egresos</h1><p className="muted">Gastos por categoría en el rango seleccionado.</p></div>
         <div className="fin-card">
             <div className="toolbar">
@@ -84,7 +85,12 @@ const Egresos = () => {
                 <div className="card-subtitle">Listado</div>
                 <div style={{overflowX:'auto'}}>
                     <table className="table">
-                        <thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th className="td-right">Monto</th></tr></thead>
+                        <thead><tr>
+                            <th><span style={{display:'inline-flex',alignItems:'center',gap:'.35rem'}}><HiCalendarDays/> Fecha</span></th>
+                            <th><span style={{display:'inline-flex',alignItems:'center',gap:'.35rem'}}><HiTag/> Categoría</span></th>
+                            <th>Descripción</th>
+                            <th className="td-right"><span style={{display:'inline-flex',alignItems:'center',gap:'.35rem',justifyContent:'flex-end'}}><HiCurrencyDollar/> Monto</span></th>
+                        </tr></thead>
                         <tbody>
                             {filtered.map((r,idx)=> (
                                 <tr key={idx}><td>{r.fecha ? new Date(r.fecha).toLocaleDateString('es-CO') : ''}</td><td>{r.categoria || '-'}</td><td>{r.descripcion || '-'}</td><td className="td-right">{money(r.monto)}</td></tr>
@@ -97,7 +103,11 @@ const Egresos = () => {
                 <div className="card-subtitle" style={{marginTop:'1rem'}}>Por categoría</div>
                 <div style={{overflowX:'auto'}}>
                     <table className="table">
-                        <thead><tr><th>Categoría</th><th className="td-center">Movimientos</th><th className="td-right">Total</th></tr></thead>
+                        <thead><tr>
+                            <th><span style={{display:'inline-flex',alignItems:'center',gap:'.35rem'}}><HiTag/> Categoría</span></th>
+                            <th className="td-center"><span style={{display:'inline-flex',alignItems:'center',gap:'.35rem',justifyContent:'center'}}><HiListBullet/> Movimientos</span></th>
+                            <th className="td-right"><span style={{display:'inline-flex',alignItems:'center',gap:'.35rem',justifyContent:'flex-end'}}><HiCurrencyDollar/> Total</span></th>
+                        </tr></thead>
                         <tbody>
                             {rows.map((r,idx)=> (
                                 <tr key={idx}><td>{r.categoria}</td><td className="td-center">{r.movimientos}</td><td className="td-right">{money(r.total)}</td></tr>
@@ -114,13 +124,13 @@ const Egresos = () => {
         </div>
 
         {modalOpen && (
-            <div className="egz-modal" role="dialog" aria-modal="true">
-                <div className="egz-card">
-                    <div className="egz-header">
+            <div className="modal-overlay" role="dialog" aria-modal="true">
+                <div className="modal-card">
+                    <div className="modal-header">
                         <h3>Nuevo Egreso</h3>
-                        <button className="close" onClick={()=>setModalOpen(false)} aria-label="Cerrar">×</button>
+                        <button className="close-btn" onClick={()=>setModalOpen(false)} aria-label="Cerrar">×</button>
                     </div>
-                    <div className="egz-body">
+                    <div className="modal-body">
                         <div className="grid-2">
                             <label className="fld">Concepto *<input type="text" value={form.concepto} onChange={e=>setForm(f=>({...f, concepto:e.target.value}))} placeholder="Ej: Pago de servicios" /></label>
                             <label className="fld">Monto *<input type="number" step="0.01" value={form.monto} onChange={e=>setForm(f=>({...f, monto:e.target.value}))} /></label>
@@ -140,7 +150,7 @@ const Egresos = () => {
                             <textarea rows={4} value={form.descripcion} onChange={e=>setForm(f=>({...f, descripcion:e.target.value}))} placeholder="Detalles adicionales del egreso..."></textarea>
                         </label>
                     </div>
-                    <div className="egz-footer">
+                    <div className="modal-footer">
                         <button className="btn" onClick={()=>setModalOpen(false)}>Cancelar</button>
                         <button className="btn primary" onClick={submitModal}>Guardar</button>
                     </div>

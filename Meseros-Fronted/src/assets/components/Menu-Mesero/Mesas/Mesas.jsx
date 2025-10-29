@@ -362,7 +362,8 @@ const Mesas = () => {
                     const puedeAsignar = m.estado === 'libre';
                     const puedeLiberar = m.estado === 'ocupada' && esMiMesa;
                     const puedeLimpieza = (m.estado === 'libre') || (m.estado === 'ocupada' && esMiMesa);
-                    const puedeTerminarLimpieza = (m.estado === 'limpieza' && esMiMesa);
+                    // Permitir finalizar limpieza a cualquier mesero, ya que en este estado no siempre hay asignación
+                    const puedeTerminarLimpieza = (m.estado === 'limpieza');
                     return (
                     <div key={m.id} className={`mesa-card ${ESTADOS[m.estado]?.color || ''}`} onClick={() => abrirPedido(m)}>
                         <div className="mesa-top">
@@ -591,15 +592,13 @@ const Mesas = () => {
                                 if (!el) return window.print();
                                 const w = window.open('', 'PRINT', 'width=800,height=900');
                                 if (!w) return;
-                                w.document.write('<html><head><title>Factura</title>');
-                                w.document.write('<style>body{font-family:ui-sans-serif,system-ui;margin:24px;} table{width:100%;border-collapse:collapse;} th,td{font-size:12px;} th{text-align:left;background:#f3f4f6;} td,th{border-top:1px solid #e5e7eb;padding:6px;} tfoot td{border-top:none;} h3{margin:0 0 12px 0;}</style>');
+                                w.document.write('<!doctype html><html><head><title>Factura</title>');
+                                w.document.write('<style>body{font-family:ui-sans-serif,system-ui;margin:24px;background:#fff;color:#111;} table{width:100%;border-collapse:collapse;} th,td{font-size:12px;} th{text-align:left;background:#f3f4f6;color:#374151;} td,th{border-top:1px solid #e5e7eb;padding:6px;} tfoot td{border-top:none;} h3{margin:0 0 12px 0;}</style>');
                                 w.document.write('</head><body>');
                                 w.document.write(el.outerHTML);
                                 w.document.write('</body></html>');
                                 w.document.close();
-                                w.focus();
-                                w.print();
-                                w.close();
+                                w.onload = () => { w.focus(); w.print(); };
                             }}>Imprimir</button>
                             <button className="btn primary" onClick={()=>{
                                 setFactura({ visible:false, data:null });

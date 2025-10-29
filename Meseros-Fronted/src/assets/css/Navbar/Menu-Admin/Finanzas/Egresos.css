@@ -7,31 +7,10 @@
 .fin-card{ max-width:1200px; margin:0 auto 1rem; background:#fff; border:1px solid var(--card-border); border-radius:18px; box-shadow: var(--shadow-sm); padding:1rem; }
 .empty{ background:#fff; border:1px dashed var(--card-border); border-radius:12px; padding:1rem; text-align:center; color:var(--muted); }
 
-/* Toolbar, kpis, table */
-.fin-egresos .toolbar{ display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; justify-content:space-between; }
-.fin-egresos .left{ display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; }
-.fin-egresos .input{ border:1px solid var(--card-border); border-radius:12px; padding:.45rem .6rem; }
-.fin-egresos .btn{ appearance:none; border:1px solid var(--card-border); background:#fff; color:#222; border-radius:12px; padding:.45rem .7rem; font-weight:700; cursor:pointer; }
-.fin-egresos .btn.primary{ background: linear-gradient(90deg, var(--brand), #ff5a21); color:#fff; border-color:transparent; }
-.fin-egresos .kpis{ display:flex; gap:.75rem; margin:.75rem 0; }
-.fin-egresos .kpi{ background:#fff; border:1px solid var(--card-border); border-radius:16px; padding:.6rem .8rem; display:flex; gap:.6rem; align-items:center; box-shadow: var(--shadow-sm); }
-.fin-egresos .kpi-label{ font-size:.8rem; color:var(--muted); }
-.fin-egresos .kpi-value{ font-weight:800; font-size:1.05rem; color:var(--ink); }
-.fin-egresos .table { width:100%; border-collapse: collapse; }
-.fin-egresos .table th, .fin-egresos .table td { border-top:1px solid var(--card-border); padding:.5rem; font-size:.95rem; }
-.fin-egresos .table thead th { text-align:left; color:var(--muted); font-weight:700; background:#f9fafb; }
-.fin-egresos .td-right { text-align:right; }
-.fin-egresos .td-center { text-align:center; }
-.fin-egresos .card-subtitle{ font-weight:800; color:var(--muted); margin:.5rem 0; }
+/* Complementos para usar estilo de Reportes */
+.finz-reportes .card-subtitle{ font-weight:800; color:var(--muted); margin:.5rem 0; }
 
-/* Modal */
-.fin-egresos .egz-modal{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding:1rem; z-index:50; }
-.fin-egresos .egz-card{ width:100%; max-width:900px; background:#fff; border:1px solid var(--card-border); border-radius:16px; box-shadow:var(--shadow-sm); overflow:hidden; }
-.fin-egresos .egz-header{ display:flex; align-items:center; justify-content:space-between; padding:1rem; border-bottom:1px solid var(--card-border); }
-.fin-egresos .egz-header h3{ margin:0; font-size:1.2rem; font-weight:800; }
-.fin-egresos .egz-header .close{ appearance:none; border:none; background:transparent; font-size:1.4rem; line-height:1; cursor:pointer; color:var(--muted); }
-.fin-egresos .egz-body{ padding:1rem; display:flex; flex-direction:column; gap:.75rem; }
-.fin-egresos .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
-.fin-egresos .fld{ display:flex; flex-direction:column; gap:.25rem; font-weight:700; color:var(--muted); }
-.fin-egresos .fld input, .fin-egresos .fld select, .fin-egresos .fld textarea{ border:1px solid var(--card-border); border-radius:12px; padding:.5rem .6rem; outline:none; background:#fff; font-weight:600; color:#222; }
-.fin-egresos .egz-footer{ padding: .75rem 1rem 1rem; display:flex; justify-content:flex-end; gap:.5rem; }
+/* Formulario en modal (usa modal-card de Reportes.css) */
+.finz-reportes .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+.finz-reportes .fld{ display:flex; flex-direction:column; gap:.25rem; font-weight:700; color:var(--muted); }
+.finz-reportes .fld input, .finz-reportes .fld select, .finz-reportes .fld textarea{ border:1px solid var(--card-border); border-radius:12px; padding:.5rem .6rem; outline:none; background:#fff; font-weight:600; color:#222; }

@@ -30,7 +30,6 @@ const Home = () => {
     const [meseroInfo, setMeseroInfo] = useState(null); // { id, nombre, sueldo_base }
     const [ventasHoy, setVentasHoy] = useState(0);
     const [propinasHoy, setPropinasHoy] = useState(0);
-    const [balanceHoy, setBalanceHoy] = useState(0);
     const [mesasHoy, setMesasHoy] = useState(0);
 
     // Nómina
@@ -100,20 +99,20 @@ const Home = () => {
         loadMesero();
     }, [userId]);
 
-    // KPIs del día (ventas, propinas, balance, mesas atendidas)
+    // KPI Ventas de hoy por mesero (no usar métricas globales del admin)
     useEffect(() => {
-        const loadKpis = async () => {
+        const loadVentasMeseroHoy = async () => {
+            if (!meseroInfo?.id) return;
+            const hoy = todayKey();
             try {
-                const [v, b] = await Promise.all([
-                    api.ventasHoy().catch(() => ({ ventas: 0 })),
-                    api.balanceHoy().catch(() => ({ balance: 0 })),
-                ]);
-                setVentasHoy(Number(v?.ventas || 0));
-                setBalanceHoy(Number(b?.balance || 0));
-            } catch {}
+                const facturas = await api.facturas({ desde: hoy, hasta: hoy, limit: 1000 }).catch(() => []);
+                const total = (Array.isArray(facturas) ? facturas : []).filter(f => Number(f.mesero_id || 0) === Number(meseroInfo.id))
+                    .reduce((s, f) => s + Number(f.total || 0), 0);
+                setVentasHoy(total);
+            } catch { setVentasHoy(0); }
         };
-        loadKpis();
-    }, []);
+        loadVentasMeseroHoy();
+    }, [meseroInfo?.id]);
 
     useEffect(() => {
         const loadPropinasYMesasHoy = async () => {
@@ -251,13 +250,7 @@ const Home = () => {
                         <div className="metric-label">Propinas de hoy</div>
                     </div>
                 </div>
-                <div className="metric-card">
-                    <div className="metric-icon"><HiCalculator /></div>
-                    <div className="metric-info">
-                        <div className="metric-value">${balanceHoy.toLocaleString('es-CO')}</div>
-                        <div className="metric-label">Balance de hoy</div>
-                    </div>
-                </div>
+                {/* El balance es una métrica de cierre del admin; se oculta en la vista del mesero */}
             </div>
 
             <div className="home-sections">
