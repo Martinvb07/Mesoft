@@ -73,14 +73,29 @@
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding: 1rem; z-index: 50; }
 .modal-card { width: 100%; max-width: 520px; background: #fff; border:1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-lg); overflow: hidden; }
 .modal-card.lg { max-width: 720px; }
+.modal-card.invoice { max-width: 700px; }
 .modal-header { display:flex; align-items:center; justify-content: space-between; padding: 1rem 1rem .75rem 1rem; border-bottom: 1px solid var(--card-border); position: relative; }
 .modal-header h3 { margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--ink); }
+.modal-card.invoice .modal-header { border-bottom: 3px solid var(--brand); }
+.modal-card.invoice .modal-header h3 { color: var(--brand); letter-spacing: .2px; }
 .close-btn { appearance:none; border:none; background:transparent; font-size: 1.4rem; line-height:1; cursor:pointer; color: var(--muted); }
 .modal-body { padding: 1rem; }
 .modal-grid { display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .modal-grid label { display:flex; flex-direction: column; gap:.35rem; font-weight:700; color: var(--ink); }
 .modal-grid input { border:1px solid var(--card-border); border-radius: 10px; padding:.5rem .6rem; font-weight:600; color:var(--ink); }
 .modal-footer { padding: .75rem 1rem 1rem 1rem; display:flex; justify-content:flex-end; gap:.5rem; }
+
+/* Tabla genérica para factura */
+.table { width:100%; border-collapse: collapse; }
+.table th, .table td { border-top: 1px solid var(--card-border); padding: .5rem; font-size: .95rem; }
+.table thead th { text-align: left; color: var(--muted); font-weight: 700; background:#f9fafb; }
+.table tfoot td { border-top: 2px solid var(--card-border); font-weight:700; }
+
+/* Impresión de factura */
+@media print {
+	.modal-overlay { position: static; inset: auto; background: transparent; box-shadow: none; }
+	.close-btn, .modal-footer { display: none !important; }
+}
 
 /* Consumos */
 .consumos-wrap { margin-top: .5rem; }

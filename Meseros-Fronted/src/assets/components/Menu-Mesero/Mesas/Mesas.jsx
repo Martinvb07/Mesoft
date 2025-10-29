@@ -45,6 +45,22 @@ const Mesas = () => {
     const [pedidoItems, setPedidoItems] = useState([]);
     const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: 1, precio: 0 });
     const [resumenPago, setResumenPago] = useState(null); // { mesaId, mesaNumero, total, abonado, pendiente, recibido, propina, cambio, aplicado }
+    const [factura, setFactura] = useState({ visible: false, data: null });
+
+    const getRestaurantName = () => {
+        const keys = ['usuario', 'user', 'auth_user', 'currentUser'];
+        for (const k of keys) {
+            try {
+                const raw = localStorage.getItem(k) || sessionStorage.getItem(k);
+                if (!raw) continue;
+                const obj = JSON.parse(raw);
+                const u = obj?.usuario || obj?.user || obj;
+                const name = u?.restaurante || u?.nombreRestaurante || u?.nombre_restaurante || u?.empresa || u?.company;
+                if (name) return String(name);
+            } catch {}
+        }
+        return 'Mi Restaurante';
+    };
 
     // Todo viene del backend; no persistimos en local
 
@@ -218,16 +234,33 @@ const Mesas = () => {
 
         try {
             await api.pagarPedido(pid, { recibido: monto, propina, mesero_id: null });
-            Swal.fire({ icon:'success', title:'Pago registrado', timer: 900, showConfirmButton:false });
-            // Refrescar mesas (la mesa pasa a limpieza) y cerrar modal
-            const data = await api.getMesas();
-            const normalized = (Array.isArray(data) ? data : []).map(m => ({
-                id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2, estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || ''
-            })).sort((a,b)=>a.numero-b.numero);
-            setMesas(normalized);
-            setPedidoItems([]);
-            setPedidoActual(null);
-            cerrarPedido();
+            // Preparar factura con los items actuales
+            const items = [...pedidoItems];
+            const subtotal = items.reduce((s,it)=> s + (it.subtotal ?? it.cantidad*it.precio), 0);
+            const total = subtotal + propina;
+            const cambio = Math.max(0, monto - total);
+            setFactura({
+                visible: true,
+                data: {
+                    restaurante: getRestaurantName(),
+                    pedidoId: pid,
+                    mesaNumero: mesa.numero,
+                    fecha: new Date(),
+                    items,
+                    subtotal,
+                    propina,
+                    total,
+                    recibido: monto,
+                    cambio,
+                }
+            });
+            // Refrescar mesas (la mesa pasa a limpieza)
+            try {
+                const data = await api.getMesas();
+                const normalized = (Array.isArray(data) ? data : []).map(m => ({ id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2, estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || ''})).sort((a,b)=>a.numero-b.numero);
+                setMesas(normalized);
+            } catch {}
+            // Mantener abierto hasta cerrar factura
         } catch (e) {
             Swal.fire({ icon:'error', title:'No se pudo registrar el pago', text: e?.message || 'Error' });
         }
@@ -470,7 +503,104 @@ const Mesas = () => {
                 </div>
             )}
 
-            {/* Sin resumen local de pago; backend ya cierra pedido y pone mesa en limpieza */}
+            {/* Factura modal */}
+            {factura.visible && (
+                <div className="modal-overlay" role="dialog" aria-modal="true">
+                    <div className="modal-card invoice">
+                        <div className="modal-header">
+                            <h3>Factura</h3>
+                            <button className="close-btn" aria-label="Cerrar" onClick={()=>{
+                                setFactura({ visible:false, data:null });
+                                setPedidoItems([]);
+                                setPedidoActual(null);
+                                cerrarPedido();
+                            }}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            {factura.data && (
+                                <div id="invoice-content" style={{fontFamily:'ui-sans-serif, system-ui', color:'#2b2b2b'}}>
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.75rem'}}>
+                                        <div>
+                                            <div style={{fontSize:'1.25rem', fontWeight:700}}>{factura.data.restaurante}</div>
+                                            <div style={{fontSize:'.85rem', color:'#6b7280'}}>Factura #{factura.data.pedidoId}</div>
+                                        </div>
+                                        <div style={{textAlign:'right'}}>
+                                            <div style={{fontSize:'.9rem'}}>Mesa {factura.data.mesaNumero}</div>
+                                            <div style={{fontSize:'.85rem', color:'#6b7280'}}>{new Date(factura.data.fecha).toLocaleString('es-CO')}</div>
+                                        </div>
+                                    </div>
+                                    <table className="table" style={{width:'100%', borderCollapse:'collapse'}}>
+                                        <thead>
+                                            <tr style={{background:'#f3f4f6'}}>
+                                                <th style={{textAlign:'left', padding:'.5rem'}}>Producto</th>
+                                                <th style={{textAlign:'right', padding:'.5rem'}}>Cant.</th>
+                                                <th style={{textAlign:'right', padding:'.5rem'}}>Precio</th>
+                                                <th style={{textAlign:'right', padding:'.5rem'}}>Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {factura.data.items.map((it, idx)=> (
+                                                <tr key={idx}>
+                                                    <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb'}}>{it.nombre}</td>
+                                                    <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb', textAlign:'right'}}>{it.cantidad}</td>
+                                                    <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb', textAlign:'right'}}>${Number(it.precio||0).toLocaleString('es-CO')}</td>
+                                                    <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb', textAlign:'right'}}>${Number(it.subtotal ?? (it.cantidad*it.precio)).toLocaleString('es-CO')}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colSpan="3" style={{padding:'.5rem', textAlign:'right'}}>Subtotal</td>
+                                                <td style={{padding:'.5rem', textAlign:'right'}}>${Number(factura.data.subtotal).toLocaleString('es-CO')}</td>
+                                            </tr>
+                                            <tr>
+                                                <td colSpan="3" style={{padding:'.5rem', textAlign:'right'}}>Propina</td>
+                                                <td style={{padding:'.5rem', textAlign:'right'}}>${Number(factura.data.propina).toLocaleString('es-CO')}</td>
+                                            </tr>
+                                            <tr>
+                                                <td colSpan="3" style={{padding:'.5rem', textAlign:'right'}}><strong>Total</strong></td>
+                                                <td style={{padding:'.5rem', textAlign:'right'}}><strong>${Number(factura.data.total).toLocaleString('es-CO')}</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td colSpan="3" style={{padding:'.5rem', textAlign:'right'}}>Recibido</td>
+                                                <td style={{padding:'.5rem', textAlign:'right'}}>${Number(factura.data.recibido).toLocaleString('es-CO')}</td>
+                                            </tr>
+                                            <tr>
+                                                <td colSpan="3" style={{padding:'.5rem', textAlign:'right'}}>Cambio</td>
+                                                <td style={{padding:'.5rem', textAlign:'right'}}>${Number(factura.data.cambio).toLocaleString('es-CO')}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                    <div style={{marginTop:'.75rem', fontSize:'.85rem', color:'#6b7280'}}>Gracias por su compra.</div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn" onClick={()=>{
+                                const el = document.getElementById('invoice-content');
+                                if (!el) return window.print();
+                                const w = window.open('', 'PRINT', 'width=800,height=900');
+                                if (!w) return;
+                                w.document.write('<html><head><title>Factura</title>');
+                                w.document.write('<style>body{font-family:ui-sans-serif,system-ui;margin:24px;} table{width:100%;border-collapse:collapse;} th,td{font-size:12px;} th{text-align:left;background:#f3f4f6;} td,th{border-top:1px solid #e5e7eb;padding:6px;} tfoot td{border-top:none;} h3{margin:0 0 12px 0;}</style>');
+                                w.document.write('</head><body>');
+                                w.document.write(el.outerHTML);
+                                w.document.write('</body></html>');
+                                w.document.close();
+                                w.focus();
+                                w.print();
+                                w.close();
+                            }}>Imprimir</button>
+                            <button className="btn primary" onClick={()=>{
+                                setFactura({ visible:false, data:null });
+                                setPedidoItems([]);
+                                setPedidoActual(null);
+                                cerrarPedido();
+                            }}>Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

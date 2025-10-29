@@ -287,3 +287,22 @@ exports.eliminarMesero = (req, res) => {
     res.json({ ok: true, affectedRows: result.affectedRows });
   });
 };
+
+// Nuevo: obtener el mesero del usuario actual (según header X-Usuario-Id)
+exports.obtenerMiPerfilMesero = (req, res) => {
+  const rid = req.restaurantId;
+  const uid = req.userId;
+  if (!rid) return res.status(400).json({ error: 'restaurantId no resuelto' });
+  if (!uid) return res.status(400).json({ error: 'usuario_id requerido (X-Usuario-Id)' });
+  const sql = `SELECT me.id, me.usuario_id, me.nombre, me.estado, me.sueldo_base,
+                      u.correo, u.restaurante
+               FROM meseros me
+               LEFT JOIN usuarios u ON u.id = me.usuario_id
+               WHERE me.restaurant_id = ? AND me.usuario_id = ?
+               LIMIT 1`;
+  db.query(sql, [rid, uid], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Mesero no encontrado para el usuario' });
+    res.json(rows[0]);
+  });
+};

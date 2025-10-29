@@ -26,6 +26,23 @@ exports.listarMesas = (req, res) => {
   });
 };
 
+// Nuevo: listar solo las mesas asignadas al usuario actual (X-Usuario-Id)
+exports.listarMisMesas = (req, res) => {
+  const restaurantId = req.restaurantId;
+  const uid = req.userId;
+  if (!restaurantId) return res.status(400).json({ error: 'restaurantId no resuelto' });
+  if (!uid) return res.status(400).json({ error: 'usuario_id requerido (X-Usuario-Id)' });
+  const sql = `SELECT m.*
+               FROM mesas m
+               INNER JOIN meseros me ON me.id = m.mesero_id
+               WHERE me.usuario_id = ? AND m.restaurant_id = ?
+               ORDER BY m.numero ASC`;
+  db.query(sql, [uid, restaurantId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+};
+
 exports.crearMesa = (req, res) => {
   const restaurantId = req.restaurantId;
   const { numero, capacidad = 4, estado = 'libre' } = req.body || {};

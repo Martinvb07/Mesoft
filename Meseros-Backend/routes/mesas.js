@@ -3,6 +3,7 @@ const router = express.Router();
 const mesasController = require('../controllers/mesasController');
 
 router.get('/', mesasController.listarMesas);
+router.get('/mias', mesasController.listarMisMesas);
 router.post('/', mesasController.crearMesa);
 router.get('/:id/pedido-abierto', mesasController.obtenerPedidoAbiertoDeMesa);
 router.put('/:id', mesasController.actualizarMesa);

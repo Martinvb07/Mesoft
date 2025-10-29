@@ -20,16 +20,10 @@ const monthRange = () => {
 };
 
 const Home = () => {
-    // Perfil básico (sin localStorage): mostramos información mínima
-    const nombre = 'Mesero';
-    const apellido = '';
-    const telefono = '';
-    const correo = '';
-    const documento = '';
-    const usuario = '';
-    const rol = 'mesero';
-    const userId = null;
-    const iniciales = (nombre?.[0] || '').toUpperCase() + (apellido?.[0] || '').toUpperCase();
+    // Perfil: NO usamos localStorage; se obtiene desde backend (mesero actual)
+    const [perfil, setPerfil] = useState({ nombre: 'Mesero', apellido: '', telefono: '', correo: '', documento: '', usuario: '', rol: 'mesero', userId: null });
+    const nombre = perfil.nombre; const apellido = perfil.apellido; const telefono = perfil.telefono; const correo = perfil.correo; const documento = perfil.documento; const usuario = perfil.usuario; const rol = perfil.rol; const userId = perfil.userId;
+    const iniciales = ((nombre?.[0] || '') + (apellido?.[0] || '')).toUpperCase();
 
     // Estado principal
     const [mesas, setMesas] = useState([]);
@@ -62,6 +56,28 @@ const Home = () => {
             }
         };
         loadMesas();
+    }, []);
+
+    // Cargar perfil (mesero actual) desde backend
+    useEffect(() => {
+        const loadPerfil = async () => {
+            try {
+                const me = await api.getMiMesero();
+                setPerfil(prev => ({
+                    ...prev,
+                    nombre: me?.nombre || 'Mesero',
+                    correo: me?.correo || '',
+                    rol: 'mesero',
+                    userId: me?.usuario_id ?? null,
+                }));
+                setMeseroInfo({ id: me?.id, nombre: me?.nombre, sueldo_base: Number(me?.sueldo_base || 0) });
+                setSueldoBase(Number(me?.sueldo_base || 0));
+            } catch {
+                setPerfil(prev => ({ ...prev, userId: null }));
+                setMeseroInfo(null);
+            }
+        };
+        loadPerfil();
     }, []);
 
     // Resolver mesero actual por usuario_id
@@ -146,11 +162,19 @@ const Home = () => {
         loadNomina();
     }, [meseroInfo?.id]);
 
-    // Mis mesas (asignadas a mi) y totales via API
-    const misMesasBase = useMemo(() => {
-        if (!meseroInfo?.id) return [];
-        return mesas.filter(m => Number(m.mesero_id || 0) === Number(meseroInfo.id)).sort((a, b) => a.numero - b.numero);
-    }, [mesas, meseroInfo?.id]);
+    // Mis mesas (asignadas a mi) obtenido directo del backend
+    const [misMesasBase, setMisMesasBase] = useState([]);
+    useEffect(() => {
+        const loadMis = async () => {
+            try {
+                const mm = await api.getMisMesas();
+                setMisMesasBase(Array.isArray(mm) ? mm.sort((a,b)=>a.numero-b.numero) : []);
+            } catch {
+                setMisMesasBase([]);
+            }
+        };
+        loadMis();
+    }, [meseroInfo?.id]);
 
     useEffect(() => {
         const loadTotales = async () => {

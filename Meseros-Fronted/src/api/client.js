@@ -41,6 +41,7 @@ export async function request(path, options = {}) {
 export const api = {
   // Meseros (admin)
   getMeseros: () => request('/meseros'),
+  getMiMesero: () => request('/meseros/me'),
   // data puede incluir: nombre, estado, sueldo_base, correo (opcional), contrasena (si correo)
   crearMesero: (data) => request('/meseros', { method: 'POST', body: data }),
   actualizarMesero: (id, data) => request(`/meseros/${id}`, { method: 'PUT', body: data }),
@@ -48,6 +49,8 @@ export const api = {
 
   // Mesas (compartido)
   getMesas: () => request('/mesas'),
+  // Solo las mesas del usuario actual (requiere X-Usuario-Id)
+  getMisMesas: () => request('/mesas/mias'),
   createMesa: (data) => request('/mesas', { method: 'POST', body: data }),
   updateMesa: (id, data) => request(`/mesas/${id}`, { method: 'PUT', body: data }),
   deleteMesa: (id) => request(`/mesas/${id}`, { method: 'DELETE' }),

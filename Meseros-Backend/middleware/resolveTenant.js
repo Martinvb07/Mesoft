@@ -21,6 +21,12 @@ function fetchByName(nombre, cb){
 }
 
 module.exports = function resolveTenant(req, res, next){
+  // Resolver usuario actual opcionalmente desde cabecera (simple, sin auth)
+  const uid = req.headers['x-usuario-id'] || req.headers['x-user-id'];
+  if (uid && Number(uid) > 0) {
+    req.userId = Number(uid);
+  }
+
   const headerId = req.headers['x-restaurant-id'] || req.headers['restaurant-id'];
   if(headerId && Number(headerId) > 0){
     req.restaurantId = Number(headerId);
