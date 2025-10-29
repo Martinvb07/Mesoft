@@ -20,9 +20,18 @@ function getRestaurantId(req) {
 
 exports.listarMesas = (req, res) => {
   const restaurantId = req.restaurantId;
-  const sql = `SELECT m.*, me.nombre AS mesero_nombre
+  const sql = `SELECT m.*,
+                  (
+                    SELECT me.nombre
+                    FROM pedidos p
+                    LEFT JOIN meseros me ON me.id = p.mesero_id
+                    WHERE p.mesa_id = m.id
+                      AND p.restaurant_id = m.restaurant_id
+                      AND p.estado IN ('en proceso','entregado')
+                    ORDER BY p.fecha_hora DESC
+                    LIMIT 1
+                  ) AS mesero_nombre
                FROM mesas m
-               LEFT JOIN meseros me ON me.id = m.mesero_id
                WHERE m.restaurant_id = ?
                ORDER BY m.numero ASC`;
   db.query(sql, [restaurantId], (err, rows) => {
@@ -37,9 +46,13 @@ exports.listarMisMesas = (req, res) => {
   const uid = req.userId;
   if (!restaurantId) return res.status(400).json({ error: 'restaurantId no resuelto' });
   if (!uid) return res.status(400).json({ error: 'usuario_id requerido (X-Usuario-Id)' });
-  const sql = `SELECT m.*, me.nombre AS mesero_nombre
+  const sql = `SELECT DISTINCT m.*,
+                  me.nombre AS mesero_nombre
                FROM mesas m
-               INNER JOIN meseros me ON me.id = m.mesero_id
+               INNER JOIN pedidos p ON p.mesa_id = m.id
+                 AND p.restaurant_id = m.restaurant_id
+                 AND p.estado IN ('en proceso','entregado')
+               INNER JOIN meseros me ON me.id = p.mesero_id
                WHERE me.usuario_id = ? AND m.restaurant_id = ?
                ORDER BY m.numero ASC`;
   db.query(sql, [uid, restaurantId], (err, rows) => {
@@ -127,11 +140,8 @@ exports.asignarMesa = (req, res) => {
   resolveMeseroId((errMid, meseroId) => {
     if (errMid) return res.status(500).json({ error: errMid.message });
     // Cambia estado a 'ocupada' y abre pedido si no hay
-    const setMesa = meseroId
-      ? 'UPDATE mesas SET estado = \'ocupada\', mesero_id = ? WHERE id = ? AND restaurant_id = ?'
-      : 'UPDATE mesas SET estado = \'ocupada\' WHERE id = ? AND restaurant_id = ?';
-    const setMesaParams = meseroId ? [meseroId, mesaId, restaurantId] : [mesaId, restaurantId];
-    db.query(setMesa, setMesaParams, (err) => {
+    const setMesa = 'UPDATE mesas SET estado = \'ocupada\' WHERE id = ? AND restaurant_id = ?';
+    db.query(setMesa, [mesaId, restaurantId], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       const find = 'SELECT id, mesero_id FROM pedidos WHERE mesa_id = ? AND restaurant_id = ? AND estado IN (\'en proceso\', \'entregado\') ORDER BY fecha_hora DESC LIMIT 1';
       db.query(find, [mesaId, restaurantId], (err2, rows) => {

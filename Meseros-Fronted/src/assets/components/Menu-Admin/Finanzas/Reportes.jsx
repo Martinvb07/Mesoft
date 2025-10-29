@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
 import { api } from '../../../../api/client';
+import {
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    useReactTable,
+} from '@tanstack/react-table';
+import { HiBanknotes, HiCurrencyDollar, HiMagnifyingGlass, HiChevronLeft, HiChevronRight, HiArrowsUpDown } from 'react-icons/hi2';
 
 const Reportes = () => {
     const [desde, setDesde] = useState(()=>{
@@ -12,6 +21,7 @@ const Reportes = () => {
     const [facturas, setFacturas] = useState([]);
     const [q, setQ] = useState('');
     const [view, setView] = useState(null); // factura seleccionada
+    const [sorting, setSorting] = useState([{ id: 'pedido_id', desc: true }]);
 
     useEffect(()=>{
         const load = async ()=>{
@@ -65,62 +75,136 @@ const Reportes = () => {
         URL.revokeObjectURL(url);
     };
 
+    // TanStack Table setup
+    const columns = useMemo(() => [
+        {
+            accessorKey: 'pedido_id',
+            header: () => '#',
+            cell: info => `#${info.getValue()}`,
+        },
+        {
+            accessorKey: 'pagado_en',
+            header: () => 'Fecha',
+            cell: info => info.getValue() ? new Date(info.getValue()).toLocaleString('es-CO') : '',
+        },
+        {
+            accessorKey: 'mesa_id',
+            header: () => 'Mesa',
+        },
+        {
+            accessorKey: 'mesero_nombre',
+            header: () => 'Mesero',
+            cell: info => info.getValue() || info.row.original.mesero_id || '-',
+        },
+        {
+            accessorKey: 'total',
+            header: () => <div style={{textAlign:'right'}}>Total</div>,
+            cell: info => <div className="td-right">${Number(info.getValue()||0).toLocaleString('es-CO')}</div>,
+        },
+        {
+            accessorKey: 'propina',
+            header: () => <div style={{textAlign:'right'}}>Propina</div>,
+            cell: info => <div className="td-right">${Number(info.getValue()||0).toLocaleString('es-CO')}</div>,
+        },
+        {
+            id: 'actions',
+            header: () => '',
+            cell: info => <div className="td-right"><button className="btn" onClick={()=>setView(info.row.original)}>Ver</button></div>,
+            enableSorting: false,
+        },
+    ], []);
+
+    const table = useReactTable({
+        data: filtered,
+        columns,
+        state: { sorting, globalFilter: q },
+        onSortingChange: setSorting,
+        onGlobalFilterChange: setQ,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: { pagination: { pageSize: 10 } },
+    });
+
     return (
         <div className="fin-page">
             <div className="fin-header"><h1>Finanzas · Reportes</h1><p className="muted">Cortes, tendencias y exportaciones.</p></div>
             <div className="fin-card">
-                <div style={{display:'flex', alignItems:'end', gap:'.5rem', justifyContent:'space-between'}}>
+                <div className="fin-toolbar">
                     <h3 style={{margin:0}}>Facturas</h3>
-                    <div className="toolbar">
-                        <div className="search">
+                    <div className="toolbar-items">
+                        <div className="input with-icon">
+                            <HiMagnifyingGlass />
                             <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar (pedido, mesa, mesero, fecha)..." />
                         </div>
-                        <label style={{display:'flex', flexDirection:'column', fontWeight:700}}>
-                            <span className="muted" style={{fontWeight:600}}>Desde</span>
+                        <div className="input">
+                            <label>Desde</label>
                             <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} />
-                        </label>
-                        <label style={{display:'flex', flexDirection:'column', fontWeight:700}}>
-                            <span className="muted" style={{fontWeight:600}}>Hasta</span>
+                        </div>
+                        <div className="input">
+                            <label>Hasta</label>
                             <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} />
-                        </label>
-                        <button className="btn" onClick={exportCSV} title="Exportar CSV">Exportar CSV</button>
+                        </div>
+                        <button className="btn primary" onClick={exportCSV} title="Exportar CSV">Exportar CSV</button>
                     </div>
                 </div>
-                <div style={{display:'flex', gap:'1rem', marginTop:'.5rem'}}>
-                    <div className="pill" style={{background:'#fff7e6', border:'1px solid #ffe0cc'}}>Ventas: <strong>${totalVentas.toLocaleString('es-CO')}</strong></div>
-                    <div className="pill" style={{background:'#eef7ff', border:'1px solid #dbeafe'}}>Propinas: <strong>${totalPropinas.toLocaleString('es-CO')}</strong></div>
-                    {cargando && <span className="muted">Cargando…</span>}
+
+                <div className="fin-kpis">
+                    <div className="kpi-card">
+                        <div className="kpi-icon brand"><HiBanknotes /></div>
+                        <div className="kpi-body">
+                            <div className="kpi-label">Ventas</div>
+                            <div className="kpi-value">${totalVentas.toLocaleString('es-CO')}</div>
+                        </div>
+                    </div>
+                    <div className="kpi-card">
+                        <div className="kpi-icon"><HiCurrencyDollar /></div>
+                        <div className="kpi-body">
+                            <div className="kpi-label">Propinas</div>
+                            <div className="kpi-value">${totalPropinas.toLocaleString('es-CO')}</div>
+                        </div>
+                    </div>
+                    {cargando && <div className="kpi-loading muted">Cargando…</div>}
                 </div>
+
                 <div style={{overflowX:'auto', marginTop:'.75rem'}}>
                     <table className="table">
                         <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Fecha</th>
-                                <th>Mesa</th>
-                                <th>Mesero</th>
-                                <th className="td-right">Total</th>
-                                <th className="td-right">Propina</th>
-                                <th></th>
-                            </tr>
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <tr key={headerGroup.id}>
+                                    {headerGroup.headers.map(header => (
+                                        <th key={header.id}
+                                            onClick={header.column.getToggleSortingHandler?.()}
+                                            style={{cursor: header.column.getCanSort?.() ? 'pointer' : 'default'}}>
+                                            <div style={{display:'flex', alignItems:'center', gap:'.25rem'}}>
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                                {header.column.getCanSort?.() && <HiArrowsUpDown style={{opacity:.55}}/>}
+                                            </div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            ))}
                         </thead>
                         <tbody>
-                            {filtered.map((f)=> (
-                                <tr key={f.pedido_id}>
-                                    <td>#{f.pedido_id}</td>
-                                    <td>{f.pagado_en ? new Date(f.pagado_en).toLocaleString('es-CO') : ''}</td>
-                                    <td>{f.mesa_id}</td>
-                                    <td>{f.mesero_nombre || f.mesero_id || '-'}</td>
-                                    <td className="td-right">${Number(f.total||0).toLocaleString('es-CO')}</td>
-                                    <td className="td-right">${Number(f.propina||0).toLocaleString('es-CO')}</td>
-                                    <td className="td-right"><button className="btn" onClick={()=>setView(f)}>Ver</button></td>
+                            {table.getRowModel().rows.map(row => (
+                                <tr key={row.id}>
+                                    {row.getVisibleCells().map(cell => (
+                                        <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                                    ))}
                                 </tr>
                             ))}
                             {!filtered.length && (
-                                <tr><td colSpan={7} className="muted">Sin facturas en el rango.</td></tr>
+                                <tr><td colSpan={columns.length} className="muted">Sin facturas en el rango.</td></tr>
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                <div className="pagination">
+                    <button className="btn" onClick={()=>table.previousPage()} disabled={!table.getCanPreviousPage()}><HiChevronLeft/> Anterior</button>
+                    <span className="muted">Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount() || 1}</span>
+                    <button className="btn" onClick={()=>table.nextPage()} disabled={!table.getCanNextPage()}>Siguiente <HiChevronRight/></button>
                 </div>
             </div>
 
