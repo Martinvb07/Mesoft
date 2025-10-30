@@ -1,33 +1,33 @@
 const db = require('../config/db');
+const { DateTime } = require('luxon');
+
+// Timezone to use across all financial date computations
+const APP_TZ = process.env.APP_TZ || 'America/Bogota';
 
 function todayRange() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  const start = `${y}-${m}-${d} 00:00:00`;
-  const end = `${y}-${m}-${d} 23:59:59`;
+  const now = DateTime.now().setZone(APP_TZ);
+  const start = now.startOf('day').toFormat('yyyy-MM-dd HH:mm:ss');
+  const end = now.endOf('day').toFormat('yyyy-MM-dd HH:mm:ss');
   return { start, end };
 }
 
 function dayRange(offsetDays = 0) {
-  const dt = new Date();
-  dt.setDate(dt.getDate() + offsetDays);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const d = String(dt.getDate()).padStart(2, '0');
-  return { start: `${y}-${m}-${d} 00:00:00`, end: `${y}-${m}-${d} 23:59:59` };
+  const dt = DateTime.now().setZone(APP_TZ).plus({ days: offsetDays });
+  return {
+    start: dt.startOf('day').toFormat('yyyy-MM-dd HH:mm:ss'),
+    end: dt.endOf('day').toFormat('yyyy-MM-dd HH:mm:ss'),
+  };
 }
 
 function parseDateOnly(s) {
   if (!s) return null;
-  // Expect YYYY-MM-DD
-  const dt = new Date(s);
-  if (Number.isNaN(dt.getTime())) return null;
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const d = String(dt.getDate()).padStart(2, '0');
-  return { start: `${y}-${m}-${d} 00:00:00`, end: `${y}-${m}-${d} 23:59:59` };
+  // Expect YYYY-MM-DD or ISO-like string; interpret in APP_TZ
+  const dt = DateTime.fromISO(s, { zone: APP_TZ });
+  if (!dt.isValid) return null;
+  return {
+    start: dt.startOf('day').toFormat('yyyy-MM-dd HH:mm:ss'),
+    end: dt.endOf('day').toFormat('yyyy-MM-dd HH:mm:ss'),
+  };
 }
 
 exports.ventasHoy = (req, res) => {
@@ -126,19 +126,13 @@ exports.topProductos = (req, res) => {
     start = from.start; end = to.end;
   }
   // previous window of the same length right before 'start'
-  const startDate = new Date(start.replace(' ', 'T'));
-  const endDate = new Date(end.replace(' ', 'T'));
-  const msLen = endDate.getTime() - startDate.getTime();
-  const prevEnd = new Date(startDate.getTime() - 1000); // just before start
-  const prevStart = new Date(prevEnd.getTime() - msLen);
-  const toSQL = (dt, endOfDay = false) => {
-    const y = dt.getFullYear();
-    const m = String(dt.getMonth() + 1).padStart(2, '0');
-    const d = String(dt.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d} ${endOfDay ? '23:59:59' : '00:00:00'}`;
-  };
-  const pStart = toSQL(prevStart, false);
-  const pEnd = toSQL(prevEnd, true);
+  const startDate = DateTime.fromSQL(start, { zone: APP_TZ });
+  const endDate = DateTime.fromSQL(end, { zone: APP_TZ });
+  const msLen = endDate.toMillis() - startDate.toMillis();
+  const prevEnd = startDate.minus({ milliseconds: 1000 }); // just before start
+  const prevStart = prevEnd.minus({ milliseconds: msLen });
+  const pStart = prevStart.startOf('day').toFormat('yyyy-MM-dd HH:mm:ss');
+  const pEnd = prevEnd.endOf('day').toFormat('yyyy-MM-dd HH:mm:ss');
 
   const sql = `SELECT dp.producto_id, p.nombre, COALESCE(SUM(dp.cantidad),0) AS unidades, COALESCE(SUM(dp.subtotal),0) AS ingresos
                FROM detallepedido dp
@@ -282,15 +276,13 @@ exports.egresoCrear = (req, res) => {
   if (!monto) return res.status(400).json({ error: 'monto requerido' });
   const rid = req.restaurantId;
   const uid = req.userId || null;
-  const when = fecha ? new Date(fecha) : new Date();
-  const toSQL = (dt)=> {
-    const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0');
-    const hh=String(dt.getHours()).padStart(2,'0'); const mm=String(dt.getMinutes()).padStart(2,'0'); const ss=String(dt.getSeconds()).padStart(2,'0');
-    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
-  };
+  const whenDT = fecha
+    ? DateTime.fromISO(fecha, { zone: APP_TZ })
+    : DateTime.now().setZone(APP_TZ);
+  const whenSQL = whenDT.toFormat('yyyy-MM-dd HH:mm:ss');
   const sql = `INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, usuario_id, restaurant_id)
                VALUES (?, 'egreso', ?, ?, ?, ?, ?)`;
-  db.query(sql, [toSQL(when), categoria || null, Number(monto), descripcion || null, uid, rid], (err, result) => {
+  db.query(sql, [whenSQL, categoria || null, Number(monto), descripcion || null, uid, rid], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ id: result.insertId });
   });

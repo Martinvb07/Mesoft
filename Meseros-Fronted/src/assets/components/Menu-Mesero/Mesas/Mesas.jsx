@@ -542,7 +542,7 @@ const Mesas = () => {
                                         </div>
                                         <div style={{textAlign:'right'}}>
                                             <div style={{fontSize:'.9rem'}}>Mesa {factura.data.mesaNumero}</div>
-                                            <div style={{fontSize:'.85rem', color:'#6b7280'}}>{new Date(factura.data.fecha).toLocaleString('es-CO')}</div>
+                                            <div style={{fontSize:'.85rem', color:'#6b7280'}}>{new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }).format(new Date(factura.data.fecha))}</div>
                                         </div>
                                     </div>
                                     <table className="table" style={{width:'100%', borderCollapse:'collapse'}}>

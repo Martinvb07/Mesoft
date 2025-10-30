@@ -35,6 +35,9 @@ function formatDuration(ms) {
 }
 
 function Mesas() {
+    // Helpers de fecha/hora en zona de Colombia
+    const fmtDateCO = (date) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+    const fmtTimeCO = (date) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' }).format(date);
     const [mesas, setMesas] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -496,7 +499,7 @@ function Mesas() {
                             {m.estado === 'reservada' && m.reservaAt && (
                                 <div className="reserva">
                                     <HiClock />
-                                    <span>Reservada: {new Date(m.reservaAt).toLocaleDateString()} {new Date(m.reservaAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span>Reservada: {fmtDateCO(new Date(m.reservaAt))} {fmtTimeCO(new Date(m.reservaAt))}</span>
                                 </div>
                             )}
                         </div>
@@ -640,7 +643,7 @@ function Mesas() {
                                             <div className="staff-right">
                                                 {r.reservaAt ? (
                                                     <span className="status-pill res">
-                                                        {new Date(r.reservaAt).toLocaleDateString()} {new Date(r.reservaAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {fmtDateCO(new Date(r.reservaAt))} {fmtTimeCO(new Date(r.reservaAt))}
                                                     </span>
                                                 ) : (
                                                     <span className="status-pill res">Programada</span>

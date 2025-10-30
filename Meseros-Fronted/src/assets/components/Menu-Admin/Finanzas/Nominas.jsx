@@ -50,21 +50,40 @@ const Nominas = () => {
         const hasta = `${y}-${m}-31`;
         const data = await api.obtenerNomina('', desde, hasta);
         const rows = Array.isArray(data) ? data : [];
-        // Detectar pagos por mesero+fecha (marcan estado pagado)
-        const pagos = new Set(rows.filter(r => r.tipo === 'pago').map(r => `${r.mesero_id}|${String(r.fecha).slice(0,10)}`));
-        if (!cancel) setNominas(rows.map(row => ({
-          id: row.id,
-          empleadoId: row.mesero_id,
-          inicio: String(row.fecha).slice(0,10),
-          fin: String(row.fecha).slice(0,10),
-          sueldoBase: row.tipo === 'sueldo' ? Number(row.monto) : 0,
-          extras: row.tipo === 'extra' ? Number(row.monto) : 0,
-          bonos: row.tipo === 'bono' ? Number(row.monto) : 0,
-          deducciones: (row.tipo === 'deduccion' || row.tipo === 'descuento') ? Number(row.monto) : 0,
-          estado: pagos.has(`${row.mesero_id}|${String(row.fecha).slice(0,10)}`) ? 'pagado' : 'pendiente',
-          createdAt: row.fecha,
-          updatedAt: row.fecha,
-        })));
+        // Agrupar por mesero + día (inicio/fin iguales)
+        const map = new Map(); // key: mesero|yyyy-mm-dd
+        for (const r of rows) {
+          const dia = String(r.fecha).slice(0,10);
+          const key = `${r.mesero_id}|${dia}`;
+          if (!map.has(key)) {
+            map.set(key, {
+              id: r.id, // id de referencia
+              empleadoId: r.mesero_id,
+              inicio: dia,
+              fin: dia,
+              sueldoBase: 0,
+              extras: 0,
+              bonos: 0,
+              deducciones: 0,
+              estado: 'pendiente',
+              createdAt: r.fecha,
+              updatedAt: r.fecha,
+              movementIds: { sueldo: [], extra: [], bono: [], deduccion: [], descuento: [], pago: [] },
+            });
+          }
+          const g = map.get(key);
+          const monto = Number(r.monto || 0);
+          if (r.tipo === 'sueldo') { g.sueldoBase += monto; g.movementIds.sueldo.push(r.id); }
+          else if (r.tipo === 'extra') { g.extras += monto; g.movementIds.extra.push(r.id); }
+          else if (r.tipo === 'bono') { g.bonos += monto; g.movementIds.bono.push(r.id); }
+          else if (r.tipo === 'deduccion') { g.deducciones += monto; g.movementIds.deduccion.push(r.id); }
+          else if (r.tipo === 'descuento') { g.deducciones += monto; g.movementIds.descuento.push(r.id); }
+          else if (r.tipo === 'pago') { g.estado = 'pagado'; g.movementIds.pago.push(r.id); }
+          // track updatedAt latest
+          g.updatedAt = r.fecha;
+        }
+        const grouped = Array.from(map.values());
+        if (!cancel) setNominas(grouped);
       } catch (e) {
         if (!cancel) setError('No se pudo cargar la nómina');
       } finally {
@@ -136,8 +155,19 @@ const Nominas = () => {
     if (new Date(inicio) > new Date(fin)) return Swal.fire({ icon: 'error', title: 'El inicio no puede ser mayor que el fin' });
 
     try {
-      // Creamos movimientos separados para cada concepto > 0
-      const fecha = inicio; // simplificación: usar inicio como fecha del movimiento
+      const fecha = inicio; // usar inicio como fecha del movimiento
+      // Si es edición, eliminamos movimientos previos del mismo día (excepto pagos)
+      if (editId) {
+        try {
+          const prev = await api.obtenerNomina(empleadoId, inicio, inicio);
+          const prevRows = Array.isArray(prev) ? prev : [];
+          const dels = prevRows
+            .filter(r => r.tipo !== 'pago')
+            .map(r => api.eliminarMovimientoNomina(r.id));
+          if (dels.length) await Promise.allSettled(dels);
+        } catch {}
+      }
+      // Crear movimientos por cada concepto > 0
       const ops = [];
       if (sueldoBase > 0) ops.push(api.crearMovimientoNomina({ mesero_id: empleadoId, tipo: 'sueldo', monto: sueldoBase, descripcion: 'Sueldo base', fecha }));
       if (extras > 0) ops.push(api.crearMovimientoNomina({ mesero_id: empleadoId, tipo: 'extra', monto: extras, descripcion: 'Horas extra', fecha }));
@@ -152,19 +182,24 @@ const Nominas = () => {
       const desde = `${y}-${m}-01`;
       const hasta = `${y}-${m}-31`;
       const data = await api.obtenerNomina('', desde, hasta);
-      setNominas(Array.isArray(data) ? data.map(row => ({
-        id: row.id,
-        empleadoId: row.mesero_id,
-        inicio: String(row.fecha).slice(0,10),
-        fin: String(row.fecha).slice(0,10),
-        sueldoBase: row.tipo === 'sueldo' ? Number(row.monto) : 0,
-        extras: row.tipo === 'extra' ? Number(row.monto) : 0,
-        bonos: row.tipo === 'bono' ? Number(row.monto) : 0,
-        deducciones: row.tipo === 'deduccion' ? Number(row.monto) : 0,
-        estado: 'pagado',
-        createdAt: row.fecha,
-        updatedAt: row.fecha,
-      })) : []);
+      const rows = Array.isArray(data) ? data : [];
+      const map = new Map();
+      for (const r of rows) {
+        const dia = String(r.fecha).slice(0,10);
+        const key = `${r.mesero_id}|${dia}`;
+        if (!map.has(key)) {
+          map.set(key, { id: r.id, empleadoId: r.mesero_id, inicio: dia, fin: dia, sueldoBase: 0, extras: 0, bonos: 0, deducciones: 0, estado: 'pendiente', createdAt: r.fecha, updatedAt: r.fecha, movementIds: { sueldo: [], extra: [], bono: [], deduccion: [], descuento: [], pago: [] } });
+        }
+        const g = map.get(key);
+        const monto = Number(r.monto || 0);
+        if (r.tipo === 'sueldo') { g.sueldoBase += monto; g.movementIds.sueldo.push(r.id); }
+        else if (r.tipo === 'extra') { g.extras += monto; g.movementIds.extra.push(r.id); }
+        else if (r.tipo === 'bono') { g.bonos += monto; g.movementIds.bono.push(r.id); }
+        else if (r.tipo === 'deduccion') { g.deducciones += monto; g.movementIds.deduccion.push(r.id); }
+        else if (r.tipo === 'descuento') { g.deducciones += monto; g.movementIds.descuento.push(r.id); }
+        else if (r.tipo === 'pago') { g.estado = 'pagado'; g.movementIds.pago.push(r.id); }
+      }
+      setNominas(Array.from(map.values()));
     } catch (e) {
       Swal.fire('Error', e.message || 'No se pudo guardar', 'error');
     }
@@ -173,10 +208,18 @@ const Nominas = () => {
   const eliminar = async (id) => {
     const n = nominas.find(x => x.id === id);
     if (!n) return;
-    const res = await Swal.fire({ title: `Eliminar movimiento de ${nombreMesero(n.empleadoId)}`, text: `${n.inicio}. Esta acción no se puede deshacer.`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#ef4444' });
+    const res = await Swal.fire({ title: `Eliminar nómina de ${nombreMesero(n.empleadoId)}`, text: `${n.inicio}. Se eliminarán los conceptos del día (sin afectar pagos).`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#ef4444' });
     if (!res.isConfirmed) return;
     try {
-      await api.eliminarMovimientoNomina(id);
+      const ids = [
+        ...(n.movementIds?.sueldo || []),
+        ...(n.movementIds?.extra || []),
+        ...(n.movementIds?.bono || []),
+        ...(n.movementIds?.deduccion || []),
+        ...(n.movementIds?.descuento || []),
+      ];
+      if (ids.length === 0) return setNominas(prev => prev.filter(x => x.id !== id));
+      await Promise.allSettled(ids.map(mid => api.eliminarMovimientoNomina(mid)));
       setNominas(prev => prev.filter(x => x.id !== id));
       Swal.fire({ icon: 'success', title: 'Eliminado', timer: 900, showConfirmButton: false });
     } catch (e) {
