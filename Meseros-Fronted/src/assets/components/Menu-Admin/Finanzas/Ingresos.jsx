@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
-import './ReportesToolbar.css';
+import '../../../css/Navbar/Menu-Admin/Finanzas/ReportesToolbar.css';
 import { api } from '../../../../api/client';
 import {
     flexRender,

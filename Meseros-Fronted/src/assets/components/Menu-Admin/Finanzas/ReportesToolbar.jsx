@@ -1,5 +1,5 @@
 import React from 'react';
-import './ReportesToolbar.css';
+import '../../../css/Navbar/Menu-Admin/Finanzas/ReportesToolbar.css';
 import { HiMagnifyingGlass, HiBanknotes, HiCurrencyDollar } from 'react-icons/hi2';
 
 const ReportesToolbar = ({ q, onQChange, desde, hasta, onDesde, onHasta, filterKey, onFilterKeyChange, onExportCSV }) => {

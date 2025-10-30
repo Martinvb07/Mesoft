@@ -1,0 +1,20 @@
+:root { --brand:#ff6633; --ink:#222; --muted:#555; --card:#fff; --card-border:#eef2f6; --bg:#f6fafd; --shadow-sm:0 4px 18px rgba(44,62,80,.12); }
+
+/* Scoped to finanzas modal */
+.finz-modal .modal-card{ max-width: 720px; }
+.finz-modal .form-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; }
+.finz-modal .fld{ display:flex; flex-direction:column; gap:.35rem; font-weight:700; color:var(--ink); }
+.finz-modal .fld input,
+.finz-modal .fld select,
+.finz-modal .fld textarea{ border:1px solid var(--card-border); border-radius:10px; padding:.55rem .65rem; font-weight:600; color:var(--ink); background:#fff; }
+.finz-modal .fld textarea{ resize: vertical; }
+.finz-modal .fld.full{ grid-column: 1 / -1; }
+.finz-modal .finz-alert{ background:#fff5f5; border:1px solid #ffd7d7; color:#9b1c1c; border-radius:12px; padding:.6rem .75rem; margin-bottom:.75rem; font-weight:700; }
+
+/* Buttons inherit from reportes styles if present */
+.finz-modal .btn{ appearance:none; border:1px solid var(--card-border); background:#fff; color:#222; border-radius:12px; padding:.45rem .75rem; font-weight:700; cursor:pointer; }
+.finz-modal .btn.primary{ background: linear-gradient(90deg, var(--brand), #ff5a21); color:#fff; border-color: transparent; }
+
+@media (max-width: 680px){
+  .finz-modal .form-grid{ grid-template-columns: 1fr; }
+}

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Reportes.css';
-import './ReportesToolbar.css';
+import '../../../css/Navbar/Menu-Admin/Finanzas/ReportesToolbar.css';
 import { api } from '../../../../api/client';
 import Swal from 'sweetalert2';
+import EgresoModal from './EgresoModal';
 import { HiCalendarDays, HiTag, HiListBullet, HiCurrencyDollar, HiMagnifyingGlass } from 'react-icons/hi2';
 
 const Egresos = () => {
@@ -15,7 +16,6 @@ const Egresos = () => {
     });
     const [hasta, setHasta] = useState(()=> new Date().toISOString().slice(0,10));
     const [modalOpen, setModalOpen] = useState(false);
-    const [form, setForm] = useState({ concepto:'', monto:'', fecha: new Date().toISOString().slice(0,10), categoria:'', descripcion:'' });
 
     useEffect(()=>{
         const load = async ()=>{
@@ -46,27 +46,21 @@ const Egresos = () => {
 
     const totalCats = useMemo(()=> rows.reduce((s,r)=> s + Number(r.total||0), 0), [rows]);
 
-    const openModal = ()=>{ setForm({ concepto:'', monto:'', fecha: new Date().toISOString().slice(0,10), categoria:'', descripcion:'' }); setModalOpen(true); };
-    const submitModal = async ()=>{
-        if (!form.concepto?.trim()) return Swal.fire({ icon:'error', title:'Concepto requerido', text:'Ingresa un concepto.' });
-        if (!form.monto || Number(form.monto) <= 0) return Swal.fire({ icon:'error', title:'Monto inválido', text:'Ingresa un monto mayor a 0.' });
-        if (!form.fecha) return Swal.fire({ icon:'error', title:'Fecha requerida' });
-        if (!form.categoria) return Swal.fire({ icon:'warning', title:'Categoría requerida', text:'Selecciona una categoría.' });
-        try{
-            await api.crearEgreso({
-                categoria: form.categoria || null,
-                monto: Number(form.monto),
-                descripcion: `${form.concepto || ''}${form.descripcion ? ' — ' + form.descripcion : ''}` || null,
-                fecha: form.fecha,
-            });
-            setModalOpen(false);
-            // refrescar
-            const [cats, det] = await Promise.all([
-                api.egresosCategorias({ desde, hasta }),
-                api.egresos({ desde, hasta }),
-            ]);
-            setRows(cats || []); setDetalles(det || []); setQ('');
-        } catch(e){ Swal.fire({ icon:'error', title:'Error guardando egreso', text: e?.message || 'Intenta nuevamente.' }); }
+    const openModal = ()=>{ setModalOpen(true); };
+    const handleCreateEgreso = async (payload)=>{
+        // payload: { concepto, monto, fecha, categoria, descripcion }
+        await api.crearEgreso({
+            categoria: payload.categoria || null,
+            monto: Number(payload.monto),
+            descripcion: `${payload.concepto || ''}${payload.descripcion ? ' — ' + payload.descripcion : ''}` || null,
+            fecha: payload.fecha,
+        });
+        // refrescar
+        const [cats, det] = await Promise.all([
+            api.egresosCategorias({ desde, hasta }),
+            api.egresos({ desde, hasta }),
+        ]);
+        setRows(cats || []); setDetalles(det || []); setQ('');
     };
 
     return (
@@ -138,40 +132,7 @@ const Egresos = () => {
             )}
         </div>
 
-        {modalOpen && (
-            <div className="modal-overlay" role="dialog" aria-modal="true">
-                <div className="modal-card">
-                    <div className="modal-header">
-                        <h3>Nuevo Egreso</h3>
-                        <button className="close-btn" onClick={()=>setModalOpen(false)} aria-label="Cerrar">×</button>
-                    </div>
-                    <div className="modal-body">
-                        <div className="grid-2">
-                            <label className="fld">Concepto *<input type="text" value={form.concepto} onChange={e=>setForm(f=>({...f, concepto:e.target.value}))} placeholder="Ej: Pago de servicios" /></label>
-                            <label className="fld">Monto *<input type="number" step="0.01" value={form.monto} onChange={e=>setForm(f=>({...f, monto:e.target.value}))} /></label>
-                            <label className="fld">Fecha *<input type="date" value={form.fecha} onChange={e=>setForm(f=>({...f, fecha:e.target.value}))} /></label>
-                            <label className="fld">Categoría *
-                                <select value={form.categoria} onChange={e=>setForm(f=>({...f, categoria:e.target.value}))}>
-                                    <option value="">Seleccione…</option>
-                                    <option>Gastos Operativos</option>
-                                    <option>Servicios</option>
-                                    <option>Arriendo</option>
-                                    <option>Inventario</option>
-                                    <option>Otros</option>
-                                </select>
-                            </label>
-                        </div>
-                        <label className="fld">Descripción
-                            <textarea rows={4} value={form.descripcion} onChange={e=>setForm(f=>({...f, descripcion:e.target.value}))} placeholder="Detalles adicionales del egreso..."></textarea>
-                        </label>
-                    </div>
-                    <div className="modal-footer">
-                        <button className="btn" onClick={()=>setModalOpen(false)}>Cancelar</button>
-                        <button className="btn primary" onClick={submitModal}>Guardar</button>
-                    </div>
-                </div>
-            </div>
-        )}
+        <EgresoModal open={modalOpen} onClose={()=>setModalOpen(false)} onSubmit={handleCreateEgreso} defaultDate={new Date().toISOString().slice(0,10)} />
         </div>
     );
 };
