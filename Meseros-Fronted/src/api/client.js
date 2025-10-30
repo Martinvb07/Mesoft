@@ -73,6 +73,7 @@ export const api = {
 
   // Pedidos
   pedidosEnCurso: () => request('/pedidos/en-curso'),
+  pedidosEnCursoMi: () => request('/pedidos/en-curso/mi'),
   facturas: (params = {}) => {
     const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v!=null && v!==''));
     const qs = q.toString();
@@ -119,6 +120,7 @@ export const api = {
 
   // Nomina
   obtenerNomina: (mesero_id, desde, hasta) => request(`/nomina/movimientos?mesero_id=${mesero_id}&desde=${desde}&hasta=${hasta}`),
+  nominaResumen: (mesero_id) => request(`/nomina/resumen${mesero_id ? `?mesero_id=${mesero_id}` : ''}`),
   crearMovimientoNomina: (data) => request('/nomina/movimientos', { method: 'POST', body: data }),
   eliminarMovimientoNomina: (id) => request(`/nomina/movimientos/${id}`, { method: 'DELETE' }),
   marcarPagoNomina: (data) => request('/nomina/pago', { method: 'POST', body: data }),

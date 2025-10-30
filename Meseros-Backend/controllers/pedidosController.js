@@ -1,4 +1,6 @@
 const db = require('../config/db');
+const { DateTime } = require('luxon');
+const APP_TZ = process.env.APP_TZ || 'America/Bogota';
 
 function recalcPedidoTotal(pedidoId, cb) {
   const sql = 'SELECT COALESCE(SUM(subtotal),0) AS total FROM detallepedido WHERE pedido_id = ?';
@@ -249,7 +251,7 @@ exports.registrarPago = (req, res) => {
       }
     };
 
-    resolveUsuarioId((resErr, usuarioIdMov0) => {
+  resolveUsuarioId((resErr, usuarioIdMov0) => {
       if (resErr) return res.status(500).json({ error: resErr.message });
       const usuarioIdMov = usuarioIdMov0 || req.userId || null;
       // Asegurar que el pedido tenga mesero_id persistido si aún está NULL
@@ -269,10 +271,12 @@ exports.registrarPago = (req, res) => {
       };
 
       ensureMesero(() => {
+        // Fecha/hora consistente en zona APP_TZ
+        const whenSQL = DateTime.now().setZone(APP_TZ).toFormat('yyyy-MM-dd HH:mm:ss');
         // Inserción de venta
-        const insVenta = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (NOW(), \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
+        const insVenta = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (?, \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
         const ventaDesc = `Venta pedido #${pedidoId} mesa ${pedido.mesa_id}`;
-        db.query(insVenta, ['venta', total, ventaDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err2) => {
+        db.query(insVenta, [whenSQL, 'venta', total, ventaDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err2) => {
           if (err2) return res.status(500).json({ error: err2.message });
           const next = () => {
             // Cerrar pedido y marcar mesa a limpieza
@@ -285,9 +289,9 @@ exports.registrarPago = (req, res) => {
             });
           };
           if (propinaNum > 0) {
-            const insProp = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (NOW(), \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
+            const insProp = 'INSERT INTO movimientoscontables (fecha, tipo, categoria, monto, descripcion, mesa_id, pedido_id, usuario_id, restaurant_id) VALUES (?, \'ingreso\', ?, ?, ?, ?, ?, ?, ?)';
             const propDesc = `Propina pedido #${pedidoId} mesa ${pedido.mesa_id}`;
-            db.query(insProp, ['propina', propinaNum, propDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err3) => {
+            db.query(insProp, [whenSQL, 'propina', propinaNum, propDesc, pedido.mesa_id, pedidoId, usuarioIdMov, rid], (err3) => {
               if (err3) return res.status(500).json({ error: err3.message });
               next();
             });
@@ -307,6 +311,25 @@ exports.listarEnCurso = (req, res) => {
   db.query(sql, [rid], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ count: rows.length, pedidos: rows });
+  });
+};
+
+// Pedidos en curso para el mesero actual (por usuario autenticado)
+exports.enCursoDelMeseroActual = (req, res) => {
+  const rid = req.restaurantId;
+  const uid = req.userId;
+  if (!uid) return res.status(400).json({ error: 'usuario_id requerido (X-Usuario-Id)' });
+  // Resolver mesero_id desde usuarios
+  const qMid = 'SELECT id FROM meseros WHERE usuario_id = ? LIMIT 1';
+  db.query(qMid, [uid], (e1, r1) => {
+    if (e1) return res.status(500).json({ error: e1.message });
+    const mid = r1?.[0]?.id || null;
+    if (!mid) return res.json({ count: 0, pedidos: [] });
+    const sql = "SELECT id, mesa_id, mesero_id, total, fecha_hora FROM pedidos WHERE estado = 'en proceso' AND restaurant_id = ? AND mesero_id = ? ORDER BY fecha_hora DESC";
+    db.query(sql, [rid, mid], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ count: rows.length, pedidos: rows });
+    });
   });
 };
 

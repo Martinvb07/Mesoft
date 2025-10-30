@@ -4,19 +4,24 @@ import { Link } from 'react-router-dom';
 import { HiSquares2X2, HiUsers, HiBanknotes, HiCreditCard, HiCalculator, HiUser, HiEnvelope, HiPhone, HiIdentification } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 
-// Helpers de fecha
-const fmtDate = (d) => {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+// Helpers de fecha en zona Colombia
+const toBogotaDateParts = (date = new Date()) => {
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const parts = fmt.formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+    return { year: parts.year, month: parts.month, day: parts.day };
 };
-const todayKey = () => fmtDate(new Date());
+const todayKey = () => {
+    const { year, month, day } = toBogotaDateParts();
+    return `${year}-${month}-${day}`;
+};
 const monthRange = () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return { desde: fmtDate(start), hasta: fmtDate(end) };
+    // calcular en zona Bogotá
+    const { year, month } = toBogotaDateParts();
+    const y = Number(year), m = Number(month) - 1;
+    const start = new Date(Date.UTC(y, m, 1));
+    const end = new Date(Date.UTC(y, m + 1, 0));
+    const pad = (n) => String(n).padStart(2, '0');
+    return { desde: `${y}-${pad(m + 1)}-01`, hasta: `${y}-${pad(m + 1)}-${pad(end.getUTCDate())}` };
 };
 
 const Home = () => {
@@ -99,20 +104,16 @@ const Home = () => {
         loadMesero();
     }, [userId]);
 
-    // KPI Ventas de hoy por mesero (no usar métricas globales del admin)
+    // KPI Ventas de hoy (cómputo backend con zona Colombia)
     useEffect(() => {
-        const loadVentasMeseroHoy = async () => {
-            if (!meseroInfo?.id) return;
-            const hoy = todayKey();
+        const loadVentasHoy = async () => {
             try {
-                const facturas = await api.facturas({ desde: hoy, hasta: hoy, limit: 1000 }).catch(() => []);
-                const total = (Array.isArray(facturas) ? facturas : []).filter(f => Number(f.mesero_id || 0) === Number(meseroInfo.id))
-                    .reduce((s, f) => s + Number(f.total || 0), 0);
-                setVentasHoy(total);
+                const r = await api.ventasHoy();
+                setVentasHoy(Number(r?.ventas || 0));
             } catch { setVentasHoy(0); }
         };
-        loadVentasMeseroHoy();
-    }, [meseroInfo?.id]);
+        loadVentasHoy();
+    }, []);
 
     useEffect(() => {
         const loadPropinasYMesasHoy = async () => {
@@ -123,14 +124,9 @@ const Home = () => {
                 const p = await api.propinas(meseroInfo.id, hoy, hoy).catch(() => ({ propinas: 0 }));
                 setPropinasHoy(Number(p?.propinas || 0));
 
-                // Mesas atendidas hoy (aprox): pedidos en curso hoy de este mesero
-                const enCurso = await api.pedidosEnCurso().catch(() => ({ pedidos: [] }));
-                const count = (enCurso?.pedidos || []).filter(pe => {
-                    const fh = pe?.fecha_hora ? new Date(pe.fecha_hora) : null;
-                    const sameDay = fh ? fmtDate(fh) === hoy : false;
-                    return sameDay && Number(pe.mesero_id || 0) === Number(meseroInfo.id);
-                }).length;
-                setMesasHoy(count);
+                // Mesas activas actuales del mesero
+                const enCursoMi = await api.pedidosEnCursoMi().catch(() => ({ count: 0 }));
+                setMesasHoy(Number(enCursoMi?.count || 0));
             } catch {
                 setPropinasHoy(0);
                 setMesasHoy(0);
@@ -139,21 +135,18 @@ const Home = () => {
         loadPropinasYMesasHoy();
     }, [meseroInfo?.id]);
 
-    // Nómina (mes actual) desde API
+    // Nómina (mes actual) desde API (resumen backend)
     useEffect(() => {
         const loadNomina = async () => {
             if (!meseroInfo?.id) return;
-            const { desde, hasta } = monthRange();
             try {
-                const movs = await api.obtenerNomina(meseroInfo.id, desde, hasta).catch(() => []);
-                const sum = (tipo) => movs.filter(m => String(m.tipo || '').toLowerCase() === tipo).reduce((s, m) => s + Number(m.monto || 0), 0);
-                setBonosMes(sum('bono'));
-                setAdelantosMes(sum('adelanto'));
-                setDescuentosMes(sum('descuento'));
-                setPagosNominaMes(sum('pago'));
-                // Propinas del mes
-                const pr = await api.propinas(meseroInfo.id, desde, hasta).catch(() => ({ propinas: 0 }));
-                setPropinasMes(Number(pr?.propinas || 0));
+                const r = await api.nominaResumen(meseroInfo.id);
+                setSueldoBase(Number(r?.sueldo_base || 0));
+                setBonosMes(Number(r?.bonos || 0));
+                setAdelantosMes(Number(r?.adelantos || 0));
+                setDescuentosMes(Number(r?.descuentos || 0));
+                setPagosNominaMes(Number(r?.pagado || 0));
+                setPropinasMes(Number(r?.propinas_mes || 0));
             } catch {
                 setBonosMes(0); setAdelantosMes(0); setDescuentosMes(0); setPagosNominaMes(0); setPropinasMes(0);
             }
