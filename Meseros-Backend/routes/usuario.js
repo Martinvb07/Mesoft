@@ -5,71 +5,63 @@ const db = require('../config/db');
 const bcrypt = require('bcrypt');
 
 // 🧩 Obtener todos los usuarios
-router.get('/', async (req, res) => {
-  try {
-    const results = await Usuario.getAll();
+router.get('/', (req, res) => {
+  Usuario.getAll((err, results) => {
+    if (err) return res.status(500).json({ error: err });
     res.json(results);
-  } catch (err) {
-    console.error('Error obteniendo usuarios:', err);
-    res.status(500).json({ error: err.message });
-  }
+  });
 });
 
 // 🧩 Obtener usuario por ID
-router.get('/:id', async (req, res) => {
-  try {
-    const usuario = await Usuario.getById(req.params.id);
-    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
-    res.json(usuario);
-  } catch (err) {
-    console.error('Error obteniendo usuario por ID:', err);
-    res.status(500).json({ error: err.message });
-  }
+router.get('/:id', (req, res) => {
+  Usuario.getById(req.params.id, (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(results[0]);
+  });
 });
 
-// 🧩 Crear usuario manualmente (solo admins)
-router.post('/', async (req, res) => {
-  try {
-    const payload = { ...(req.body || {}) };
-    const raw = String(payload.contrasena || '');
-    const looksHashed = raw.startsWith('$2');
+// 🧩 Crear usuario manualmente (poco usado, solo admins)
+router.post('/', (req, res) => {
+  const payload = { ...(req.body || {}) };
+  const raw = String(payload.contrasena || '');
+  const looksHashed = raw.startsWith('$2');
 
-    // Rol por defecto
-    if (!payload.rol) payload.rol = 'mesero';
+  if (!payload.rol) payload.rol = 'mesero';
 
-    // Si la contraseña viene en texto plano, hashearla
-    if (raw && !looksHashed) {
-      const hash = await bcrypt.hash(raw, 10);
+  const doCreate = (finalPayload) => {
+    Usuario.create(finalPayload, (err, results) => {
+      if (err) return res.status(500).json({ error: err });
+      res.json({ id: results.insertId, ...finalPayload });
+    });
+  };
+
+  if (raw && !looksHashed) {
+    bcrypt.hash(raw, 10, (eH, hash) => {
+      if (eH) return res.status(500).json({ error: 'Error generando hash' });
       payload.contrasena = hash;
-    }
-
-    const id = await Usuario.create(payload);
-    res.json({ id, ...payload });
-  } catch (err) {
-    console.error('Error creando usuario:', err);
-    res.status(500).json({ error: 'Error al crear usuario' });
+      doCreate(payload);
+    });
+    return;
   }
+  doCreate(payload);
 });
 
 // 🧩 Login
-router.post('/login', async (req, res) => {
-  try {
-    const { correo, contrasena } = req.body;
+router.post('/login', (req, res) => {
+  const { correo, contrasena } = req.body;
 
-    if (!correo || !contrasena) {
-      return res.status(400).json({ success: false, error: 'Correo y contraseña requeridos.' });
-    }
+  if (!correo || !contrasena) {
+    return res.status(400).json({ success: false, error: 'Correo y contraseña requeridos.' });
+  }
 
-    const usuario = await Usuario.validateLogin(correo, contrasena);
+  Usuario.validateLogin(correo, contrasena, (err, usuario) => {
     console.log('Resultado validación:', usuario ? 'OK' : 'FALLÓ');
-
+    if (err) return res.status(500).json({ success: false, error: 'Error interno.' });
     if (!usuario) {
       return res.status(401).json({ success: false, error: 'Credenciales incorrectas.' });
     }
 
-    // ✅ Limpiar contraseña antes de responder
     const { contrasena: _, ...userData } = usuario;
-
     const rid = Number(usuario.restaurant_id);
     const hasRid = Number.isFinite(rid) && rid > 0;
 
@@ -81,35 +73,37 @@ router.post('/login', async (req, res) => {
       return respondOk(rid);
     }
 
-    // 2️⃣ Resolver restaurante por nombre
     const restauranteNombre = usuario.restaurante || usuario.restaurant || null;
+
     if (!restauranteNombre) {
-      const [rows] = await db.query('SELECT id FROM restaurantes ORDER BY id ASC LIMIT 1');
-      return respondOk(rows[0]?.id || null);
+      db.query('SELECT id FROM restaurantes ORDER BY id ASC LIMIT 1', (e2, rows) => {
+        if (e2) return res.status(500).json({ success: false, error: 'Error obteniendo restaurante.' });
+        const fallbackId = rows[0]?.id || null;
+        respondOk(fallbackId);
+      });
+      return;
     }
 
-    // 3️⃣ Buscar restaurante por nombre o crearlo
-    const [rows] = await db.query('SELECT id FROM restaurantes WHERE nombre = ? LIMIT 1', [restauranteNombre]);
-    if (rows.length) {
-      return respondOk(rows[0].id);
-    }
-
-    try {
-      const [insert] = await db.query('INSERT INTO restaurantes (nombre) VALUES (?)', [restauranteNombre]);
-      respondOk(insert.insertId);
-    } catch (e4) {
-      if (e4.code === 'ER_DUP_ENTRY') {
-        const [r2] = await db.query('SELECT id FROM restaurantes WHERE nombre = ? LIMIT 1', [restauranteNombre]);
-        return respondOk(r2[0]?.id || null);
+    db.query('SELECT id FROM restaurantes WHERE nombre = ? LIMIT 1', [restauranteNombre], (e3, rows) => {
+      if (e3) return res.status(500).json({ success: false, error: 'Error buscando restaurante.' });
+      if (rows.length) {
+        return respondOk(rows[0].id);
       }
-      console.error('Error creando restaurante:', e4);
-      res.status(500).json({ success: false, error: 'Error creando restaurante.' });
-    }
 
-  } catch (err) {
-    console.error('Error en login:', err);
-    res.status(500).json({ success: false, error: 'Error interno en login.' });
-  }
+      db.query('INSERT INTO restaurantes (nombre) VALUES (?)', [restauranteNombre], (e4, result) => {
+        if (e4) {
+          if (e4.code === 'ER_DUP_ENTRY') {
+            return db.query('SELECT id FROM restaurantes WHERE nombre = ? LIMIT 1', [restauranteNombre], (e5, r2) => {
+              if (e5) return res.status(500).json({ success: false, error: 'Error recuperando restaurante.' });
+              return respondOk(r2[0]?.id || null);
+            });
+          }
+          return res.status(500).json({ success: false, error: 'Error creando restaurante.' });
+        }
+        respondOk(result.insertId);
+      });
+    });
+  });
 });
 
 module.exports = router;
