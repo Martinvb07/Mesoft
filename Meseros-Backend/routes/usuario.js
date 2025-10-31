@@ -27,7 +27,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 🧩 Crear usuario manualmente (poco usado, solo admins)
+// 🧩 Crear usuario manualmente (solo admins)
 router.post('/', async (req, res) => {
   try {
     const payload = { ...(req.body || {}) };
