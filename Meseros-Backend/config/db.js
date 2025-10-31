@@ -1,6 +1,6 @@
+// config/db.js
 const mysql = require('mysql2');
 
-// Crear un pool de conexiones (en lugar de una sola conexión)
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -11,26 +11,48 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Verificar conexión inicial
-pool.getConnection((err, connection) => {
+// Prueba de conexión inicial
+pool.getConnection((err, conn) => {
   if (err) {
-    console.error(' Error al conectar a la base de datos:', err.message);
+    console.error('❌ Error al conectar a la base de datos:', err.message);
   } else {
-    console.log('✅Conexión exitosa a la base de datos');
-    connection.release();
+    console.log('✅ Conexión exitosa a la base de datos');
+    conn.release();
   }
 });
 
-// Mantener viva la conexión con un ping cada minuto
-setInterval(async () => {
-  try {
-    const promisePool = pool.promise();
-    await promisePool.query('SELECT 1');
-    
-  } catch (err) {
-    console.error('Error en ping DB:', err.message);
-  }
-}, 60000); // cada 60 segundos
+// Pool en modo promesa
+const p = pool.promise();
 
-// Exportar el pool como promesa
-module.exports = pool.promise();
+/**
+ * Adapter híbrido:
+ * - Si llamas con callback (legacy): db.query(sql, params?, cb)
+ * - Si llamas con await: const [rows, fields] = await db.query(sql, params)
+ */
+const db = {
+  query(sql, params, cb) {
+    // params opcional
+    if (typeof params === 'function') { cb = params; params = []; }
+
+    const promise = p.query(sql, params || []);
+
+    if (typeof cb === 'function') {
+      // Compatibilidad con código antiguo: callback(err, rows)
+      promise
+        .then(([rows]) => cb(null, rows))
+        .catch((err) => cb(err, null));
+      return; // cuando hay callback no devolvemos promesa
+    }
+
+    // Modo moderno: devuelve una promesa [rows, fields]
+    return promise;
+  },
+
+  // escape/format
+  escape: mysql.escape,
+  format: mysql.format,
+  pool,      // acceso al pool original (por si acaso)
+  p          // acceso al promise pool (si lo requieres explícito)
+};
+
+module.exports = db;
