@@ -1,39 +1,70 @@
 # Meseros Frontend (React + Vite)
 
-Este frontend consume el backend Express de Meseros para reemplazar localStorage por persistencia real (MySQL).
+Frontend responsive (móvil/tablet/desktop) para la operación de meseros y el panel administrativo. Consume el backend de Meseros expuesto bajo una URL pública (no requiere localhost).
 
-## Variables de entorno
+## Producción (REAL)
 
-Crea un archivo `.env` en `Meseros-Fronted/` (junto a `package.json`) con:
+- Sitio: https://srv1037585.hstgr.cloud
+- API base: https://srv1037585.hstgr.cloud/api
 
-```
-VITE_API_BASE=http://localhost:3001
-```
+## URL del API (VITE_API_BASE)
 
-Esto apunta al puerto del backend. Cambia el host/puerto según tu entorno.
-
-## Cómo ejecutar
-
-1. Inicia el backend (en otra terminal):
+Este proyecto ya incluye un archivo de producción apuntando a tu backend en la nube:
 
 ```
-node ../Meseros-Backend/index.js
+Meseros-Fronted/.env.production
+VITE_API_BASE=https://srv1037585.hstgr.cloud/api
 ```
 
-2. Inicia el frontend (esta carpeta):
+Si tu dominio cambia, ajusta ese valor. En desarrollo, también puedes crear `.env.development.local` y poner ahí tu `VITE_API_BASE`.
+
+Ejemplos:
 
 ```
+# Producción
+VITE_API_BASE=https://tu-backend.com/api
+
+# Desarrollo (apuntando a backend remoto)
+VITE_API_BASE=https://tu-backend.com/api
+```
+
+## Ejecutar
+
+Producción (recomendado):
+
+1. Instala dependencias y genera build estático:
+
+```pwsh
+npm install
+npm run build
+```
+
+2. Sube el contenido de `dist/` a tu hosting/CDN.
+
+Desarrollo local (opcional):
+
+```pwsh
 npm install
 npm run dev
 ```
 
-Abre el navegador en la URL que Vite indique (por defecto `http://localhost:5173`).
+Vite mostrará la URL local. El frontend usará la `VITE_API_BASE` configurada (remota o local) para consumir la API.
 
-## Secciones integradas con la API
+## Estructura y estilos
 
-- Menu-Admin → Meseros: listado/crear/editar/eliminar via `/meseros`.
-- Menu-Admin → Mesas: listado y estados via `/mesas` (solo lectura en Admin por ahora).
-- Menu-Admin → Home: KPIs usando `/finanzas/ventas-hoy`, `/finanzas/balance-hoy` y `/mesas`.
-- Menu-Admin → Nóminas: movimientos vía `/nomina/movimientos` y selección de meseros con `/meseros`.
+- Rutas en `src/App.jsx` separadas por roles (Admin, Mesero) y landing pública.
+- Estilos responsive globales en `src/styles/responsive.css` y `src/styles/navbar.responsive.css`.
+- Utilidades disponibles: `.container`, `.grid`, `.table-responsive`, helpers de visibilidad y flex.
 
-Si el backend no está disponible, algunas vistas muestran datos de ejemplo mínimos para no romper la UI.
+## Integraciones con la API
+
+- Admin → Meseros: CRUD vía `/meseros`.
+- Admin → Mesas: listado y estados vía `/mesas`.
+- Admin → Home: KPIs con `/finanzas/ventas-hoy`, `/finanzas/balance-hoy` y `/mesas`.
+- Admin → Nóminas: movimientos vía `/nomina/movimientos` y selección con `/meseros`.
+
+## Solución de problemas
+
+- CORS: asegúrate que el backend permita el dominio del frontend en `CORS_ORIGIN`.
+- 404/500: revisa `/healthz` del backend y consola del navegador.
+- Estilos: si ves overflow en móvil, usa `.table-responsive` o evita anchos fijos en CSS.
