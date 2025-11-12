@@ -2,70 +2,72 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import NavbarInicio from './NavbarInicio';
 import '../../css/Navbar/Inicio/Inicio.css';
+// Usamos iconos de Heroicons vía react-icons (ya instalada en el proyecto)
+import { HiCog6Tooth, HiShieldCheck, HiLightBulb, HiClock } from 'react-icons/hi2';
 
 const heroCards = [
-	{
-		icon: '/src/assets/image/LogoAutomatización.png',
-		title: 'Automatiza tareas',
-		desc: 'Asignación automática de meseros y mesas',
-		color: '#f97316',
-	},
-	{
-		icon: '/src/assets/image/LogoSeguridad.png',
-		title: 'Seguridad',
-		desc: 'Roles y permisos, respaldo y auditoría',
-		color: '#2563eb',
-	},
-	{
-		icon: '/src/assets/image/LogoInovacion.png',
-		title: 'Intención',
-		desc: 'Pensar podremos',
-		color: '#f97316',
-	},
+    {
+        icon: HiCog6Tooth,
+        title: 'Automatiza tareas',
+        desc: 'Asignación automática de meseros y mesas',
+        color: '#f97316',
+    },
+    {
+        icon: HiShieldCheck,
+        title: 'Seguridad',
+        desc: 'Roles y permisos, respaldo y auditoría',
+        color: '#2563eb',
+    },
+    {
+        icon: HiLightBulb,
+        title: 'Intención',
+        desc: 'Pensar podremos',
+        color: '#f97316',
+    },
 ];
 
 const especialidades = [
-	{
-		icon: '/src/assets/image/LogoAutomatización.png',
-		title: 'Automatización y Control',
-		items: [
-			'Control en tiempo real de mesas',
-			'Asignación automática de personal',
-			'Reportes de productividad y KPIs',
-			'Integración con POS y pagos',
-		],
-		color: '#f97316',
-	},
-	{
-		icon: '/src/assets/image/LogoSeguridad.png',
-		title: 'Seguridad y Usuarios',
-		items: [
-			'Autentización y auditoría',
-			'Gestión de roles y permisos',
-			'Respaldo automático y recuperación',
-			'Soporte y mantenimiento',
-		],
-		color: '#f97316',
-	},
-	{
-		icon: '/src/assets/image/LogoInovacion.png',
-		title: 'Innovación y Equipo',
-		items: [
-			'Capacitación integrada',
-			'Flujos de trabajo personalizables',
-			'Panel de desempeño de equipo',
-			'Actualizaciones con nuevas funciones',
-		],
-		color: '#f97316',
-	},
-	{
-		icon: '/src/assets/image/LogoAutomatización.png',
-		title: 'Optimización de tiempos',
-		items: [
-			'Reducción de espera y flujos de atención más rápidos',
-		],
-		color: '#f97316',
-	},
+    {
+        icon: HiCog6Tooth,
+        title: 'Automatización y Control',
+        items: [
+            'Control en tiempo real de mesas',
+            'Asignación automática de personal',
+            'Reportes de productividad y KPIs',
+            'Integración con POS y pagos',
+        ],
+        color: '#f97316',
+    },
+    {
+        icon: HiShieldCheck,
+        title: 'Seguridad y Usuarios',
+        items: [
+            'Autenticación y auditoría',
+            'Gestión de roles y permisos',
+            'Respaldo automático y recuperación',
+            'Soporte y mantenimiento',
+        ],
+        color: '#2563eb',
+    },
+    {
+        icon: HiLightBulb,
+        title: 'Innovación y Equipo',
+        items: [
+            'Capacitación integrada',
+            'Flujos de trabajo personalizables',
+            'Panel de desempeño de equipo',
+            'Actualizaciones con nuevas funciones',
+        ],
+        color: '#f97316',
+    },
+    {
+        icon: HiClock,
+        title: 'Optimización de tiempos',
+        items: [
+            'Reducción de espera y flujos de atención más rápidos',
+        ],
+        color: '#16a34a',
+    },
 ];
 
 const Inicio = () => {
@@ -96,20 +98,23 @@ const Inicio = () => {
                     </div>
                 </div>
                 <div className="inicio-hero-cards">
-                    {heroCards.map((card, idx) => (
-                        <div className="inicio-hero-card" key={idx}>
-                            <div
-                                className="inicio-hero-icon"
-                                style={{ background: card.color }}
-                            >
-                                <img src={card.icon} alt="icon" />
+                    {heroCards.map((card, idx) => {
+                        const Icon = card.icon;
+                        return (
+                            <div className="inicio-hero-card" key={idx}>
+                                <div
+                                    className="inicio-hero-icon"
+                                    style={{ background: card.color }}
+                                >
+                                    <Icon size={28} color="#ffffff" />
+                                </div>
+                                <div>
+                                    <h3 className="inicio-hero-card-title">{card.title}</h3>
+                                    <p className="inicio-hero-card-desc">{card.desc}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="inicio-hero-card-title">{card.title}</h3>
-                                <p className="inicio-hero-card-desc">{card.desc}</p>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
             <div className="inicio-especialidades-section">
@@ -117,24 +122,27 @@ const Inicio = () => {
                     Especialidades de Mesoft
                 </h2>
                 <div className="inicio-especialidades-grid">
-                    {especialidades.map((esp, idx) => (
-                        <div className="inicio-especialidad-card" key={idx}>
-                            <div
-                                className="inicio-especialidad-icon"
-                                style={{ background: esp.color }}
-                            >
-                                <img src={esp.icon} alt="icon" />
+                    {especialidades.map((esp, idx) => {
+                        const Icon = esp.icon;
+                        return (
+                            <div className="inicio-especialidad-card" key={idx}>
+                                <div
+                                    className="inicio-especialidad-icon"
+                                    style={{ background: esp.color }}
+                                >
+                                    <Icon size={28} color="#ffffff" />
+                                </div>
+                                <div>
+                                    <h3 className="inicio-especialidad-title">{esp.title}</h3>
+                                    <ul className="inicio-especialidad-list">
+                                        {esp.items.map((item, i) => (
+                                            <li key={i}>{item}</li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="inicio-especialidad-title">{esp.title}</h3>
-                                <ul className="inicio-especialidad-list">
-                                    {esp.items.map((item, i) => (
-                                        <li key={i}>{item}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </>
