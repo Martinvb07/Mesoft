@@ -21,7 +21,7 @@ const heroCards = [
     {
         icon: HiLightBulb,
         title: 'Intención',
-        desc: 'Pensar podremos',
+        desc: 'Ser la mejor herramienta para la gestión de restaurantes',
         color: '#f97316',
     },
 ];
