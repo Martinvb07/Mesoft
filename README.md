@@ -4,8 +4,8 @@ Mesoft es una plataforma para gestionar un restaurante de forma simple: mesas y 
 
 ## Producción (REAL)
 
-- Sitio: https://srv1037585.hstgr.cloud
-- API: https://srv1037585.hstgr.cloud/api
+- Sitio: https://mesoft.store/
+- API: *****
 
 ## ¿Qué puedo hacer con Mesoft?
 
