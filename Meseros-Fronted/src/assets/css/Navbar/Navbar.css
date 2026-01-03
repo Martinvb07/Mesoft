@@ -190,12 +190,13 @@
         gap: 0.4rem;
         padding: 0 0.75rem;
         max-height: 0;
-        overflow: hidden;
+        overflow-y: auto;           /* permite scroll si hay muchas opciones */
+        overflow-x: hidden;
         transition: max-height 0.2s ease, padding-top 0.2s ease, padding-bottom 0.2s ease;
     }
 
     .navbar-links.open {
-        max-height: 400px; /* suficiente para todos los enlaces */
+        max-height: 70vh; /* usa hasta 70% de la altura de pantalla */
         padding-top: 0.5rem;
         padding-bottom: 0.6rem;
     }
@@ -209,12 +210,23 @@
     }
 
     .dropdown-menu {
-        position: static;
+        position: static;           /* se integra al flujo de la lista */
         transform: none;
         box-shadow: none;
         border: none;
-        padding-left: 0.8rem;
-        margin-top: 0.15rem;
+        background: transparent;    /* mismo fondo que el panel */
+        border-radius: 0;
+        padding: 0 0 0 1.4rem;      /* pequeño sangrado hacia la derecha */
+        margin-top: 0.1rem;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .dropdown-item {
+        padding: 0.35rem 0.6rem;
+        border-radius: 4px;
+        width: 100%;
+        box-sizing: border-box;
     }
 }
 

@@ -104,3 +104,16 @@
 .table-consumos thead th { text-align: left; color: var(--muted); font-weight: 700; }
 .table-consumos tfoot td { border-top: 2px solid var(--card-border); }
 .td-right { text-align: right; }
+
+/* Ajustes responsive extra para el modal de Pedido (mesero) */
+@media (max-width: 700px) {
+	.modal-card.lg {
+		max-width: 100%;
+	}
+	.modal-grid {
+		grid-template-columns: 1fr; /* apila Producto y Cantidad */
+	}
+	.consumos-wrap {
+		overflow-x: auto; /* permite hacer scroll horizontal si la tabla se estrecha mucho */
+	}
+}
