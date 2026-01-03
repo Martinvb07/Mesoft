@@ -463,7 +463,41 @@ const Mesas = () => {
                                 </label>
                                 <label>
                                     <span>Cantidad</span>
-                                    <input type="number" min="1" value={nuevoItem.cantidad} onChange={e=>setNuevoItem(prev=>({...prev, cantidad: Number(e.target.value||1)}))} disabled={!pedidoModal.editable} />
+                                    <div className="qty-input">
+                                        <button
+                                            type="button"
+                                            className="qty-btn"
+                                            onClick={() => setNuevoItem(prev => ({
+                                                ...prev,
+                                                cantidad: Math.max(1, Number(prev.cantidad || 1) - 1),
+                                            }))}
+                                            disabled={!pedidoModal.editable}
+                                        >
+                                            −
+                                        </button>
+                                        <input
+                                            className="qty-field"
+                                            type="number"
+                                            min="1"
+                                            value={nuevoItem.cantidad}
+                                            onChange={e => setNuevoItem(prev => ({
+                                                ...prev,
+                                                cantidad: Math.max(1, Number(e.target.value || 1)),
+                                            }))}
+                                            disabled={!pedidoModal.editable}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="qty-btn"
+                                            onClick={() => setNuevoItem(prev => ({
+                                                ...prev,
+                                                cantidad: Number(prev.cantidad || 1) + 1,
+                                            }))}
+                                            disabled={!pedidoModal.editable}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
                                 </label>
                                 <div style={{alignSelf:'end'}}>
                                     <button className="btn" onClick={agregarItem} disabled={!pedidoModal.editable}>Agregar</button>

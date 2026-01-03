@@ -110,10 +110,52 @@
 	.modal-card.lg {
 		max-width: 100%;
 	}
-	.modal-grid {
-		grid-template-columns: 1fr; /* apila Producto y Cantidad */
-	}
 	.consumos-wrap {
 		overflow-x: auto; /* permite hacer scroll horizontal si la tabla se estrecha mucho */
 	}
+}
+
+/* Control de cantidad con botones +/- */
+.qty-input {
+	display: inline-flex;
+	align-items: center;
+	gap: .35rem;
+}
+
+.qty-field {
+	width: 64px;
+	text-align: center;
+	border: 1px solid var(--card-border);
+	border-radius: 10px;
+	padding: .35rem .25rem;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.qty-btn {
+	appearance: none;
+	border: 1px solid var(--card-border);
+	background: #fff;
+	color: var(--ink);
+	border-radius: 999px;
+	width: 32px;
+	height: 32px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	cursor: pointer;
+	box-shadow: var(--shadow-sm);
+	transition: background .15s, box-shadow .15s, transform .15s;
+}
+
+.qty-btn:hover:enabled {
+	background: #f3f4f6;
+	box-shadow: var(--shadow-lg);
+	transform: translateY(-1px);
+}
+
+.qty-btn:disabled {
+	opacity: .6;
+	cursor: default;
 }
