@@ -16,7 +16,7 @@ body {
     background: #fff;
     border-radius: 18px;
     box-shadow: 0 8px 32px rgba(44,62,80,0.13);
-    padding: 2.8rem 2.8rem 2.2rem 2.8rem;
+    padding: 2.6rem 2.4rem 1.8rem 2.4rem;
     max-width: 600px;
     width: 100%;
     display: flex;
@@ -115,7 +115,7 @@ body {
     box-shadow: 0 2px 8px rgba(44,62,80,0.10);
     cursor: pointer;
     transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
-    margin-top: 0.7rem;
+    margin-top: 0.4rem;
     letter-spacing: 0.5px;
 }
 
@@ -141,7 +141,7 @@ body {
     }
     .solicitar-hero-left {
         max-width: 94vw;
-        padding: 1.8rem 1.2rem 1.6rem;
+        padding: 1.6rem 1.1rem 1.1rem;
         border-radius: 16px;
     }
     .solicitar-form-row {
@@ -165,5 +165,9 @@ body {
     .solicitar-input, .solicitar-btn-main, .solicitar-textarea {
         font-size: 0.98rem;
         padding: 0.65rem 0.8rem;
+    }
+
+    .solicitar-btn-main {
+        margin-top: 0.25rem;
     }
 }
