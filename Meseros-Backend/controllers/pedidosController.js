@@ -2,12 +2,20 @@ const db = require('../config/db');
 const { DateTime } = require('luxon');
 const APP_TZ = process.env.APP_TZ || 'America/Bogota';
 
-function recalcPedidoTotal(pedidoId, cb) {
+// Permite usar tanto el pool global como una conexión de transacción
+function recalcPedidoTotal(pedidoId, clientOrCb, maybeCb) {
+  let client = db;
+  let cb = maybeCb;
+  if (typeof clientOrCb === 'function') {
+    cb = clientOrCb;
+  } else if (clientOrCb) {
+    client = clientOrCb;
+  }
   const sql = 'SELECT COALESCE(SUM(subtotal),0) AS total FROM detallepedido WHERE pedido_id = ?';
-  db.query(sql, [pedidoId], (err, rows) => {
+  client.query(sql, [pedidoId], (err, rows) => {
     if (err) return cb(err);
     const total = rows[0]?.total || 0;
-    db.query('UPDATE pedidos SET total = ? WHERE id = ?', [total, pedidoId], (err2) => {
+    client.query('UPDATE pedidos SET total = ? WHERE id = ?', [total, pedidoId], (err2) => {
       if (err2) return cb(err2);
       cb(null, total);
     });
@@ -51,110 +59,118 @@ exports.agregarItem = (req, res) => {
     if (e0) return res.status(500).json({ error: e0.message });
     if (!r0.length) return res.status(404).json({ error: 'Pedido no encontrado' });
 
-    const mysql = db;
-    mysql.beginTransaction((errTx) => {
-      if (errTx) return res.status(500).json({ error: 'No se pudo iniciar la transacción' });
-
-      // 1) Obtener producto para conocer precio y stock
-      const getProducto = (cb) => {
-        const sql = 'SELECT id, nombre, precio, stock, min_stock, restaurant_id FROM productos WHERE id = ?';
-        mysql.query(sql, [producto_id], (errP, rowsP) => {
-          if (errP) return cb(errP);
-          if (!rowsP.length) return cb(Object.assign(new Error('Producto no encontrado'), { status: 404 }));
-          const prod = rowsP[0];
-          // Si hay restaurant_id en productos y no coincide, bloquear
-          if (prod.restaurant_id != null && Number(prod.restaurant_id) !== Number(rid)) {
-            return cb(Object.assign(new Error('Producto no pertenece al restaurante'), { status: 400 }));
-          }
-          cb(null, {
-            nombre: prod.nombre,
-            precio: Number(prod.precio || 0),
-            stock: Number(prod.stock ?? 0),
-            min_stock: (prod.min_stock == null ? null : Number(prod.min_stock)),
-            // Consideramos que hay gestión de stock si la columna existe, aunque su valor sea NULL.
-            // Esto permite inicializar de facto el stock en 0 y aplicar reglas/alertas.
-            hasStock: Object.prototype.hasOwnProperty.call(prod, 'stock')
-          });
-        });
-      };
-
-      getProducto((eP, info) => {
-        if (eP) {
-          const code = eP.status || 500;
-          return mysql.rollback(() => res.status(code).json({ error: eP.message }));
+    db.getConnection((errConn, conn) => {
+      if (errConn) return res.status(500).json({ error: 'No se pudo obtener conexión de base de datos' });
+      conn.beginTransaction((errTx) => {
+        if (errTx) {
+          conn.release();
+          return res.status(500).json({ error: 'No se pudo iniciar la transacción' });
         }
-        const cant = Number(cantidad || 0);
-        if (!Number.isFinite(cant) || cant <= 0) {
-          return mysql.rollback(() => res.status(400).json({ error: 'Cantidad inválida' }));
-        }
-        const precio = info.precio;
-        const subtotal = precio * cant;
 
-        // 2) Intentar decrementar stock de forma atómica si hay gestión de stock
-        const updateStock = (cb) => {
-          if (!info.hasStock) return cb(); // si la tabla no tiene columna stock, no gestionamos
-          // Tratamos NULL como 0 para permitir gestión desde 0 unidades.
-          const sqlUpdRid = 'UPDATE productos SET stock = IFNULL(stock,0) - ? WHERE id = ? AND restaurant_id = ? AND IFNULL(stock,0) >= ?';
-          mysql.query(sqlUpdRid, [cant, producto_id, rid, cant], (eU, rU) => {
-            if (eU && eU.code === 'ER_BAD_FIELD_ERROR') {
-              const sqlUpd = 'UPDATE productos SET stock = IFNULL(stock,0) - ? WHERE id = ? AND IFNULL(stock,0) >= ?';
-              return mysql.query(sqlUpd, [cant, producto_id, cant], (eU2, rU2) => {
-                if (eU2) return cb(eU2);
-                if (!rU2.affectedRows) {
-                  const err = Object.assign(new Error('Stock insuficiente'), { code: 'STOCK_INSUFICIENTE', disponible: info.stock });
-                  return cb(err);
-                }
-                cb();
-              });
-            }
-            if (eU) return cb(eU);
-            if (!rU.affectedRows) {
-              const err = Object.assign(new Error('Stock insuficiente'), { code: 'STOCK_INSUFICIENTE', disponible: info.stock });
-              return cb(err);
-            }
-            cb();
+        const rollbackAndSend = (status, payload) => {
+          conn.rollback(() => {
+            conn.release();
+            res.status(status).json(payload);
           });
         };
 
-        updateStock((eS) => {
-          if (eS) {
-            const payload = { error: eS.message };
-            if (eS.code === 'STOCK_INSUFICIENTE') {
-              payload.code = 'STOCK_INSUFICIENTE';
-              if (typeof eS.disponible === 'number') payload.disponible = eS.disponible;
+        // 1) Obtener producto para conocer precio y stock
+        const getProducto = (cb) => {
+          const sql = 'SELECT id, nombre, precio, stock, min_stock, restaurant_id FROM productos WHERE id = ?';
+          conn.query(sql, [producto_id], (errP, rowsP) => {
+            if (errP) return cb(errP);
+            if (!rowsP.length) return cb(Object.assign(new Error('Producto no encontrado'), { status: 404 }));
+            const prod = rowsP[0];
+            if (prod.restaurant_id != null && Number(prod.restaurant_id) !== Number(rid)) {
+              return cb(Object.assign(new Error('Producto no pertenece al restaurante'), { status: 400 }));
             }
-            return mysql.rollback(() => res.status(409).json(payload));
-          }
+            cb(null, {
+              nombre: prod.nombre,
+              precio: Number(prod.precio || 0),
+              stock: Number(prod.stock ?? 0),
+              min_stock: (prod.min_stock == null ? null : Number(prod.min_stock)),
+              hasStock: Object.prototype.hasOwnProperty.call(prod, 'stock')
+            });
+          });
+        };
 
-          // 3) Insertar detalle
-          const insert = 'INSERT INTO detallepedido (pedido_id, producto_id, cantidad, subtotal) VALUES (?, ?, ?, ?)';
-          mysql.query(insert, [pedidoId, producto_id, cant, subtotal], (err2, result) => {
-            if (err2) return mysql.rollback(() => res.status(500).json({ error: err2.message }));
-            recalcPedidoTotal(pedidoId, (err3, total) => {
-              if (err3) return mysql.rollback(() => res.status(500).json({ error: err3.message }));
-              mysql.commit((errC) => {
-                if (errC) return mysql.rollback(() => res.status(500).json({ error: 'No se pudo confirmar' }));
-                // Advertencia de bajo stock para el cliente
-                let warnings = undefined;
-                if (info.hasStock && info.min_stock != null) {
-                  const restante = Number((info.stock || 0) - cant);
-                  if (restante <= Number(info.min_stock)) {
-                    warnings = {
-                      lowStock: true,
-                      producto_id: Number(producto_id),
-                      nombre: info.nombre,
-                      restante,
-                      min_stock: Number(info.min_stock)
-                    };
+        getProducto((eP, info) => {
+          if (eP) {
+            const code = eP.status || 500;
+            return rollbackAndSend(code, { error: eP.message });
+          }
+          const cant = Number(cantidad || 0);
+          if (!Number.isFinite(cant) || cant <= 0) {
+            return rollbackAndSend(400, { error: 'Cantidad inválida' });
+          }
+          const precio = info.precio;
+          const subtotal = precio * cant;
+
+          // 2) Intentar decrementar stock de forma atómica si hay gestión de stock
+          const updateStock = (cb) => {
+            if (!info.hasStock) return cb();
+            const sqlUpdRid = 'UPDATE productos SET stock = IFNULL(stock,0) - ? WHERE id = ? AND restaurant_id = ? AND IFNULL(stock,0) >= ?';
+            conn.query(sqlUpdRid, [cant, producto_id, rid, cant], (eU, rU) => {
+              if (eU && eU.code === 'ER_BAD_FIELD_ERROR') {
+                const sqlUpd = 'UPDATE productos SET stock = IFNULL(stock,0) - ? WHERE id = ? AND IFNULL(stock,0) >= ?';
+                return conn.query(sqlUpd, [cant, producto_id, cant], (eU2, rU2) => {
+                  if (eU2) return cb(eU2);
+                  if (!rU2.affectedRows) {
+                    const err = Object.assign(new Error('Stock insuficiente'), { code: 'STOCK_INSUFICIENTE', disponible: info.stock });
+                    return cb(err);
                   }
-                }
-                res.json({ ok: true, id: result.insertId, total, warnings });
+                  cb();
+                });
+              }
+              if (eU) return cb(eU);
+              if (!rU.affectedRows) {
+                const err = Object.assign(new Error('Stock insuficiente'), { code: 'STOCK_INSUFICIENTE', disponible: info.stock });
+                return cb(err);
+              }
+              cb();
+            });
+          };
+
+          updateStock((eS) => {
+            if (eS) {
+              const payload = { error: eS.message };
+              if (eS.code === 'STOCK_INSUFICIENTE') {
+                payload.code = 'STOCK_INSUFICIENTE';
+                if (typeof eS.disponible === 'number') payload.disponible = eS.disponible;
+              }
+              return rollbackAndSend(409, payload);
+            }
+
+            // 3) Insertar detalle
+            const insert = 'INSERT INTO detallepedido (pedido_id, producto_id, cantidad, subtotal) VALUES (?, ?, ?, ?)';
+            conn.query(insert, [pedidoId, producto_id, cant, subtotal], (err2, result) => {
+              if (err2) return rollbackAndSend(500, { error: err2.message });
+              recalcPedidoTotal(pedidoId, conn, (err3, total) => {
+                if (err3) return rollbackAndSend(500, { error: err3.message });
+                conn.commit((errC) => {
+                  if (errC) return rollbackAndSend(500, { error: 'No se pudo confirmar' });
+                  conn.release();
+                  let warnings = undefined;
+                  if (info.hasStock && info.min_stock != null) {
+                    const restante = Number((info.stock || 0) - cant);
+                    if (restante <= Number(info.min_stock)) {
+                      warnings = {
+                        lowStock: true,
+                        producto_id: Number(producto_id),
+                        nombre: info.nombre,
+                        restante,
+                        min_stock: Number(info.min_stock)
+                      };
+                    }
+                  }
+                  res.json({ ok: true, id: result.insertId, total, warnings });
+                });
               });
             });
           });
         });
-      });
     });
+  });
   });
 };
 
@@ -167,48 +183,61 @@ exports.eliminarItem = (req, res) => {
     if (e0) return res.status(500).json({ error: e0.message });
     if (!r0.length) return res.status(404).json({ error: 'Pedido no encontrado' });
 
-    const mysql = db;
-    mysql.beginTransaction((errTx) => {
-      if (errTx) return res.status(500).json({ error: 'No se pudo iniciar la transacción' });
-      // 1) Obtener detalle para saber producto y cantidad
-      const qDet = 'SELECT producto_id, cantidad FROM detallepedido WHERE id = ? AND pedido_id = ?';
-      mysql.query(qDet, [itemId, pedidoId], (eD, rD) => {
-        if (eD) return mysql.rollback(() => res.status(500).json({ error: eD.message }));
-        const det = rD?.[0];
-        if (!det) return mysql.rollback(() => res.status(404).json({ error: 'Item no encontrado' }));
-        const pid = det.producto_id;
-        const cant = Number(det.cantidad || 0);
+    db.getConnection((errConn, conn) => {
+      if (errConn) return res.status(500).json({ error: 'No se pudo obtener conexión de base de datos' });
+      conn.beginTransaction((errTx) => {
+        if (errTx) {
+          conn.release();
+          return res.status(500).json({ error: 'No se pudo iniciar la transacción' });
+        }
+        const rollbackAndSend = (status, payload) => {
+          conn.rollback(() => {
+            conn.release();
+            res.status(status).json(payload);
+          });
+        };
+        // 1) Obtener detalle para saber producto y cantidad
+        const qDet = 'SELECT producto_id, cantidad FROM detallepedido WHERE id = ? AND pedido_id = ?';
+        conn.query(qDet, [itemId, pedidoId], (eD, rD) => {
+          if (eD) return rollbackAndSend(500, { error: eD.message });
+          const det = rD?.[0];
+          if (!det) return rollbackAndSend(404, { error: 'Item no encontrado' });
+          const pid = det.producto_id;
+          const cant = Number(det.cantidad || 0);
 
-        // 2) Borrar item
-        mysql.query('DELETE FROM detallepedido WHERE id = ? AND pedido_id = ?', [itemId, pedidoId], (errDel) => {
-          if (errDel) return mysql.rollback(() => res.status(500).json({ error: errDel.message }));
-          // 3) Devolver stock (si existe columna)
-          const sqlUpRid = 'UPDATE productos SET stock = IFNULL(stock,0) + ? WHERE id = ? AND restaurant_id = ?';
-          mysql.query(sqlUpRid, [cant, pid, rid], (eUp, rUp) => {
-            if (eUp && eUp.code === 'ER_BAD_FIELD_ERROR') {
-              return mysql.query('UPDATE productos SET stock = IFNULL(stock,0) + ? WHERE id = ?', [cant, pid], (eUp2) => {
-                if (eUp2) return mysql.rollback(() => res.status(500).json({ error: eUp2.message }));
-                recalcPedidoTotal(pedidoId, (eT, total) => {
-                  if (eT) return mysql.rollback(() => res.status(500).json({ error: eT.message }));
-                  mysql.commit((eC) => {
-                    if (eC) return mysql.rollback(() => res.status(500).json({ error: 'No se pudo confirmar' }));
-                    res.json({ ok: true, total });
+          // 2) Borrar item
+          conn.query('DELETE FROM detallepedido WHERE id = ? AND pedido_id = ?', [itemId, pedidoId], (errDel) => {
+            if (errDel) return rollbackAndSend(500, { error: errDel.message });
+            // 3) Devolver stock (si existe columna)
+            const sqlUpRid = 'UPDATE productos SET stock = IFNULL(stock,0) + ? WHERE id = ? AND restaurant_id = ?';
+            conn.query(sqlUpRid, [cant, pid, rid], (eUp, rUp) => {
+              if (eUp && eUp.code === 'ER_BAD_FIELD_ERROR') {
+                return conn.query('UPDATE productos SET stock = IFNULL(stock,0) + ? WHERE id = ?', [cant, pid], (eUp2) => {
+                  if (eUp2) return rollbackAndSend(500, { error: eUp2.message });
+                  recalcPedidoTotal(pedidoId, conn, (eT, total) => {
+                    if (eT) return rollbackAndSend(500, { error: eT.message });
+                    conn.commit((eC) => {
+                      if (eC) return rollbackAndSend(500, { error: 'No se pudo confirmar' });
+                      conn.release();
+                      res.json({ ok: true, total });
+                    });
                   });
                 });
-              });
-            }
-            if (eUp) return mysql.rollback(() => res.status(500).json({ error: eUp.message }));
-            recalcPedidoTotal(pedidoId, (eT, total) => {
-              if (eT) return mysql.rollback(() => res.status(500).json({ error: eT.message }));
-              mysql.commit((eC) => {
-                if (eC) return mysql.rollback(() => res.status(500).json({ error: 'No se pudo confirmar' }));
-                res.json({ ok: true, total });
+              }
+              if (eUp) return rollbackAndSend(500, { error: eUp.message });
+              recalcPedidoTotal(pedidoId, conn, (eT, total) => {
+                if (eT) return rollbackAndSend(500, { error: eT.message });
+                conn.commit((eC) => {
+                  if (eC) return rollbackAndSend(500, { error: 'No se pudo confirmar' });
+                  conn.release();
+                  res.json({ ok: true, total });
+                });
               });
             });
           });
         });
-      });
     });
+  });
   });
 };
 
