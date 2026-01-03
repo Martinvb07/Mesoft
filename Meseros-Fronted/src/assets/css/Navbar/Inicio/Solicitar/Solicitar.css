@@ -8,7 +8,7 @@ body {
     align-items: center;
     min-height: 80vh;
     /* Animación de entrada similar a Inicio/Quienes Somos */
-    padding-top: 1rem;
+    padding-top: 1.5rem;
     animation: fadeInUp 1.2s;
 }
 
@@ -32,9 +32,9 @@ body {
 
 
 .solicitar-hero-desc {
-    font-size: 1.18rem;
+    font-size: 1.12rem;
     color: #555;
-    margin-bottom: 2.2rem;
+    margin-bottom: 1.8rem;
     text-align: center;
     line-height: 1.5;
 }
@@ -135,9 +135,14 @@ body {
 }
 
 @media (max-width: 900px) {
+    .solicitar-hero-section {
+        align-items: flex-start;
+        padding: 1.25rem 0.8rem 2.4rem;
+    }
     .solicitar-hero-left {
-        max-width: 98vw;
-        padding: 2rem 0.7rem;
+        max-width: 94vw;
+        padding: 1.8rem 1.2rem 1.6rem;
+        border-radius: 16px;
     }
     .solicitar-form-row {
         flex-direction: column;
@@ -148,11 +153,17 @@ body {
     .solicitar-hero-title {
         font-size: 1.3rem;
     }
+    .solicitar-hero-desc {
+        font-size: 1.02rem;
+    }
     .solicitar-form {
         gap: 0.7rem;
     }
+    .solicitar-label {
+        font-size: 0.98rem;
+    }
     .solicitar-input, .solicitar-btn-main, .solicitar-textarea {
-        font-size: 1rem;
-        padding: 0.6rem 0.7rem;
+        font-size: 0.98rem;
+        padding: 0.65rem 0.8rem;
     }
 }

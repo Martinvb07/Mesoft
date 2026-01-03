@@ -250,8 +250,10 @@ body {
 	}
 	.inicio-hero-card,
 	.inicio-especialidad-card {
-		min-width: 90vw;
-		padding: 1rem 0.5rem;
+		width: 100%;
+		min-width: 0;
+		padding: 1rem 1rem;
+		box-sizing: border-box;
 	}
 	.inicio-hero-icon,
 	.inicio-especialidad-icon {
