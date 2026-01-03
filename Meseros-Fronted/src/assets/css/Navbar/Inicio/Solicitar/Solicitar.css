@@ -137,11 +137,11 @@ body {
 @media (max-width: 900px) {
     .solicitar-hero-section {
         align-items: flex-start;
-        padding: 1.25rem 0.8rem 2.4rem;
+        padding: 1.1rem 0.8rem 1.2rem;
     }
     .solicitar-hero-left {
         max-width: 94vw;
-        padding: 1.6rem 1.1rem 1.1rem;
+        padding: 1.4rem 1.1rem 0.7rem;
         border-radius: 16px;
     }
     .solicitar-form-row {
@@ -157,7 +157,7 @@ body {
         font-size: 1.02rem;
     }
     .solicitar-form {
-        gap: 0.7rem;
+		gap: 0.5rem;
     }
     .solicitar-label {
         font-size: 0.98rem;
@@ -168,6 +168,6 @@ body {
     }
 
     .solicitar-btn-main {
-        margin-top: 0.25rem;
+		margin-top: 0.15rem;
     }
 }
