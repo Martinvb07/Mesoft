@@ -22,7 +22,7 @@ Mesoft es una plataforma para gestionar un restaurante de forma simple: mesas y 
 
 ## Cómo empezar (rápido)
 
-1. Entra al sitio: https://srv1037585.hstgr.cloud
+1. Entra al sitio: [https://srv1037585.hstgr.cloud](https://mesoft.store/)
 2. Si no tienes cuenta, usa "Solicitar" para pedir acceso.
 3. Inicia sesión y elige tu rol:
    - Admin: panel con KPIs, finanzas, inventario, meseros y configuración.
