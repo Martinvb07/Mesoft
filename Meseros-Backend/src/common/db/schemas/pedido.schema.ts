@@ -31,5 +31,4 @@ export class Pedido {
 }
 
 export const PedidoSchema = SchemaFactory.createForClass(Pedido);
-PedidoSchema.index({ id: 1 }, { unique: true });
 PedidoSchema.index({ restaurant_id: 1, estado: 1, fecha_hora: -1 });

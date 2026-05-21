@@ -49,6 +49,5 @@ export class Producto {
 }
 
 export const ProductoSchema = SchemaFactory.createForClass(Producto);
-ProductoSchema.index({ id: 1 }, { unique: true });
 ProductoSchema.index({ restaurant_id: 1, sku: 1 }, { unique: true });
 ProductoSchema.index({ restaurant_id: 1, nombre: 1 });

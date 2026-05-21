@@ -34,5 +34,4 @@ export class Mesero {
 }
 
 export const MeseroSchema = SchemaFactory.createForClass(Mesero);
-MeseroSchema.index({ id: 1 }, { unique: true });
 MeseroSchema.index({ restaurant_id: 1, nombre: 1 });

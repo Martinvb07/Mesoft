@@ -31,5 +31,4 @@ export class NominaMovimiento {
 }
 
 export const NominaMovimientoSchema = SchemaFactory.createForClass(NominaMovimiento);
-NominaMovimientoSchema.index({ id: 1 }, { unique: true });
 NominaMovimientoSchema.index({ restaurant_id: 1, mesero_id: 1, fecha: 1 });

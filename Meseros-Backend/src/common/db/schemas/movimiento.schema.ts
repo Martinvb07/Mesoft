@@ -40,6 +40,5 @@ export class MovimientoContable {
 }
 
 export const MovimientoContableSchema = SchemaFactory.createForClass(MovimientoContable);
-MovimientoContableSchema.index({ id: 1 }, { unique: true });
 MovimientoContableSchema.index({ restaurant_id: 1, tipo: 1, fecha: -1 });
 MovimientoContableSchema.index({ pedido_id: 1, tipo: 1, categoria: 1, fecha: -1 });

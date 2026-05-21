@@ -22,5 +22,3 @@ export class Restaurante {
 }
 
 export const RestauranteSchema = SchemaFactory.createForClass(Restaurante);
-RestauranteSchema.index({ id: 1 }, { unique: true });
-RestauranteSchema.index({ nombre: 1 }, { unique: true });

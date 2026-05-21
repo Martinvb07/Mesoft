@@ -43,5 +43,4 @@ export class Mesa {
 }
 
 export const MesaSchema = SchemaFactory.createForClass(Mesa);
-MesaSchema.index({ id: 1 }, { unique: true });
 MesaSchema.index({ restaurant_id: 1, numero: 1 }, { unique: true });

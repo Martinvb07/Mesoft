@@ -25,5 +25,4 @@ export class DetallePedido {
 }
 
 export const DetallePedidoSchema = SchemaFactory.createForClass(DetallePedido);
-DetallePedidoSchema.index({ id: 1 }, { unique: true });
 DetallePedidoSchema.index({ pedido_id: 1, id: 1 });
