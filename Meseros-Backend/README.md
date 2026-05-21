@@ -1,101 +1,103 @@
-# Meseros Backend (Node.js + Express + MySQL)
+<div align="center">
 
-API REST para gestionar mesas, pedidos, productos, finanzas e información de meseros. Diseñado para producción con dominios (sin depender de localhost) y con CORS configurable.
+# Mesoft Backend — Servidor API
 
-## Producción (REAL)
+**El corazón de la plataforma Mesoft**
 
-- Base URL del API: https://srv1037585.hstgr.cloud/api
+---
 
-## Requisitos
+[![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 
-- Node.js 18+
-- MySQL 8+
+</div>
 
-## Configuración (.env)
+---
 
-Crea o ajusta `Meseros-Backend/.env` con tus valores. Usa dominios de frontend reales en `CORS_ORIGIN` (puedes listar varios separados por coma). En tu despliegue actual:
+## 📋 ¿Qué es?
+
+Este es el **servidor** (backend) de Mesoft. Es el "cerebro" de la aplicación que:
+
+- Guarda toda la información (mesas, pedidos, productos, usuarios, etc.)
+- Procesa requests del frontend
+- Maneja la autenticación y seguridad
+- Ejecuta la lógica de negocio
+
+---
+
+## 🏗️ Estructura
+
+El backend está dividido en **módulos independientes**:
+
+| Módulo          | Qué hace                           |
+| --------------- | ---------------------------------- |
+| **Mesas**       | Crear, editar, ver estado de mesas |
+| **Meseros**     | Registro y gestión de personal     |
+| **Pedidos**     | Control de comidas y bebidas       |
+| **Productos**   | Catálogo del menú                  |
+| **Usuarios**    | Autenticación y usuarios           |
+| **Finanzas**    | Ingresos, egresos, reportes        |
+| **Nómina**      | Pagos y movimientos de personal    |
+| **Solicitudes** | Consultas y solicitudes            |
+
+---
+
+## 🗄️ Base de datos
+
+Usa **MongoDB** para guardar toda la información en **colecciones**:
+
+- `mesas` — Información de mesas
+- `pedidos` — Pedidos realizados
+- `productos` — Menú del restaurante
+- `usuarios` — Usuarios del sistema
+- `meseros` — Personal del restaurante
+- `finanzas` — Movimientos de dinero
+- Y más...
+
+---
+
+## 📡 Principales endpoints
 
 ```
-DB_HOST=<host_mysql>
-DB_USER=<usuario_mysql>
-DB_PASSWORD=<password_mysql>
-DB_NAME=meseros
-PORT=3001
-# Uno o varios dominios del frontend (separados por coma)
-CORS_ORIGIN=https://srv1037585.hstgr.cloud
-# Si estás detrás de proxy (Nginx/Apache), deja TRUST_PROXY=1
-TRUST_PROXY=1
-
-# (Opcional) SMTP si usas envío de correos en solicitudes
-# SMTP_HOST=...
-# SMTP_PORT=...
-# SMTP_USER=...
-# SMTP_PASS=...
+GET    /healthz                 → ¿El servidor está vivo?
+POST   /api/usuarios/login      → Login de usuarios
+POST   /api/usuarios/register   → Registrar usuario
+GET    /api/mesas               → Listar mesas
+POST   /api/mesas               → Crear mesa
+GET    /api/pedidos             → Listar pedidos
+POST   /api/pedidos             → Crear pedido
+GET    /api/productos           → Listar productos
+GET    /api/finanzas            → Resumen financiero
 ```
 
-## Ejecución
+---
 
-Desarrollo:
+## 🔒 Seguridad
 
-```pwsh
-npm install
-npm run dev
-```
+- Las contraseñas se **encriptan** con Bcrypt
+- Los usuarios se **autentican** con JWT
+- Solo usuarios autenticados acceden a datos
+- Cada usuario solo ve sus datos según su rol
 
-Producción (detrás de Nginx/Apache):
+---
 
-- Ejecuta `npm start` o usa PM2/systemd.
-- Expón el API como `https://tu-backend.com` o bajo subruta `/api`.
-- Asegúrate que `CORS_ORIGIN` incluya el dominio del frontend.
+## 🛠️ Tecnologías
 
-Healthcheck: `GET /healthz` y `GET /api/healthz`.
+- **NestJS** — Framework profesional
+- **MongoDB** — Base de datos
+- **Mongoose** — Librería MongoDB
+- **TypeScript** — Código seguro
+- **Bcrypt** — Encriptación
+- **JWT** — Autenticación
 
-## Rutas principales
+---
 
-Las rutas están disponibles en raíz y bajo `/api`:
+## 📝 Licencia
 
-- Usuarios: `/usuarios`, `/api/usuarios`
-- Solicitud: `/solicitud`, `/api/solicitud`
-- Mesas: `/mesas`, `/api/mesas`
-- Pedidos: `/pedidos`, `/api/pedidos`
-- Productos: `/productos`, `/api/productos`
-- Finanzas: `/finanzas`, `/api/finanzas`
-- Nómina: `/nomina`, `/api/nomina`
-- Meseros: `/meseros`, `/api/meseros`
+Proyecto universitario © 2026 — Mesoft.
 
-Endpoints de ejemplo:
+---
 
-- `GET /mesas` – listar mesas
-- `POST /mesas/:id/asignar` body: `{ mesero_id }`
-- `POST /mesas/:id/limpieza` → estado `limpieza`
-- `POST /mesas/:id/fin-limpieza` → estado `libre`
-- `GET /pedidos/:id/items`
-- `POST /pedidos/:id/items` body: `{ producto_id, cantidad }`
-- `POST /pedidos/:id/pagar` body: `{ recibido, propina, mesero_id }`
-- `GET /productos`
-- `GET /finanzas/ventas-hoy`, `GET /finanzas/balance-hoy`
-- `GET /finanzas/propinas?mesero_id=1&desde=YYYY-MM-DD&hasta=YYYY-MM-DD`
-- `GET /nomina/movimientos?mesero_id=1&desde=YYYY-MM-DD&hasta=YYYY-MM-DD`
-- `POST /nomina/movimientos` body: `{ mesero_id, tipo, monto, descripcion?, fecha? }`
+## 📧 ¿Preguntas?
 
-## Multi-tenant y seguridad
-
-- CORS: orígenes permitidos leídos de `CORS_ORIGIN`.
-- `resolveTenant` establece `req.restaurantId` por prioridad:
-  1.  Cabecera `X-Restaurant-Id`/`Restaurant-Id` con id válido.
-  2.  Nombre en `req.user` (si lo pueblas tras auth) que se mapea a id.
-  3.  Fallback: primer restaurante en BD.
-- Cabecera opcional `X-Usuario-Id` para identificar usuario simple (sugerido migrar a JWT con roles).
-
-## Scripts
-
-- `npm run dev` – desarrollo con nodemon.
-- `npm start` – ejecución en Node (producción o staging).
-- `npm run hash:usuarios` – utilitario para generar hashes de contraseñas.
-- `scripts/smoke-*.js` – pruebas rápidas a endpoints.
-
-## Notas y problemas comunes
-
-- Conexión MySQL: verifica credenciales y que el servicio esté activo.
-- CORS bloqueado: revisa que el dominio del frontend esté en `CORS_ORIGIN`.
-- Prefijo `/api`: el backend expone rutas tanto en raíz como en `/api` para compatibilidad; el frontend suele apuntar a `/api`.
+Abre un issue en el repositorio.

@@ -5,7 +5,7 @@ Mesoft es una plataforma para gestionar un restaurante de forma simple: mesas y 
 ## Producción (REAL)
 
 - Sitio: https://mesoft.store/
-- API: *****
+- API: **\***
 
 ## ¿Qué puedo hacer con Mesoft?
 
@@ -22,7 +22,7 @@ Mesoft es una plataforma para gestionar un restaurante de forma simple: mesas y 
 
 ## Cómo empezar (rápido)
 
-1. Entra al sitio: [https://srv1037585.hstgr.cloud](https://mesoft.store/)
+1. Entra al sitio: https://mesoft.store/
 2. Si no tienes cuenta, usa "Solicitar" para pedir acceso.
 3. Inicia sesión y elige tu rol:
    - Admin: panel con KPIs, finanzas, inventario, meseros y configuración.
@@ -43,7 +43,7 @@ Mesoft es una plataforma para gestionar un restaurante de forma simple: mesas y 
 ## Documentación técnica
 
 - Frontend (React + Vite): `Meseros-Fronted/README.md`
-- Backend (Node.js + Express + MySQL): `Meseros-Backend/README.md`
+- Backend (NestJS + TypeScript + MongoDB): `Meseros-Backend/README.md`
 
 ## Contacto
 
