@@ -13,6 +13,7 @@ function buildCorsOptions(): CorsOptions {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       if (allowedOrigins.includes(origin)) return cb(null, true);
+      if (/^http:\/\/localhost(:\d+)?$/.test(origin ?? '')) return cb(null, true);
       // eslint-disable-next-line no-console
       console.warn('[CORS] Bloqueado origen no permitido:', origin);
       return cb(new Error('Not allowed by CORS'), false);
