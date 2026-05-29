@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import type { RequestWithTenant } from '../common/types/request-with-tenant';
 import { PedidosService } from './pedidos.service';
 
@@ -49,5 +49,15 @@ export class PedidosController {
   @Post(':id/pagar')
   pagar(@Req() req: RequestWithTenant, @Param('id') id: string, @Body() body: any) {
     return this.pedidos.registrarPago(req.restaurantId!, id, body, req.userId);
+  }
+
+  @Patch(':id/items/:itemId/listo')
+  marcarItemListo(
+    @Req() req: RequestWithTenant,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() body: any,
+  ) {
+    return this.pedidos.marcarItemListo(req.restaurantId!, id, itemId, body?.listo ?? true);
   }
 }

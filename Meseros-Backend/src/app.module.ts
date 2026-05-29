@@ -11,13 +11,15 @@ import { NominaModule } from './nomina/nomina.module';
 import { FinanzasModule } from './finanzas/finanzas.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { SolicitudModule } from './solicitud/solicitud.module';
+import { GatewayModule } from './gateway/gateway.module';
+import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
+    GatewayModule,
+    PublicModule,
     UsuariosModule,
     MesasModule,
     MeserosModule,

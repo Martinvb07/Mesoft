@@ -78,6 +78,7 @@ const NavbarAdmin = () => {
                     <Link to="/admin/finanzas/nominas" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Nóminas</Link>
                 </div>
             </li>
+            <li><Link to="/admin/cocina" onClick={closeMenu}>Cocina</Link></li>
             <li><Link to="/admin/configuracion" onClick={closeMenu}>Configuración</Link></li>
             <li><Link to="/" onClick={(e) => { handleSalirClick(e); closeMenu(); }}>Salir</Link></li>
         </ul>

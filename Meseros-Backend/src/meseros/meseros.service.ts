@@ -33,11 +33,35 @@ export class MeserosService {
             sueldo_base: 1,
             correo: '$u.correo',
             restaurante: '$u.restaurante',
+            esta_en_turno: 1,
+            turno_inicio: 1,
           },
         },
         { $sort: { nombre: 1 } },
       ])
       .exec();
+  }
+
+  async checkin(rid: number, uid: number) {
+    if (!uid) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
+    const mesero = await this.meseros.findOne({ usuario_id: uid, restaurant_id: rid }).exec();
+    if (!mesero) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
+    await this.meseros.updateOne(
+      { id: mesero.id, restaurant_id: rid },
+      { $set: { esta_en_turno: true, turno_inicio: new Date() } },
+    ).exec();
+    return { ok: true, turno_inicio: new Date() };
+  }
+
+  async checkout(rid: number, uid: number) {
+    if (!uid) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
+    const mesero = await this.meseros.findOne({ usuario_id: uid, restaurant_id: rid }).exec();
+    if (!mesero) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
+    await this.meseros.updateOne(
+      { id: mesero.id, restaurant_id: rid },
+      { $set: { esta_en_turno: false, turno_inicio: null } },
+    ).exec();
+    return { ok: true };
   }
 
   async obtenerMiPerfilMesero(rid: number, uid: number) {

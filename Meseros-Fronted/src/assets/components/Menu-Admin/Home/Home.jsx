@@ -1,9 +1,10 @@
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import '../../../css/Navbar/Menu-Admin/Home/Home.css';
 import logo from '../../../image/Logo.png';
 import { HiSquares2X2, HiUsers, HiClipboardDocumentList, HiBanknotes, HiArrowTrendingUp, HiArrowTrendingDown } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
+import { useSocket } from '../../../../hooks/useSocket';
 
 function Home() {
     const [meserosLista, setMeserosLista] = useState([]);
@@ -23,6 +24,23 @@ function Home() {
     const [showPedidosModal, setShowPedidosModal] = useState(false);
     const [meserosActivosCount, setMeserosActivosCount] = useState(0);
     const [stockAlertas, setStockAlertas] = useState([]); // productos con stock bajo
+    const [toasts, setToasts] = useState([]); // { id, msg }
+
+    const restaurantId = (() => { try { return localStorage.getItem('restaurant_id') || null; } catch { return null; } })();
+
+    const addToast = useCallback((msg) => {
+        const id = Date.now();
+        setToasts((prev) => [...prev.slice(-4), { id, msg }]);
+        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+    }, []);
+
+    // WebSocket: show toast on nuevo_pedido
+    useSocket(restaurantId, useCallback((event, data) => {
+        if (event === 'nuevo_pedido') {
+            const mesa = data?.mesa_id ?? data?.mesa ?? '';
+            addToast(`Nuevo pedido${mesa ? ` — Mesa ${mesa}` : ''}`);
+        }
+    }, [addToast]));
 
     useEffect(() => {
         let cancel = false;
@@ -510,6 +528,29 @@ function Home() {
                         <button className="btn" onClick={()=>setShowPedidosModal(false)}>Cerrar</button>
                     </div>
                 </div>
+            </div>
+        )}
+
+        {/* Toast notifications for WebSocket events */}
+        {toasts.length > 0 && (
+            <div style={{
+                position: 'fixed', bottom: '1.5rem', right: '1.5rem',
+                display: 'flex', flexDirection: 'column', gap: '.5rem',
+                zIndex: 9999, pointerEvents: 'none',
+            }}>
+                {toasts.map((t) => (
+                    <div key={t.id} style={{
+                        background: '#1f2937', color: '#f9fafb',
+                        padding: '.75rem 1.25rem', borderRadius: '12px',
+                        boxShadow: '0 4px 20px rgba(0,0,0,.35)',
+                        fontSize: '.95rem', fontWeight: 700,
+                        borderLeft: '4px solid #ff6633',
+                        animation: 'fadeInUp .25s ease',
+                        pointerEvents: 'auto',
+                    }}>
+                        {t.msg}
+                    </div>
+                ))}
             </div>
         )}
         </div>

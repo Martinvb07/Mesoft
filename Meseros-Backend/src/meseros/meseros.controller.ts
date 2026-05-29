@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Req } from '@nestjs/common';
+
 import type { RequestWithTenant } from '../common/types/request-with-tenant';
 import { MeserosService } from './meseros.service';
 
@@ -29,5 +30,15 @@ export class MeserosController {
   @Delete(':id')
   eliminarMesero(@Req() req: RequestWithTenant, @Param('id') id: string) {
     return this.meseros.eliminarMesero(req.restaurantId!, id);
+  }
+
+  @Post('checkin')
+  checkin(@Req() req: RequestWithTenant) {
+    return this.meseros.checkin(req.restaurantId!, req.userId!);
+  }
+
+  @Post('checkout')
+  checkout(@Req() req: RequestWithTenant) {
+    return this.meseros.checkout(req.restaurantId!, req.userId!);
   }
 }

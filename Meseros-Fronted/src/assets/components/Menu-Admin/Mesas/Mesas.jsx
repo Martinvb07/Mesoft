@@ -36,6 +36,17 @@ function formatDuration(ms) {
     return `${m}m`;
 }
 
+const normalizar = (row) => ({
+    id: row.id,
+    numero: row.numero,
+    capacidad: row.capacidad,
+    estado: row.estado,
+    meseroId: row.mesero_id ?? null,
+    meseroNombre: row.mesero_nombre ?? '',
+    reservaAt: row.reserva_at ?? null,
+    updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now(),
+});
+
 function Mesas() {
     // Helpers de fecha/hora en zona de Colombia
     const fmtDateCO = (date) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
@@ -78,18 +89,7 @@ function Mesas() {
     const [formData, setFormData] = useState({ numero: '', capacidad: 4, estado: 'libre' });
     const [formMsg, setFormMsg] = useState('');
 
-    const normalizar = (row) => ({
-        id: row.id,
-        numero: row.numero,
-        capacidad: row.capacidad,
-        estado: row.estado,
-        meseroId: row.mesero_id ?? null,
-        meseroNombre: row.mesero_nombre ?? '',
-        reservaAt: row.reserva_at ?? null,
-        updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now(),
-    });
-
-    const cargarMesas = async () => {
+    const cargarMesas = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
@@ -101,11 +101,18 @@ function Mesas() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         cargarMesas();
-    }, []);
+    }, [cargarMesas]);
+
+    // WebSocket: auto-refresh when a mesa changes state
+    useSocket(restaurantId, useCallback((event) => {
+        if (event === 'mesa_update') {
+            cargarMesas();
+        }
+    }, [cargarMesas]));
 
     useEffect(() => {
         try {
@@ -522,7 +529,17 @@ function Mesas() {
                     <div key={m.id} className={`mesa-card ${ESTADOS[m.estado]?.color || ''}`} onClick={() => abrirDetalleMesa(m)} onDoubleClick={() => abrirEditarModal(m)}>
                         <div className="mesa-top">
                             <span className="mesa-number">Mesa {m.numero}</span>
-                            <span className={`status-pill ${ESTADOS[m.estado]?.color || ''}`}>{ESTADOS[m.estado]?.label || m.estado}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '.35rem' }}>
+                                <span className={`status-pill ${ESTADOS[m.estado]?.color || ''}`}>{ESTADOS[m.estado]?.label || m.estado}</span>
+                                <button
+                                    className="btn ghost"
+                                    style={{ padding: '.2rem .45rem', fontSize: '.8rem', borderRadius: '8px', lineHeight: 1 }}
+                                    onClick={(e) => abrirQR(e, m)}
+                                    title={`Ver QR de Mesa ${m.numero}`}
+                                >
+                                    <HiQrCode />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="mesa-body">
@@ -844,6 +861,42 @@ function Mesas() {
                         <div className="modal-footer">
                             <button className="btn" onClick={confirmarReserva}>Confirmar</button>
                             <button className="btn ghost" onClick={cerrarReservarModal}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal QR de mesa */}
+            {qrModal.open && (
+                <div className="modal-overlay" role="dialog" aria-modal="true">
+                    <div className="modal-card" style={{ maxWidth: 380, textAlign: 'center' }}>
+                        <div className="modal-header">
+                            <h3>QR — Mesa {qrModal.mesaNumero}</h3>
+                            <button className="close-btn" onClick={cerrarQR} aria-label="Cerrar">×</button>
+                        </div>
+                        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                            <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrModal.url)}`}
+                                alt={`QR Mesa ${qrModal.mesaNumero}`}
+                                width={200}
+                                height={200}
+                                style={{ borderRadius: 10, border: '1px solid #eef2f6' }}
+                            />
+                            <p className="muted" style={{ fontSize: '.8rem', wordBreak: 'break-all', margin: 0 }}>
+                                {qrModal.url}
+                            </p>
+                            <a
+                                href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrModal.url)}&format=png`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn primary"
+                                style={{ textDecoration: 'none' }}
+                            >
+                                Descargar QR
+                            </a>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn ghost" onClick={cerrarQR}>Cerrar</button>
                         </div>
                     </div>
                 </div>

@@ -287,6 +287,16 @@ export class PedidosService {
     return { ok: true, cambio, total, propina: propinaNum, descuento: descuentoNum, metodo_pago };
   }
 
+  async marcarItemListo(rid: number, pedidoId: string, itemId: string, listo: boolean) {
+    const pid = this.toNumberId(pedidoId, 'pedidoId');
+    const iid = this.toNumberId(itemId, 'itemId');
+    await this.detalle.updateOne(
+      { id: iid, pedido_id: pid },
+      { $set: { listo } },
+    ).exec();
+    return { ok: true, listo };
+  }
+
   async listarEnCurso(rid: number) {
     const pedidos = await this.pedidos
       .find(

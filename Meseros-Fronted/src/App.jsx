@@ -8,6 +8,7 @@ import Inicio from './assets/components/Inicio/Inicio';
 import QuienesSomos from './assets/components/Inicio/QuienesSomos/QuienesSomos';
 import Solicitar from './assets/components/Inicio/Solicitar/Solicitar';
 import Login from './assets/components/Inicio/Sesion/Login';
+import MenuPublico from './assets/components/Public/MenuPublico';
 // Páginas por rol Admin
 import HomeAdmin from './assets/components/Menu-Admin/Home/Home';
 import MesasAdmin from './assets/components/Menu-Admin/Mesas/Mesas';
@@ -19,6 +20,7 @@ import FinEgresos from './assets/components/Menu-Admin/Finanzas/Egresos';
 import FinReportes from './assets/components/Menu-Admin/Finanzas/Reportes';
 import FinCierreCaja from './assets/components/Menu-Admin/Finanzas/CierreCaja';
 import Configuracion from './assets/components/Menu-Admin/Configuracion/Configuracion';
+import Cocina from './assets/components/Cocina/Cocina';
 // Páginas por rol Mesero
 import HomeMesero from './assets/components/Menu-Mesero/Home/Home';
 import MesasMesero from './assets/components/Menu-Mesero/Mesas/Mesas';
@@ -49,6 +51,9 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
+                {/* Ruta pública menú QR — sin navbar ni auth */}
+                <Route path="/menu/:restaurantId" element={<MenuPublico />} />
+
                 {/* Rutas públicas con NavbarInicio */}
                 <Route path="/" element={
                     <>
@@ -98,6 +103,7 @@ function App() {
                     <Route path="finanzas/inventario" element={<FinInventario />} />
                     <Route path="finanzas/nominas" element={<FinNominas />} />
                     <Route path="configuracion" element={<Configuracion />} />
+                    <Route path="cocina" element={<Cocina />} />
                 </Route>
 
                 {/* Rutas para mesero con NavbarMesero */}
