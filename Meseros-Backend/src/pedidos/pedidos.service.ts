@@ -90,6 +90,7 @@ export class PedidosService {
             producto_id: 1,
             cantidad: 1,
             subtotal: 1,
+            nota: 1,
             nombre: '$producto.nombre',
             precio: '$producto.precio',
           },
@@ -138,6 +139,7 @@ export class PedidosService {
       stockDespues = stockAntes - cant;
     }
 
+    const nota = body?.nota ? String(body.nota).trim() : null;
     const newId = await this.ids.next('detallepedido');
     await this.detalle.create({
       id: newId,
@@ -145,6 +147,7 @@ export class PedidosService {
       producto_id: productoId,
       cantidad: cant,
       subtotal,
+      ...(nota ? { nota } : {}),
     });
 
     const total = await this.recalcPedidoTotal(pid);
@@ -199,7 +202,7 @@ export class PedidosService {
 
   async registrarPago(rid: number, pedidoId: string, body: any, userId?: number) {
     const pid = this.toNumberId(pedidoId, 'pedidoId');
-    const { recibido, propina = 0, mesero_id, usuario_id } = body || {};
+    const { recibido, propina = 0, descuento = 0, metodo_pago = 'efectivo', mesero_id, usuario_id } = body || {};
     if (recibido == null) throw new HttpException({ error: 'Monto recibido requerido' }, HttpStatus.BAD_REQUEST);
 
     const pedido = await this.pedidos
@@ -208,7 +211,8 @@ export class PedidosService {
       .exec();
     if (!pedido) throw new HttpException({ error: 'Pedido no encontrado' }, HttpStatus.NOT_FOUND);
 
-    const total = Number(pedido.total || 0);
+    const descuentoNum = Number(descuento || 0);
+    const total = Math.max(0, Number(pedido.total || 0) - descuentoNum);
     const recibidoNum = Number(recibido || 0);
     const propinaNum = Number(propina || 0);
     const cambio = Math.max(0, recibidoNum - total - propinaNum);
@@ -280,7 +284,7 @@ export class PedidosService {
     await this.pedidos.updateOne({ id: pid, restaurant_id: rid }, { $set: { estado: 'cerrado' } }).exec();
     await this.mesas.updateOne({ id: pedido.mesa_id, restaurant_id: rid }, { $set: { estado: 'limpieza' } }).exec();
 
-    return { ok: true, cambio, total, propina: propinaNum };
+    return { ok: true, cambio, total, propina: propinaNum, descuento: descuentoNum, metodo_pago };
   }
 
   async listarEnCurso(rid: number) {

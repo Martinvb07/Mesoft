@@ -117,6 +117,11 @@ export const api = {
   actualizarEgreso: (id, data) => request(`/finanzas/egresos/${id}`, { method: 'PUT', body: data }),
   eliminarEgreso: (id) => request(`/finanzas/egresos/${id}`, { method: 'DELETE' }),
   metaHoy: () => request('/finanzas/meta-hoy'),
+  evolucionVentas: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v!=null && v!==''));
+    const qs = q.toString();
+    return request(`/finanzas/evolucion-ventas${qs ? `?${qs}` : ''}`);
+  },
 
   // Nomina
   obtenerNomina: (mesero_id, desde, hasta) => request(`/nomina/movimientos?mesero_id=${mesero_id}&desde=${desde}&hasta=${hasta}`),

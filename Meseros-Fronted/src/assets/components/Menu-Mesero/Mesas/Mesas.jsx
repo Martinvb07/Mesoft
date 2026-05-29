@@ -19,6 +19,8 @@ const ESTADOS = {
     limpieza: { key: 'limpieza', label: 'Limpieza', color: 'clean' },
 };
 
+const METODOS_PAGO = ['Efectivo', 'Tarjeta', 'Transferencia', 'Mixto'];
+
 function todayKey() {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -44,8 +46,21 @@ const Mesas = () => {
     const [pedidoModal, setPedidoModal] = useState({ mesa: null, editable: false });
     const [pedidoItems, setPedidoItems] = useState([]);
     const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: 1, precio: 0 });
-    const [resumenPago, setResumenPago] = useState(null); // { mesaId, mesaNumero, total, abonado, pendiente, recibido, propina, cambio, aplicado }
+    // Nota/modificador por item al agregar
+    const [notaItem, setNotaItem] = useState('');
+    const [resumenPago, setResumenPago] = useState(null);
     const [factura, setFactura] = useState({ visible: false, data: null });
+
+    // Pago modal state
+    const [pagoModal, setPagoModal] = useState({ visible: false });
+    const [pagoForm, setPagoForm] = useState({
+        monto: '',
+        propina: '0',
+        metodoPago: 'Efectivo',
+        descuentoTipo: 'pct',   // 'pct' | 'fijo'
+        descuentoValor: '0',
+        dividirPersonas: 1,
+    });
 
     const getRestaurantName = () => {
         const keys = ['usuario', 'user', 'auth_user', 'currentUser'];
@@ -61,8 +76,6 @@ const Mesas = () => {
         }
         return 'Mi Restaurante';
     };
-
-    // Todo viene del backend; no persistimos en local
 
     // Cargar identidad del mesero + mesas y productos desde backend
     useEffect(() => {
@@ -140,7 +153,14 @@ const Mesas = () => {
             let items = [];
             if (pedido?.id) {
                 const rows = await api.getPedidoItems(pedido.id);
-                items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
+                items = Array.isArray(rows) ? rows.map(r => ({
+                    id: r.id,
+                    nombre: r.nombre,
+                    cantidad: Number(r.cantidad||0),
+                    precio: Number(r.precio||0),
+                    subtotal: Number(r.subtotal||0),
+                    nota: r.nota || '',
+                })) : [];
             }
             setPedidoItems(items);
             const editable = mesa.estado === 'ocupada';
@@ -149,7 +169,11 @@ const Mesas = () => {
             Swal.fire({ icon: 'error', title: 'No se pudo abrir el pedido', text: e?.message || 'Error' });
         }
     };
-    const cerrarPedido = () => { setPedidoModal({ mesa: null, editable: false }); setNuevoItem({ nombre: '', cantidad: 1, precio: 0 }); };
+    const cerrarPedido = () => {
+        setPedidoModal({ mesa: null, editable: false });
+        setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
+        setNotaItem('');
+    };
     const [productoSel, setProductoSel] = useState('');
     const agregarItem = async () => {
         if (!pedidoModal.editable) return;
@@ -160,12 +184,22 @@ const Mesas = () => {
         if (!producto_id) return Swal.fire({ icon: 'error', title: 'Selecciona un producto' });
         if (cantidad <= 0) return Swal.fire({ icon: 'error', title: 'Cantidad inválida' });
         try {
-            const resp = await api.addPedidoItem(pid, { producto_id, cantidad });
+            const body = { producto_id, cantidad };
+            if (notaItem.trim()) body.nota = notaItem.trim();
+            const resp = await api.addPedidoItem(pid, body);
             const rows = await api.getPedidoItems(pid);
-            const items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
+            const items = Array.isArray(rows) ? rows.map(r => ({
+                id: r.id,
+                nombre: r.nombre,
+                cantidad: Number(r.cantidad||0),
+                precio: Number(r.precio||0),
+                subtotal: Number(r.subtotal||0),
+                nota: r.nota || '',
+            })) : [];
             setPedidoItems(items);
             setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
             setProductoSel('');
+            setNotaItem('');
             // Aviso para mesero: bajo stock
             if (resp?.warnings?.lowStock) {
                 const w = resp.warnings;
@@ -179,7 +213,6 @@ const Mesas = () => {
             } else {
                 Swal.fire({ icon: 'error', title: 'No se pudo agregar', text: e?.message || 'Error' });
             }
-            // Refrescar productos para ver stocks actuales (si el backend los expone)
             try {
                 const prods = await api.getProductos().then(r => Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : []));
                 setProductos(prods);
@@ -194,15 +227,40 @@ const Mesas = () => {
         try {
             await api.deletePedidoItem(pedidoActual.id, item.id);
             const rows = await api.getPedidoItems(pedidoActual.id);
-            const items = Array.isArray(rows) ? rows.map(r => ({ id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0), precio: Number(r.precio||0), subtotal: Number(r.subtotal||0) })) : [];
+            const items = Array.isArray(rows) ? rows.map(r => ({
+                id: r.id,
+                nombre: r.nombre,
+                cantidad: Number(r.cantidad||0),
+                precio: Number(r.precio||0),
+                subtotal: Number(r.subtotal||0),
+                nota: r.nota || '',
+            })) : [];
             setPedidoItems(items);
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || 'Error' });
         }
     };
-    const guardarPedido = () => { /* ya se guarda en el backend por item */ Swal.fire({ icon: 'success', title: 'Actualizado', timer: 700, showConfirmButton: false }); };
+    const guardarPedido = () => { Swal.fire({ icon: 'success', title: 'Actualizado', timer: 700, showConfirmButton: false }); };
 
-    // Pagos se registran vía backend; no se usa almacenamiento local
+    // Calcular descuento
+    const calcDescuento = (subtotal, tipo, valor) => {
+        const v = Math.max(0, Number(valor) || 0);
+        if (tipo === 'pct') return Math.round(subtotal * (Math.min(v, 100) / 100));
+        return Math.min(v, subtotal);
+    };
+
+    const abrirPagoModal = () => {
+        const subtotal = pedidoItems.reduce((s,it) => s + (it.subtotal ?? it.cantidad*it.precio), 0);
+        setPagoForm({
+            monto: String(subtotal),
+            propina: '0',
+            metodoPago: 'Efectivo',
+            descuentoTipo: 'pct',
+            descuentoValor: '0',
+            dividirPersonas: 1,
+        });
+        setPagoModal({ visible: true });
+    };
 
     const registrarPago = async () => {
         if (!pedidoModal.mesa) return;
@@ -210,46 +268,40 @@ const Mesas = () => {
         if (!pedidoActual?.id) return Swal.fire({ icon: 'error', title: 'No hay pedido abierto' });
         const pid = pedidoActual.id;
 
-        const result = await Swal.fire({
-            title: `Registrar pago - Mesa ${mesa.numero}`,
-            input: 'number',
-            inputLabel: 'Monto recibido (COP)',
-            inputPlaceholder: 'Monto en COP',
-            inputAttributes: { min: 1, step: 'any' },
-            showCancelButton: true,
-            confirmButtonText: 'Registrar',
-        });
-        if (!result.isConfirmed) return;
-        const monto = Math.round(Number(result.value));
-        if (!monto || monto <= 0) return Swal.fire({ icon: 'error', title: 'Monto inválido' });
+        const monto = Math.round(Number(pagoForm.monto));
+        const propina = Math.max(0, Math.round(Number(pagoForm.propina || 0)));
+        const descuento = calcDescuento(
+            pedidoItems.reduce((s,it) => s + (it.subtotal ?? it.cantidad*it.precio), 0),
+            pagoForm.descuentoTipo,
+            pagoForm.descuentoValor
+        );
+        const subtotalCalc = pedidoItems.reduce((s,it) => s + (it.subtotal ?? it.cantidad*it.precio), 0);
+        const totalRequerido = subtotalCalc - descuento + propina;
 
-        // Propina opcional
-        const tipRes = await Swal.fire({
-            title: 'Propina (opcional)',
-            input: 'number',
-            inputLabel: 'Ingresa la propina (COP)',
-            inputPlaceholder: '0',
-            inputValue: 0,
-            inputAttributes: { min: 0, step: 'any' },
-            showCancelButton: true,
-            confirmButtonText: 'Continuar',
-            cancelButtonText: 'Sin propina',
-        });
-        const propina = tipRes.isDismissed ? 0 : Math.max(0, Math.round(Number(tipRes.value || 0)));
-        const subtotalCalc = pedidoItems.reduce((s,it)=> s + (it.subtotal ?? it.cantidad*it.precio), 0);
-        const totalRequerido = subtotalCalc + propina;
+        if (!monto || monto <= 0) return Swal.fire({ icon: 'error', title: 'Monto inválido' });
         if (monto < totalRequerido) {
-            return Swal.fire({ icon: 'warning', title: 'Monto insuficiente', html: `Total a pagar: <strong>$${totalRequerido.toLocaleString('es-CO')}</strong><br/>Recibido: $${monto.toLocaleString('es-CO')}`, confirmButtonText: 'Entendido' });
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Monto insuficiente',
+                html: `Total a pagar: <strong>$${totalRequerido.toLocaleString('es-CO')}</strong><br/>Recibido: $${monto.toLocaleString('es-CO')}`,
+                confirmButtonText: 'Entendido',
+            });
         }
 
         try {
-            await api.pagarPedido(pid, { recibido: monto, propina, mesero_id: null });
-            // Preparar factura con los items actuales
+            await api.pagarPedido(pid, {
+                recibido: monto,
+                propina,
+                mesero_id: null,
+                descuento,
+                metodo_pago: pagoForm.metodoPago,
+            });
             const items = [...pedidoItems];
             const subtotal = subtotalCalc;
-            const total = subtotal + propina;
+            const total = subtotal - descuento + propina;
             const cambio = Math.max(0, monto - total);
             const waiterName = (pedidoActual && pedidoActual.mesero_nombre) || (pedidoModal.mesa && pedidoModal.mesa.meseroNombre) || '';
+            setPagoModal({ visible: false });
             setFactura({
                 visible: true,
                 data: {
@@ -260,19 +312,22 @@ const Mesas = () => {
                     fecha: new Date(),
                     items,
                     subtotal,
+                    descuento,
                     propina,
                     total,
                     recibido: monto,
                     cambio,
+                    metodoPago: pagoForm.metodoPago,
                 }
             });
-            // Refrescar mesas (la mesa pasa a limpieza)
             try {
                 const data = await api.getMesas();
-                const normalized = (Array.isArray(data) ? data : []).map(m => ({ id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2, estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || ''})).sort((a,b)=>a.numero-b.numero);
+                const normalized = (Array.isArray(data) ? data : []).map(m => ({
+                    id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2,
+                    estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || '',
+                })).sort((a,b)=>a.numero-b.numero);
                 setMesas(normalized);
             } catch {}
-            // Mantener abierto hasta cerrar factura
         } catch (e) {
             Swal.fire({ icon:'error', title:'No se pudo registrar el pago', text: e?.message || 'Error' });
         }
@@ -292,6 +347,13 @@ const Mesas = () => {
     const ocupadas = mesas.filter(m => m.estado === 'ocupada').length;
     const limpieza = mesas.filter(m => m.estado === 'limpieza').length;
 
+    // Derived pago calculations for display
+    const pagoSubtotal = pedidoItems.reduce((s,it) => s + (it.subtotal ?? it.cantidad*it.precio), 0);
+    const pagoDescuento = calcDescuento(pagoSubtotal, pagoForm.descuentoTipo, pagoForm.descuentoValor);
+    const pagoPropina = Math.max(0, Number(pagoForm.propina || 0));
+    const pagoTotal = pagoSubtotal - pagoDescuento + pagoPropina;
+    const pagoPorPersona = pagoForm.dividirPersonas > 1 ? Math.ceil(pagoTotal / pagoForm.dividirPersonas) : null;
+
     return (
         <div className="mesas-page">
             <div className="mesas-header">
@@ -300,13 +362,16 @@ const Mesas = () => {
                     <p className="muted">Visualiza y gestiona tus mesas asignadas.</p>
                 </div>
                 <div className="header-actions">
-                                        <button className="btn ghost" onClick={async ()=>{
-                                                try {
-                                                    const data = await api.getMesas();
-                                                    const normalized = (Array.isArray(data) ? data : []).map(m => ({ id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2, estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || ''})).sort((a,b)=>a.numero-b.numero);
-                                                    setMesas(normalized);
-                                                } catch {}
-                                            }} title="Refrescar desde servidor"><HiArrowPath /> Refrescar</button>
+                    <button className="btn ghost" onClick={async ()=>{
+                        try {
+                            const data = await api.getMesas();
+                            const normalized = (Array.isArray(data) ? data : []).map(m => ({
+                                id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2,
+                                estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || '',
+                            })).sort((a,b)=>a.numero-b.numero);
+                            setMesas(normalized);
+                        } catch {}
+                    }} title="Refrescar desde servidor"><HiArrowPath /> Refrescar</button>
                 </div>
             </div>
 
@@ -367,7 +432,6 @@ const Mesas = () => {
                     const puedeAsignar = m.estado === 'libre';
                     const puedeLiberar = m.estado === 'ocupada' && esMiMesa;
                     const puedeLimpieza = (m.estado === 'libre') || (m.estado === 'ocupada' && esMiMesa);
-                    // Permitir finalizar limpieza a cualquier mesero, ya que en este estado no siempre hay asignación
                     const puedeTerminarLimpieza = (m.estado === 'limpieza');
                     return (
                     <div key={m.id} className={`mesa-card ${ESTADOS[m.estado]?.color || ''}`} onClick={() => abrirPedido(m)}>
@@ -413,6 +477,7 @@ const Mesas = () => {
                 )}
             </div>
 
+            {/* Modal acción de mesa */}
             {modalMesa && (
                 <div className="modal-overlay" role="dialog" aria-modal="true">
                     <div className="modal-card">
@@ -440,6 +505,7 @@ const Mesas = () => {
                 </div>
             )}
 
+            {/* Modal pedido */}
             {pedidoModal.mesa && (
                 <div className="modal-overlay" role="dialog" aria-modal="true">
                     <div className="modal-card lg">
@@ -503,6 +569,21 @@ const Mesas = () => {
                                     <button className="btn" onClick={agregarItem} disabled={!pedidoModal.editable}>Agregar</button>
                                 </div>
                             </div>
+                            {/* Nota / modificador para el item a agregar */}
+                            {pedidoModal.editable && (
+                                <div style={{marginTop:'.5rem'}}>
+                                    <label style={{display:'flex', flexDirection:'column', gap:'.25rem'}}>
+                                        <span style={{fontSize:'.85rem', color:'#6b7280'}}>Nota / modificador (opcional)</span>
+                                        <input
+                                            type="text"
+                                            value={notaItem}
+                                            onChange={e => setNotaItem(e.target.value)}
+                                            placeholder="Ej: sin cebolla, término medio..."
+                                            style={{padding:'.4rem .6rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'.875rem'}}
+                                        />
+                                    </label>
+                                </div>
+                            )}
                             <div className="consumos-wrap" style={{marginTop:'1rem'}}>
                                 <table className="table-consumos">
                                     <thead>
@@ -517,7 +598,14 @@ const Mesas = () => {
                                     <tbody>
                                         {pedidoItems.map((it, idx) => (
                                             <tr key={idx}>
-                                                <td>{it.nombre}</td>
+                                                <td>
+                                                    <div>{it.nombre}</div>
+                                                    {it.nota && (
+                                                        <div style={{fontSize:'.8rem', fontStyle:'italic', color:'#6b7280', marginTop:'.1rem'}}>
+                                                            {it.nota}
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td className="td-right">{it.cantidad}</td>
                                                 <td className="td-right">${it.precio.toLocaleString('es-CO')}</td>
                                                 <td className="td-right">${(it.cantidad*it.precio).toLocaleString('es-CO')}</td>
@@ -535,7 +623,9 @@ const Mesas = () => {
                                     <tfoot>
                                         <tr>
                                             <td colSpan={3} className="td-right"><strong>Total</strong></td>
-                                            <td className="td-right" colSpan={pedidoModal.editable ? 2 : 1}><strong>${pedidoItems.reduce((s,it)=>s+(it.subtotal ?? it.cantidad*it.precio),0).toLocaleString('es-CO')}</strong></td>
+                                            <td className="td-right" colSpan={pedidoModal.editable ? 2 : 1}>
+                                                <strong>${pedidoItems.reduce((s,it)=>s+(it.subtotal ?? it.cantidad*it.precio),0).toLocaleString('es-CO')}</strong>
+                                            </td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -543,8 +633,140 @@ const Mesas = () => {
                         </div>
                         <div className="modal-footer">
                             <button className="btn" onClick={cerrarPedido}>Cerrar</button>
-                            {pedidoModal.editable && <button className="btn" onClick={registrarPago}>Registrar pago</button>}
+                            {pedidoModal.editable && <button className="btn" onClick={abrirPagoModal}>Registrar pago</button>}
                             {pedidoModal.editable && <button className="btn primary" onClick={guardarPedido}>Guardar</button>}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de pago (métodos, descuento, dividir) */}
+            {pagoModal.visible && (
+                <div className="modal-overlay" role="dialog" aria-modal="true">
+                    <div className="modal-card" style={{maxWidth:480}}>
+                        <div className="modal-header">
+                            <h3>Registrar pago — Mesa {pedidoModal.mesa?.numero}</h3>
+                            <button className="close-btn" onClick={() => setPagoModal({ visible: false })} aria-label="Cerrar">×</button>
+                        </div>
+                        <div className="modal-body" style={{display:'flex', flexDirection:'column', gap:'.85rem'}}>
+                            {/* Método de pago */}
+                            <div>
+                                <div style={{fontSize:'.85rem', fontWeight:600, marginBottom:'.35rem'}}>Método de pago</div>
+                                <div style={{display:'flex', gap:'.5rem', flexWrap:'wrap'}}>
+                                    {METODOS_PAGO.map(m => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            className={`btn${pagoForm.metodoPago === m ? ' primary' : ' ghost'}`}
+                                            style={{padding:'.35rem .8rem', fontSize:'.875rem'}}
+                                            onClick={() => setPagoForm(f => ({ ...f, metodoPago: m }))}
+                                        >
+                                            {m}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Descuento */}
+                            <div>
+                                <div style={{fontSize:'.85rem', fontWeight:600, marginBottom:'.35rem'}}>Descuento</div>
+                                <div style={{display:'flex', gap:'.5rem', alignItems:'center'}}>
+                                    <select
+                                        value={pagoForm.descuentoTipo}
+                                        onChange={e => setPagoForm(f => ({ ...f, descuentoTipo: e.target.value }))}
+                                        style={{padding:'.35rem .5rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'.875rem'}}
+                                    >
+                                        <option value="pct">Porcentaje (%)</option>
+                                        <option value="fijo">Monto fijo ($)</option>
+                                    </select>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={pagoForm.descuentoValor}
+                                        onChange={e => setPagoForm(f => ({ ...f, descuentoValor: e.target.value }))}
+                                        style={{padding:'.35rem .6rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'.875rem', width:'90px'}}
+                                    />
+                                    {pagoDescuento > 0 && (
+                                        <span style={{fontSize:'.85rem', color:'#16a34a'}}>
+                                            − ${pagoDescuento.toLocaleString('es-CO')}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Propina */}
+                            <label style={{display:'flex', flexDirection:'column', gap:'.25rem'}}>
+                                <span style={{fontSize:'.85rem', fontWeight:600}}>Propina (COP)</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={pagoForm.propina}
+                                    onChange={e => setPagoForm(f => ({ ...f, propina: e.target.value }))}
+                                    style={{padding:'.4rem .6rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'.875rem'}}
+                                />
+                            </label>
+
+                            {/* Monto recibido */}
+                            <label style={{display:'flex', flexDirection:'column', gap:'.25rem'}}>
+                                <span style={{fontSize:'.85rem', fontWeight:600}}>Monto recibido (COP)</span>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={pagoForm.monto}
+                                    onChange={e => setPagoForm(f => ({ ...f, monto: e.target.value }))}
+                                    style={{padding:'.4rem .6rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'.875rem'}}
+                                />
+                            </label>
+
+                            {/* Dividir cuenta */}
+                            <div>
+                                <div style={{fontSize:'.85rem', fontWeight:600, marginBottom:'.35rem'}}>Dividir entre personas</div>
+                                <div style={{display:'flex', gap:'.4rem', alignItems:'center'}}>
+                                    {[1,2,3,4,5,6].map(n => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            className={`btn${pagoForm.dividirPersonas === n ? ' primary' : ' ghost'}`}
+                                            style={{padding:'.3rem .6rem', fontSize:'.875rem', minWidth:'36px'}}
+                                            onClick={() => setPagoForm(f => ({ ...f, dividirPersonas: n }))}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
+                                </div>
+                                {pagoPorPersona !== null && (
+                                    <div style={{marginTop:'.35rem', fontSize:'.875rem', color:'#374151'}}>
+                                        Cada persona paga: <strong>${pagoPorPersona.toLocaleString('es-CO')}</strong>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Resumen */}
+                            <div style={{background:'#f9fafb', borderRadius:'8px', padding:'.75rem', fontSize:'.875rem', display:'flex', flexDirection:'column', gap:'.25rem'}}>
+                                <div style={{display:'flex', justifyContent:'space-between'}}>
+                                    <span>Subtotal</span><span>${pagoSubtotal.toLocaleString('es-CO')}</span>
+                                </div>
+                                {pagoDescuento > 0 && (
+                                    <div style={{display:'flex', justifyContent:'space-between', color:'#16a34a'}}>
+                                        <span>Descuento</span><span>− ${pagoDescuento.toLocaleString('es-CO')}</span>
+                                    </div>
+                                )}
+                                {pagoPropina > 0 && (
+                                    <div style={{display:'flex', justifyContent:'space-between'}}>
+                                        <span>Propina</span><span>${pagoPropina.toLocaleString('es-CO')}</span>
+                                    </div>
+                                )}
+                                <div style={{display:'flex', justifyContent:'space-between', fontWeight:700, borderTop:'1px solid #e5e7eb', paddingTop:'.25rem'}}>
+                                    <span>Total</span><span>${pagoTotal.toLocaleString('es-CO')}</span>
+                                </div>
+                                <div style={{display:'flex', justifyContent:'space-between', color:'#6b7280'}}>
+                                    <span>Método</span><span>{pagoForm.metodoPago}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn ghost" onClick={() => setPagoModal({ visible: false })}>Cancelar</button>
+                            <button className="btn primary" onClick={registrarPago}>Confirmar pago</button>
                         </div>
                     </div>
                 </div>
@@ -577,6 +799,7 @@ const Mesas = () => {
                                         <div style={{textAlign:'right'}}>
                                             <div style={{fontSize:'.9rem'}}>Mesa {factura.data.mesaNumero}</div>
                                             <div style={{fontSize:'.85rem', color:'#6b7280'}}>{new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }).format(new Date(factura.data.fecha))}</div>
+                                            <div style={{fontSize:'.85rem', color:'#374151'}}>Método: {factura.data.metodoPago}</div>
                                         </div>
                                     </div>
                                     <table className="table" style={{width:'100%', borderCollapse:'collapse'}}>
@@ -591,7 +814,12 @@ const Mesas = () => {
                                         <tbody>
                                             {factura.data.items.map((it, idx)=> (
                                                 <tr key={idx}>
-                                                    <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb'}}>{it.nombre}</td>
+                                                    <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb'}}>
+                                                        <div>{it.nombre}</div>
+                                                        {it.nota && (
+                                                            <div style={{fontSize:'.78rem', fontStyle:'italic', color:'#6b7280'}}>{it.nota}</div>
+                                                        )}
+                                                    </td>
                                                     <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb', textAlign:'right'}}>{it.cantidad}</td>
                                                     <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb', textAlign:'right'}}>${Number(it.precio||0).toLocaleString('es-CO')}</td>
                                                     <td style={{padding:'.5rem', borderTop:'1px solid #e5e7eb', textAlign:'right'}}>${Number(it.subtotal ?? (it.cantidad*it.precio)).toLocaleString('es-CO')}</td>
@@ -603,6 +831,12 @@ const Mesas = () => {
                                                 <td colSpan="3" style={{padding:'.5rem', textAlign:'right'}}>Subtotal</td>
                                                 <td style={{padding:'.5rem', textAlign:'right'}}>${Number(factura.data.subtotal).toLocaleString('es-CO')}</td>
                                             </tr>
+                                            {factura.data.descuento > 0 && (
+                                                <tr>
+                                                    <td colSpan="3" style={{padding:'.5rem', textAlign:'right', color:'#16a34a'}}>Descuento</td>
+                                                    <td style={{padding:'.5rem', textAlign:'right', color:'#16a34a'}}>− ${Number(factura.data.descuento).toLocaleString('es-CO')}</td>
+                                                </tr>
+                                            )}
                                             <tr>
                                                 <td colSpan="3" style={{padding:'.5rem', textAlign:'right'}}>Propina</td>
                                                 <td style={{padding:'.5rem', textAlign:'right'}}>${Number(factura.data.propina).toLocaleString('es-CO')}</td>

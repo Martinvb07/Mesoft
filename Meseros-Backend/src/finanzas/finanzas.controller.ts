@@ -75,4 +75,9 @@ export class FinanzasController {
   metaHoy(@Req() req: RequestWithTenant) {
     return this.finanzas.metaHoy(req.restaurantId!);
   }
+
+  @Get('evolucion-ventas')
+  evolucionVentas(@Req() req: RequestWithTenant, @Query() query: any) {
+    return this.finanzas.evolucionVentas(req.restaurantId!, query);
+  }
 }

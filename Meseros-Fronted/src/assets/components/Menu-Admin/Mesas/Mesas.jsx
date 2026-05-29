@@ -51,6 +51,9 @@ function Mesas() {
     const [reservasLista, setReservasLista] = useState([]);
     const [showDetalleModal, setShowDetalleModal] = useState(false);
     const [detalleMesa, setDetalleMesa] = useState(null);
+    const [detalleTab, setDetalleTab] = useState('consumos'); // 'consumos' | 'historial'
+    const [historialMesa, setHistorialMesa] = useState([]);
+    const [historialCargando, setHistorialCargando] = useState(false);
     // Modal de reserva
     const [reservaOpen, setReservaOpen] = useState(false);
     const [reservaForm, setReservaForm] = useState({ fecha: '', hora: '', nombre: '', telefono: '' });
@@ -317,9 +320,33 @@ function Mesas() {
         }
 
         setDetalleMesa({ ...mesa, meseroNombre, consumos, total, asignadaAt });
+        setDetalleTab('consumos');
+        setHistorialMesa([]);
         setShowDetalleModal(true);
     };
-    const cerrarDetalleMesa = () => { setShowDetalleModal(false); setDetalleMesa(null); };
+    const cerrarDetalleMesa = () => { setShowDetalleModal(false); setDetalleMesa(null); setHistorialMesa([]); };
+
+    const cargarHistorialMesa = async (mesaId) => {
+        setHistorialCargando(true);
+        try {
+            const today = new Date();
+            const hasta = today.toISOString().slice(0, 10);
+            const desde30 = new Date(today);
+            desde30.setDate(desde30.getDate() - 29);
+            const desde = desde30.toISOString().slice(0, 10);
+            const data = await api.facturas({ desde, hasta });
+            const arr = Array.isArray(data) ? data : (Array.isArray(data?.facturas) ? data.facturas : []);
+            const filtradas = arr
+                .filter(f => Number(f.mesa_id) === Number(mesaId))
+                .sort((a, b) => new Date(b.fecha_hora || b.created_at || 0) - new Date(a.fecha_hora || a.created_at || 0))
+                .slice(0, 5);
+            setHistorialMesa(filtradas);
+        } catch {
+            setHistorialMesa([]);
+        } finally {
+            setHistorialCargando(false);
+        }
+    };
 
     const abrirReservarModal = (mesa) => {
         const target = mesa || detalleMesa;
@@ -526,40 +553,109 @@ function Mesas() {
                                 {detalleMesa.asignadaAt && (
                                     <li><strong>Tiempo en mesa:</strong> {formatDuration(Date.now() - Number(detalleMesa.asignadaAt))}</li>
                                 )}
-                                <li><strong>Consumos:</strong></li>
                             </ul>
-                            {(!detalleMesa.consumos || detalleMesa.consumos.length === 0) && (
-                                <div className="empty" style={{ margin: 0 }}>Sin consumos registrados.</div>
+                            {/* Tabs */}
+                            <div style={{display:'flex', gap:'.25rem', borderBottom:'2px solid #e5e7eb', marginBottom:'.75rem', marginTop:'.5rem'}}>
+                                <button
+                                    className={`btn${detalleTab === 'consumos' ? ' primary' : ' ghost'}`}
+                                    style={{borderRadius:'6px 6px 0 0', padding:'.3rem .85rem', fontSize:'.875rem'}}
+                                    onClick={() => setDetalleTab('consumos')}
+                                >
+                                    Consumos actuales
+                                </button>
+                                <button
+                                    className={`btn${detalleTab === 'historial' ? ' primary' : ' ghost'}`}
+                                    style={{borderRadius:'6px 6px 0 0', padding:'.3rem .85rem', fontSize:'.875rem'}}
+                                    onClick={() => {
+                                        setDetalleTab('historial');
+                                        if (historialMesa.length === 0 && !historialCargando) {
+                                            cargarHistorialMesa(detalleMesa.id);
+                                        }
+                                    }}
+                                >
+                                    Historial (30 días)
+                                </button>
+                            </div>
+
+                            {/* Tab: consumos */}
+                            {detalleTab === 'consumos' && (
+                                <>
+                                    {(!detalleMesa.consumos || detalleMesa.consumos.length === 0) && (
+                                        <div className="empty" style={{ margin: 0 }}>Sin consumos registrados.</div>
+                                    )}
+                                    {detalleMesa.consumos && detalleMesa.consumos.length > 0 && (
+                                        <div className="consumos-wrap">
+                                            <table className="table-consumos">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Producto</th>
+                                                        <th>Cant.</th>
+                                                        <th>Precio</th>
+                                                        <th>Subtotal</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {detalleMesa.consumos.map((c, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>{c.nombre}</td>
+                                                            <td className="td-right">{c.cantidad}</td>
+                                                            <td className="td-right">${c.precio.toLocaleString('es-CO')}</td>
+                                                            <td className="td-right">${c.subtotal.toLocaleString('es-CO')}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr>
+                                                        <td colSpan={3} className="td-right"><strong>Total</strong></td>
+                                                        <td className="td-right"><strong>${(detalleMesa.total || 0).toLocaleString('es-CO')}</strong></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    )}
+                                </>
                             )}
-                            {detalleMesa.consumos && detalleMesa.consumos.length > 0 && (
-                                <div className="consumos-wrap">
-                                    <table className="table-consumos">
-                                        <thead>
-                                            <tr>
-                                                <th>Producto</th>
-                                                <th>Cant.</th>
-                                                <th>Precio</th>
-                                                <th>Subtotal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {detalleMesa.consumos.map((c, idx) => (
-                                                <tr key={idx}>
-                                                    <td>{c.nombre}</td>
-                                                    <td className="td-right">{c.cantidad}</td>
-                                                    <td className="td-right">${c.precio.toLocaleString('es-CO')}</td>
-                                                    <td className="td-right">${c.subtotal.toLocaleString('es-CO')}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colSpan={3} className="td-right"><strong>Total</strong></td>
-                                                <td className="td-right"><strong>${(detalleMesa.total || 0).toLocaleString('es-CO')}</strong></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
+
+                            {/* Tab: historial */}
+                            {detalleTab === 'historial' && (
+                                <>
+                                    {historialCargando && <div className="empty" style={{margin:0}}>Cargando historial...</div>}
+                                    {!historialCargando && historialMesa.length === 0 && (
+                                        <div className="empty" style={{margin:0}}>No hay pedidos pagados en los últimos 30 días.</div>
+                                    )}
+                                    {!historialCargando && historialMesa.length > 0 && (
+                                        <div className="consumos-wrap">
+                                            <table className="table-consumos">
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Fecha</th>
+                                                        <th>Mesero</th>
+                                                        <th className="td-right">Total</th>
+                                                        <th>Método</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {historialMesa.map((f, idx) => {
+                                                        const fecha = f.fecha_hora || f.created_at || f.fecha;
+                                                        const fmtFecha = fecha
+                                                            ? new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }).format(new Date(fecha))
+                                                            : '—';
+                                                        return (
+                                                            <tr key={idx}>
+                                                                <td>#{f.id}</td>
+                                                                <td style={{fontSize:'.8rem'}}>{fmtFecha}</td>
+                                                                <td>{f.mesero_nombre || f.mesero_id || '—'}</td>
+                                                                <td className="td-right">${Number(f.total||0).toLocaleString('es-CO')}</td>
+                                                                <td style={{fontSize:'.8rem'}}>{f.metodo_pago || f.metodo || '—'}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                         <div className="modal-footer">

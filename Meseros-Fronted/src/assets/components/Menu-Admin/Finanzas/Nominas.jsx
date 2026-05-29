@@ -245,6 +245,50 @@ const Nominas = () => {
     }
   };
 
+  const exportarPDFMesero = (n) => {
+    const nombre = nombreMesero(n.empleadoId);
+    const total = totalDe(n);
+    const w = window.open('', 'PDF_NOMINA', 'width=700,height=900');
+    if (!w) return;
+    const rows = [
+      ['Sueldo base', toCurrency(n.sueldoBase)],
+      ['Extras', toCurrency(n.extras)],
+      ['Bonos', toCurrency(n.bonos)],
+      ['Deducciones', toCurrency(n.deducciones)],
+      ['Total neto', toCurrency(total)],
+      ['Estado', n.estado === 'pagado' ? 'Pagado' : 'Pendiente'],
+    ];
+    const rowsHtml = rows.map(([label, val]) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;">${label}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${val}</td>
+      </tr>`).join('');
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Nómina - ${nombre}</title>
+      <style>
+        body{font-family:ui-sans-serif,system-ui,sans-serif;margin:40px;color:#111;background:#fff;}
+        h1{font-size:1.4rem;margin:0 0 4px 0;}
+        .sub{color:#6b7280;font-size:.9rem;margin-bottom:24px;}
+        table{width:100%;border-collapse:collapse;margin-top:16px;}
+        th{text-align:left;background:#f3f4f6;padding:8px 12px;font-size:.85rem;color:#374151;}
+        th:last-child{text-align:right;}
+        .footer{margin-top:32px;font-size:.8rem;color:#9ca3af;}
+        .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.8rem;font-weight:600;
+               background:${n.estado==='pagado'?'#dcfce7':'#fef3c7'};color:${n.estado==='pagado'?'#16a34a':'#92400e'};}
+      </style>
+    </head><body>
+      <h1>Comprobante de Nómina</h1>
+      <div class="sub">Período: ${n.inicio} al ${n.fin}</div>
+      <table>
+        <thead><tr><th>Mesero</th><th style="text-align:right">${nombre}</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div style="margin-top:20px;">Estado: <span class="badge">${n.estado === 'pagado' ? 'Pagado' : 'Pendiente'}</span></div>
+      <div class="footer">Generado: ${new Date().toLocaleString('es-CO')}</div>
+    </body></html>`);
+    w.document.close();
+    w.onload = () => { w.focus(); w.print(); };
+  };
+
   const exportarCSV = () => {
     const headers = ['Empleado','Inicio','Fin','SueldoBase','Extras','Bonos','Deducciones','Total','Estado','Creado','Actualizado'];
     const rows = nominas.map(n => [nombreMesero(n.empleadoId), n.inicio, n.fin, n.sueldoBase, n.extras, n.bonos, n.deducciones, totalDe(n), n.estado, n.createdAt, n.updatedAt]);
@@ -340,6 +384,7 @@ const Nominas = () => {
                         ) : (
                           <button className="btn sm" onClick={() => marcarPago(n.id, true)}>Marcar pagado</button>
                         )}
+                        <button className="btn sm" onClick={() => exportarPDFMesero(n)}>PDF</button>
                         <button className="btn sm danger" onClick={() => eliminar(n.id)}>Eliminar</button>
                       </div>
                     </td>

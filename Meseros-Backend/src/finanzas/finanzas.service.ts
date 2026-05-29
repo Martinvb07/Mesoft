@@ -472,4 +472,47 @@ export class FinanzasService {
       ])
       .exec();
   }
+
+  async evolucionVentas(rid: number, query: any) {
+    const { desde, hasta } = query || {};
+    const r1 = parseDateOnly(desde);
+    const r2 = parseDateOnly(hasta);
+    const start = r1?.start ?? DateTime.now().setZone(APP_TZ).minus({ days: 29 }).startOf('day').toJSDate();
+    const end = r2?.end ?? DateTime.now().setZone(APP_TZ).endOf('day').toJSDate();
+
+    const rows = await this.contables
+      .aggregate([
+        {
+          $match: {
+            tipo: 'ingreso',
+            restaurant_id: rid,
+            fecha: { $gte: start, $lte: end },
+            $or: [{ categoria: 'venta' }, { descripcion: { $regex: /^Venta\s/i } }],
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$fecha', timezone: APP_TZ },
+            },
+            ventas: { $sum: '$monto' },
+          },
+        },
+        { $project: { _id: 0, fecha: '$_id', ventas: 1 } },
+        { $sort: { fecha: 1 } },
+      ])
+      .exec();
+
+    // Rellenar días sin ventas con 0
+    const map = new Map(rows.map((r: any) => [r.fecha, r.ventas]));
+    const result: { fecha: string; ventas: number }[] = [];
+    let cursor = DateTime.fromJSDate(start).setZone(APP_TZ);
+    const endDt = DateTime.fromJSDate(end).setZone(APP_TZ);
+    while (cursor <= endDt) {
+      const key = cursor.toFormat('yyyy-MM-dd');
+      result.push({ fecha: key, ventas: Number(map.get(key) || 0) });
+      cursor = cursor.plus({ days: 1 });
+    }
+    return result;
+  }
 }

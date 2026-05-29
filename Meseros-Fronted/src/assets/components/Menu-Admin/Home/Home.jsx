@@ -22,6 +22,7 @@ function Home() {
     const [pedidosCargando, setPedidosCargando] = useState(false);
     const [showPedidosModal, setShowPedidosModal] = useState(false);
     const [meserosActivosCount, setMeserosActivosCount] = useState(0);
+    const [stockAlertas, setStockAlertas] = useState([]); // productos con stock bajo
 
     useEffect(() => {
         let cancel = false;
@@ -108,6 +109,17 @@ function Home() {
                 try {
                     const tp = await api.topProductos({ limit: 4 });
                     if (!cancel) setTopProductos(Array.isArray(tp) ? tp : []);
+                } catch {}
+                // Alertas de stock bajo (productos con stock <= min_stock)
+                try {
+                    const prods = await api.getProductos();
+                    const arr = Array.isArray(prods?.items) ? prods.items : (Array.isArray(prods) ? prods : []);
+                    const alertas = arr.filter(p => {
+                        const stock = Number(p.stock ?? p.cantidad ?? -1);
+                        const minStock = Number(p.min_stock ?? p.minStock ?? p.stock_minimo ?? 5);
+                        return stock >= 0 && stock <= minStock;
+                    }).slice(0, 5);
+                    if (!cancel) setStockAlertas(alertas);
                 } catch {}
             } finally {
                 if (!cancel) setCargando(false);
@@ -227,8 +239,16 @@ function Home() {
                             <span className="kpi-value">${ticketPromedio.toLocaleString('es-CO')}</span>
                         </div>
                         <div className="kpi">
-                            <span className="kpi-label">Variación</span>
-                            <span className="kpi-value"><span className="pill">{variacionPct >= 0 ? '+' : ''}{variacionPct.toFixed(1)}%</span></span>
+                            <span className="kpi-label">Variación vs ayer</span>
+                            <span className="kpi-value">
+                                <span className="pill" style={{
+                                    background: variacionPct >= 0 ? '#dcfce7' : '#fee2e2',
+                                    color: variacionPct >= 0 ? '#16a34a' : '#dc2626',
+                                    fontWeight: 600,
+                                }}>
+                                    {variacionPct >= 0 ? '▲' : '▼'} {variacionPct >= 0 ? '+' : ''}{variacionPct.toFixed(1)}%
+                                </span>
+                            </span>
                         </div>
                     </div>
                     <div className="goal">
@@ -397,6 +417,33 @@ function Home() {
                         </div>
                     </div>
                 </div>
+
+                {/* Alertas de stock bajo */}
+                {stockAlertas.length > 0 && (
+                    <div className="card" style={{gridColumn:'1/-1'}}>
+                        <h3>Alertas de stock</h3>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:'.5rem', marginTop:'.5rem'}}>
+                            {stockAlertas.map((p, idx) => {
+                                const stock = Number(p.stock ?? p.cantidad ?? 0);
+                                const isEmpty = stock === 0;
+                                return (
+                                    <span
+                                        key={idx}
+                                        style={{
+                                            display:'inline-flex', alignItems:'center', gap:'.35rem',
+                                            padding:'.3rem .75rem', borderRadius:'999px', fontSize:'.825rem', fontWeight:600,
+                                            background: isEmpty ? '#fee2e2' : '#ffedd5',
+                                            color: isEmpty ? '#b91c1c' : '#c2410c',
+                                            border: `1px solid ${isEmpty ? '#fca5a5' : '#fdba74'}`,
+                                        }}
+                                    >
+                                        {isEmpty ? '⛔' : '⚠️'} {p.nombre} — stock: {stock}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         {showPedidosModal && (
             <div className="modal-overlay" role="dialog" aria-modal="true">
