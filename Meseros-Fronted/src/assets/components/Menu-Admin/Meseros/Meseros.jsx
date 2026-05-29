@@ -24,7 +24,20 @@ function Meseros() {
         setLoading(true); setError('');
         try {
             const data = await api.getMeseros();
-            setMeseros(Array.isArray(data) ? data : []);
+            const arr = Array.isArray(data) ? data : [];
+            setMeseros(arr);
+            // Sync turnos from API response (esta_en_turno / turno_inicio fields)
+            const apiTurnos = arr
+                .filter((u) => u.esta_en_turno != null)
+                .map((u) => ({
+                    meseroId: u.id,
+                    enTurno: !!u.esta_en_turno,
+                    inicioAt: u.turno_inicio || null,
+                    mesaId: null,
+                }));
+            if (apiTurnos.length > 0) {
+                setTurnos(apiTurnos);
+            }
         } catch (e) {
             setError(e.message || 'Error al cargar meseros');
         } finally { setLoading(false); }
@@ -96,8 +109,11 @@ function Meseros() {
 
     // Helpers UI
     const pillFor = (u) => {
+        // API fields take precedence over localStorage turnos
+        const apiEnTurno = u.esta_en_turno != null ? !!u.esta_en_turno : null;
         const t = turnoById.get(Number(u.id));
-        if (t?.enTurno) return { label: 'En turno', color: 'occ' }; // verde
+        const isEnTurno = apiEnTurno !== null ? apiEnTurno : !!t?.enTurno;
+        if (isEnTurno) return { label: 'En turno', color: 'occ' }; // verde
         const isActivo = (u.activo === 1 || u.activo === true || `${u.estado || ''}`.toLowerCase() === 'activo');
         if (isActivo) return { label: 'Activo', color: 'res' }; // azul
         return { label: 'Inactivo', color: 'clean' }; // naranja
@@ -307,10 +323,37 @@ function Meseros() {
                                     <span className="small muted">Correo</span>
                                     <span>{u.correo || u.email || '—'}</span>
                                 </div>
-                                <div className="cap">
-                                    <HiClock />
-                                    <span>{t?.inicioAt ? `Inicio turno: ${new Date(t.inicioAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Fuera de turno'}</span>
-                                </div>
+                                {/* Turno info — populated from API esta_en_turno / turno_inicio or localStorage */}
+                                {(() => {
+                                    const apiEnTurno = u.esta_en_turno != null ? !!u.esta_en_turno : t?.enTurno;
+                                    const apiInicioAt = u.turno_inicio || t?.inicioAt || null;
+                                    let duracion = '';
+                                    if (apiEnTurno && apiInicioAt) {
+                                        const diff = Date.now() - new Date(apiInicioAt).getTime();
+                                        const m = Math.floor(diff / 60000);
+                                        const h = Math.floor(m / 60);
+                                        duracion = h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+                                    }
+                                    const checkinFmt = apiInicioAt
+                                        ? new Date(apiInicioAt).toLocaleString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+                                        : '';
+                                    return (
+                                        <div
+                                            className="cap"
+                                            title={apiEnTurno && checkinFmt ? `Check-in: ${checkinFmt}` : 'Fuera de turno'}
+                                        >
+                                            <HiClock />
+                                            {apiEnTurno ? (
+                                                <span>
+                                                    En turno{duracion ? ` — ${duracion}` : ''}
+                                                    {checkinFmt && <span className="small muted" style={{marginLeft:'.35rem'}}>desde {checkinFmt}</span>}
+                                                </span>
+                                            ) : (
+                                                <span>Fuera de turno</span>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                                 <div className="cap">
                                     <HiUser />
                                     <span>{t?.mesaId ? `Atendiendo mesa ${t.mesaId}` : 'Sin mesa asignada'}</span>

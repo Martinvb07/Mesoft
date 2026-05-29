@@ -1,0 +1,162 @@
+/* ── Public Menu Page ── mobile-first, clean design for restaurant customers */
+:root {
+    --mp-brand: #ff6633;
+    --mp-brand2: #ff5a21;
+    --mp-bg: #f8f9fa;
+    --mp-card: #ffffff;
+    --mp-border: #eef2f6;
+    --mp-ink: #1a1a2e;
+    --mp-muted: #6b7280;
+    --mp-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.menu-pub-page {
+    min-height: 100vh;
+    background: var(--mp-bg);
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    box-sizing: border-box;
+}
+
+/* Header */
+.menu-pub-header {
+    background: linear-gradient(135deg, var(--mp-brand), var(--mp-brand2));
+    color: #fff;
+    padding: 2rem 1.25rem 1.5rem;
+    text-align: center;
+}
+
+.menu-pub-title {
+    margin: 0 0 .4rem 0;
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -.5px;
+}
+
+.menu-pub-subtitle {
+    margin: 0;
+    font-size: .95rem;
+    opacity: .88;
+}
+
+/* Content */
+.menu-pub-content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 2rem;
+}
+
+/* Category section */
+.menu-pub-category {
+    margin-bottom: 2rem;
+}
+
+.menu-pub-cat-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--mp-brand);
+    margin: 0 0 .75rem 0;
+    padding-bottom: .35rem;
+    border-bottom: 2px solid var(--mp-brand);
+    display: inline-block;
+}
+
+/* Products grid */
+.menu-pub-products {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+}
+
+/* Product card */
+.menu-pub-card {
+    background: var(--mp-card);
+    border-radius: 14px;
+    border: 1px solid var(--mp-border);
+    box-shadow: var(--mp-shadow);
+    padding: .9rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    transition: transform .15s, box-shadow .15s;
+}
+
+.menu-pub-card:active {
+    transform: scale(.98);
+}
+
+.menu-pub-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.menu-pub-card-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--mp-ink);
+    margin-bottom: .15rem;
+}
+
+.menu-pub-card-desc {
+    font-size: .85rem;
+    color: var(--mp-muted);
+    line-height: 1.4;
+    white-space: normal;
+}
+
+.menu-pub-card-price {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--mp-brand);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* States */
+.menu-pub-loading,
+.menu-pub-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--mp-muted);
+    font-size: 1rem;
+}
+
+.menu-pub-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    padding: 3rem 1rem;
+    color: #dc2626;
+    text-align: center;
+}
+
+.menu-pub-error-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #fee2e2;
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+/* Footer */
+.menu-pub-footer {
+    text-align: center;
+    padding: 1rem;
+    font-size: .8rem;
+    color: var(--mp-muted);
+    border-top: 1px solid var(--mp-border);
+}
+
+/* Tablet+ */
+@media (min-width: 480px) {
+    .menu-pub-products {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: .75rem;
+    }
+}

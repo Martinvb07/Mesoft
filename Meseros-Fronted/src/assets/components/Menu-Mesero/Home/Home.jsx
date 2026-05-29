@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Meseros/Home/Home.css';
 import { Link } from 'react-router-dom';
-import { HiSquares2X2, HiUsers, HiBanknotes, HiCreditCard, HiCalculator, HiUser, HiEnvelope, HiPhone, HiIdentification } from 'react-icons/hi2';
+import { HiSquares2X2, HiUsers, HiBanknotes, HiCreditCard, HiCalculator, HiUser, HiEnvelope, HiPhone, HiIdentification, HiClock } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 
 // Helpers de fecha en zona Colombia
@@ -45,6 +45,11 @@ const Home = () => {
     const [sueldoBase, setSueldoBase] = useState(0);
     const [propinasMes, setPropinasMes] = useState(0);
 
+    // Turno del mesero
+    const [enTurno, setEnTurno] = useState(false);
+    const [turnoInicio, setTurnoInicio] = useState(null); // ISO string
+    const [turnoLoading, setTurnoLoading] = useState(false);
+
     // Totales por mesa (pedido abierto)
     const [pedidoPorMesa, setPedidoPorMesa] = useState({}); // mesaId -> { total, items }
     const [pedidoModal, setPedidoModal] = useState({ mesa: null });
@@ -60,6 +65,22 @@ const Home = () => {
             }
         };
         loadMesas();
+    }, []);
+
+    // Cargar estado de turno del mesero actual
+    useEffect(() => {
+        const loadTurno = async () => {
+            try {
+                const me = await api.getMiMesero();
+                if (me) {
+                    setEnTurno(!!me.esta_en_turno);
+                    setTurnoInicio(me.turno_inicio || null);
+                }
+            } catch {
+                // fallback: no turno info
+            }
+        };
+        loadTurno();
     }, []);
 
     // Cargar perfil (mesero actual) desde backend
@@ -188,6 +209,43 @@ const Home = () => {
         loadTotales();
     }, [misMesasBase.length]);
 
+    // Helpers de duración de turno
+    const formatTurnoDuration = (isoStart) => {
+        if (!isoStart) return '';
+        const diff = Date.now() - new Date(isoStart).getTime();
+        const m = Math.floor(diff / 60000);
+        const h = Math.floor(m / 60);
+        const rm = m % 60;
+        if (h > 0) return `${h}h ${rm}m`;
+        return `${m}m`;
+    };
+
+    const handleCheckin = async () => {
+        setTurnoLoading(true);
+        try {
+            const res = await api.meseroCheckin();
+            setEnTurno(true);
+            setTurnoInicio(res?.turno_inicio || new Date().toISOString());
+        } catch (e) {
+            alert(`Error al iniciar turno: ${e.message}`);
+        } finally {
+            setTurnoLoading(false);
+        }
+    };
+
+    const handleCheckout = async () => {
+        setTurnoLoading(true);
+        try {
+            await api.meseroCheckout();
+            setEnTurno(false);
+            setTurnoInicio(null);
+        } catch (e) {
+            alert(`Error al finalizar turno: ${e.message}`);
+        } finally {
+            setTurnoLoading(false);
+        }
+    };
+
     const abrirPedido = (mesa) => {
         if (!mesa) return;
         setPedidoModal({ mesa });
@@ -244,6 +302,43 @@ const Home = () => {
                     </div>
                 </div>
                 {/* El balance es una métrica de cierre del admin; se oculta en la vista del mesero */}
+            </div>
+
+            {/* Panel de turno */}
+            <div className="home-sections" style={{ marginBottom: 0 }}>
+                <div className="panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
+                        <HiClock style={{ fontSize: '1.5rem', color: enTurno ? '#16a34a' : '#6b7280' }} />
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: enTurno ? '#16a34a' : '#374151' }}>
+                                {enTurno ? 'En turno' : 'Fuera de turno'}
+                            </div>
+                            {enTurno && turnoInicio && (
+                                <div className="home-sub" style={{ margin: 0, fontSize: '.85rem' }}>
+                                    Trabajando {formatTurnoDuration(turnoInicio)} — inicio {new Date(turnoInicio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {enTurno ? (
+                        <button
+                            className="btn ghost"
+                            disabled={turnoLoading}
+                            onClick={handleCheckout}
+                            style={{ borderColor: '#ef4444', color: '#ef4444' }}
+                        >
+                            {turnoLoading ? 'Finalizando...' : 'Finalizar turno'}
+                        </button>
+                    ) : (
+                        <button
+                            className="btn primary"
+                            disabled={turnoLoading}
+                            onClick={handleCheckin}
+                        >
+                            {turnoLoading ? 'Iniciando...' : 'Iniciar turno'}
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="home-sections">

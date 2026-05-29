@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Mesas/Mesas.css';
 import { api } from '../../../../api/client';
+import { useSocket } from '../../../../hooks/useSocket';
 import {
     HiSquares2X2,
     HiUsers,
@@ -14,6 +15,7 @@ import {
     HiOutlineXCircle,
     HiTrash,
     HiPencilSquare,
+    HiQrCode,
 } from 'react-icons/hi2';
 
 const ESTADOS = {
@@ -54,6 +56,17 @@ function Mesas() {
     const [detalleTab, setDetalleTab] = useState('consumos'); // 'consumos' | 'historial'
     const [historialMesa, setHistorialMesa] = useState([]);
     const [historialCargando, setHistorialCargando] = useState(false);
+    // QR modal
+    const [qrModal, setQrModal] = useState({ open: false, mesaNumero: null, url: '' });
+    const restaurantId = (() => { try { return localStorage.getItem('restaurant_id') || ''; } catch { return ''; } })();
+
+    const abrirQR = (e, mesa) => {
+        e.stopPropagation(); // don't open detalle modal
+        const url = `https://mesoft.store/menu/${restaurantId}/mesa/${mesa.numero}`;
+        setQrModal({ open: true, mesaNumero: mesa.numero, url });
+    };
+    const cerrarQR = () => setQrModal({ open: false, mesaNumero: null, url: '' });
+
     // Modal de reserva
     const [reservaOpen, setReservaOpen] = useState(false);
     const [reservaForm, setReservaForm] = useState({ fecha: '', hora: '', nombre: '', telefono: '' });

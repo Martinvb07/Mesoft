@@ -130,6 +130,14 @@ export const api = {
   eliminarMovimientoNomina: (id) => request(`/nomina/movimientos/${id}`, { method: 'DELETE' }),
   marcarPagoNomina: (data) => request('/nomina/pago', { method: 'POST', body: data }),
 
+  // Turnos (mesero)
+  meseroCheckin: () => request('/meseros/checkin', { method: 'POST' }),
+  meseroCheckout: () => request('/meseros/checkout', { method: 'POST' }),
+
+  // Menú público (sin autenticación)
+  getMenuPublico: (restaurantId) =>
+    fetch(`https://mesoft.store/api/public/${restaurantId}/menu`).then((r) => r.json()),
+
   // Productos / Inventario
   getProductos: () => request('/productos'),
   crearProducto: (data) => request('/productos', { method: 'POST', body: data }),

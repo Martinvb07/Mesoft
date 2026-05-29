@@ -1,0 +1,252 @@
+/* ── Kitchen Display System (KDS) — Cocina.css ── */
+:root {
+    --kds-bg: #111827;
+    --kds-card: #1f2937;
+    --kds-border: #374151;
+    --kds-ink: #f9fafb;
+    --kds-muted: #9ca3af;
+    --kds-nuevo: #fbbf24;       /* yellow — new order */
+    --kds-nuevo-bg: #451a03;
+    --kds-parcial: #f97316;     /* orange — partially ready */
+    --kds-parcial-bg: #431407;
+    --kds-listo: #22c55e;       /* green — all ready */
+    --kds-listo-bg: #052e16;
+    --kds-brand: #ff6633;
+}
+
+.kds-page {
+    min-height: 100vh;
+    background: var(--kds-bg);
+    color: var(--kds-ink);
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+/* Header */
+.kds-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.kds-title {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 900;
+    color: var(--kds-brand);
+    margin: 0;
+    letter-spacing: -.5px;
+}
+
+.kds-header-right {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.kds-count {
+    font-size: 1rem;
+    font-weight: 700;
+    background: #374151;
+    padding: .3rem .8rem;
+    border-radius: 999px;
+    color: var(--kds-ink);
+}
+
+.kds-refresh-btn {
+    appearance: none;
+    border: 1px solid #4b5563;
+    background: #1f2937;
+    color: var(--kds-ink);
+    border-radius: 10px;
+    padding: .45rem 1rem;
+    font-size: .9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+
+.kds-refresh-btn:hover { background: #374151; border-color: var(--kds-brand); }
+
+/* States */
+.kds-loading, .kds-empty {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--kds-muted);
+    font-size: 1.1rem;
+}
+
+.kds-error {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #f87171;
+    font-size: 1rem;
+}
+
+/* Grid */
+.kds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+/* Card */
+.kds-card {
+    background: var(--kds-card);
+    border-radius: 16px;
+    border: 2px solid var(--kds-border);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color .2s, transform .15s;
+}
+
+.kds-card:hover { transform: translateY(-2px); }
+
+.kds-card.kds-nuevo  { border-color: var(--kds-nuevo); }
+.kds-card.kds-parcial { border-color: var(--kds-parcial); }
+.kds-card.kds-listo  { border-color: var(--kds-listo); opacity: .8; }
+
+/* Card header */
+.kds-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .85rem 1rem .6rem;
+    border-bottom: 1px solid var(--kds-border);
+}
+
+.kds-card.kds-nuevo  .kds-card-header { background: var(--kds-nuevo-bg); }
+.kds-card.kds-parcial .kds-card-header { background: var(--kds-parcial-bg); }
+.kds-card.kds-listo  .kds-card-header { background: var(--kds-listo-bg); }
+
+.kds-card-title {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.kds-mesa {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: var(--kds-ink);
+}
+
+.kds-mesero {
+    font-size: .8rem;
+    color: var(--kds-muted);
+}
+
+.kds-card-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .25rem;
+}
+
+.kds-pedido-id {
+    font-size: .8rem;
+    color: var(--kds-muted);
+}
+
+.kds-elapsed {
+    font-size: .8rem;
+    color: var(--kds-muted);
+}
+
+.kds-badge {
+    font-size: .8rem;
+    font-weight: 800;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    letter-spacing: .5px;
+}
+
+.kds-badge.kds-nuevo  { background: var(--kds-nuevo); color: #1c0700; }
+.kds-badge.kds-parcial { background: var(--kds-parcial); color: #fff; }
+.kds-badge.kds-listo  { background: var(--kds-listo); color: #052e16; }
+
+/* Items list */
+.kds-items {
+    list-style: none;
+    margin: 0;
+    padding: .5rem .75rem .75rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.kds-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem .6rem;
+    background: #111827;
+    border-radius: 10px;
+    transition: opacity .2s;
+}
+
+.kds-item.done {
+    opacity: .45;
+}
+
+.kds-item-qty {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--kds-brand);
+    min-width: 2rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.kds-item-name {
+    flex: 1;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--kds-ink);
+    min-width: 0;
+    word-break: break-word;
+}
+
+.kds-btn-listo {
+    appearance: none;
+    background: var(--kds-listo);
+    color: #052e16;
+    border: none;
+    border-radius: 8px;
+    padding: .35rem .75rem;
+    font-size: .85rem;
+    font-weight: 800;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity .15s, transform .15s;
+}
+
+.kds-btn-listo:hover { opacity: .85; transform: scale(1.04); }
+.kds-btn-listo:active { transform: scale(.97); }
+
+.kds-item-done-mark {
+    font-size: .8rem;
+    font-weight: 800;
+    color: var(--kds-listo);
+    flex-shrink: 0;
+}
+
+.kds-item-empty {
+    color: var(--kds-muted);
+    font-size: .9rem;
+    padding: .4rem .6rem;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .kds-grid {
+        grid-template-columns: 1fr;
+    }
+    .kds-mesa { font-size: 1.15rem; }
+    .kds-item-name { font-size: .95rem; }
+}

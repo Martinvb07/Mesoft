@@ -26,6 +26,12 @@ export class Mesero {
   @Prop({ required: true, index: true })
   restaurant_id!: number;
 
+  @Prop({ type: Date, default: null })
+  turno_inicio?: Date | null;
+
+  @Prop({ type: Boolean, default: false })
+  esta_en_turno?: boolean;
+
   @Prop()
   created_at?: Date;
 

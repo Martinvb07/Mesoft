@@ -23,8 +23,11 @@ export class DetallePedido {
   @Prop({ required: true })
   subtotal!: number;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   nota?: string | null;
+
+  @Prop({ type: Boolean, default: false })
+  listo?: boolean;
 }
 
 export const DetallePedidoSchema = SchemaFactory.createForClass(DetallePedido);
