@@ -247,17 +247,29 @@ const NavbarAdmin = () => {
   };
 
   const mobileLinks = [
-    { to: '/admin/home',             label: 'Inicio',        Icon: HiOutlineHome },
-    { to: '/admin/mesas',            label: 'Mesas',         Icon: HiOutlineTableCells },
-    { to: '/admin/meseros',          label: 'Meseros',       Icon: HiOutlineUserGroup },
-    { to: '/admin/cocina',           label: 'Cocina / KDS',  Icon: HiOutlineFire },
-    { to: '/admin/combos',           label: 'Combos',        Icon: HiOutlineSquaresPlus },
-    { to: '/admin/horarios',         label: 'Horarios',      Icon: HiOutlineCalendarDays },
-    { to: '/admin/clientes',         label: 'Clientes',      Icon: HiOutlineUsers },
-    { to: '/admin/proveedores',      label: 'Proveedores',   Icon: HiOutlineTruck },
-    { to: '/admin/finanzas/resumen', label: 'Finanzas',      Icon: HiOutlineCurrencyDollar },
-    { to: '/admin/configuracion',    label: 'Configuración', Icon: HiOutlineCog6Tooth },
-    { to: '/admin/auditoria',        label: 'Auditoría',     Icon: HiOutlineClipboardDocumentList },
+    { to: '/admin/home',                  label: 'Inicio',          Icon: HiOutlineHome,                    group: null },
+    { to: '/admin/mesas',                 label: 'Mesas',           Icon: HiOutlineTableCells,              group: null },
+    { to: '/admin/meseros',               label: 'Meseros',         Icon: HiOutlineUserGroup,               group: null },
+    // Operaciones
+    { label: 'OPERACIONES', group: 'header' },
+    { to: '/admin/cocina',                label: 'Cocina / KDS',    Icon: HiOutlineFire,                    group: 'sub' },
+    { to: '/admin/combos',                label: 'Combos',          Icon: HiOutlineSquaresPlus,             group: 'sub' },
+    { to: '/admin/horarios',              label: 'Horarios',        Icon: HiOutlineCalendarDays,            group: 'sub' },
+    { to: '/admin/clientes',              label: 'Clientes',        Icon: HiOutlineUsers,                   group: 'sub' },
+    { to: '/admin/proveedores',           label: 'Proveedores',     Icon: HiOutlineTruck,                   group: 'sub' },
+    // Finanzas
+    { label: 'FINANZAS', group: 'header' },
+    { to: '/admin/finanzas/resumen',      label: 'Resumen',         Icon: HiOutlineChartBar,                group: 'sub' },
+    { to: '/admin/finanzas/ingresos',     label: 'Ingresos',        Icon: HiOutlineArrowTrendingUp,         group: 'sub' },
+    { to: '/admin/finanzas/egresos',      label: 'Egresos',         Icon: HiOutlineArrowTrendingDown,       group: 'sub' },
+    { to: '/admin/finanzas/reportes',     label: 'Reportes',        Icon: HiOutlineDocumentText,            group: 'sub' },
+    { to: '/admin/finanzas/cierre',       label: 'Cierre de caja',  Icon: HiOutlineLockClosed,              group: 'sub' },
+    { to: '/admin/finanzas/inventario',   label: 'Inventario',      Icon: HiOutlineArchiveBox,              group: 'sub' },
+    { to: '/admin/finanzas/nominas',      label: 'Nóminas',         Icon: HiOutlineCreditCard,              group: 'sub' },
+    // Config
+    { label: 'SISTEMA', group: 'header' },
+    { to: '/admin/configuracion',         label: 'Configuración',   Icon: HiOutlineCog6Tooth,               group: 'sub' },
+    { to: '/admin/auditoria',             label: 'Auditoría',       Icon: HiOutlineClipboardDocumentList,   group: 'sub' },
   ];
 
   return (
@@ -393,14 +405,35 @@ const NavbarAdmin = () => {
           padding: 12, overflowY: 'auto', gap: 2,
         }}
       >
-        {(isCocinero ? [{ to: '/admin/cocina', label: 'Cocina', Icon: HiOutlineFire }] : mobileLinks).map(({ to, label, Icon }) => (
-          <Link key={to} to={to} onClick={() => setMobileOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#e2e8f0', textDecoration: 'none', padding: '11px 14px', borderRadius: 10, fontSize: '1rem', background: loc.pathname.startsWith(to) ? 'rgba(255,102,51,.1)' : 'transparent' }}
-          >
-            <Icon size={19} style={{ color: loc.pathname.startsWith(to) ? '#FF6633' : '#475569', flexShrink: 0 }} />
-            <span style={{ color: loc.pathname.startsWith(to) ? '#FF6633' : '#e2e8f0' }}>{label}</span>
-          </Link>
-        ))}
+        {(isCocinero
+          ? [{ to: '/admin/cocina', label: 'Cocina', Icon: HiOutlineFire, group: null }]
+          : mobileLinks
+        ).map((item, i) => {
+          if (item.group === 'header') {
+            return (
+              <p key={i} style={{ margin: '12px 0 4px 14px', fontSize: '.68rem', fontWeight: 700, color: '#334155', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                {item.label}
+              </p>
+            );
+          }
+          const { to, label, Icon, group } = item;
+          const active = loc.pathname.startsWith(to);
+          return (
+            <Link key={to} to={to} onClick={() => setMobileOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                color: active ? '#FF6633' : '#cbd5e1',
+                textDecoration: 'none',
+                padding: group === 'sub' ? '9px 14px 9px 28px' : '11px 14px',
+                borderRadius: 8, fontSize: group === 'sub' ? '.875rem' : '1rem',
+                background: active ? 'rgba(255,102,51,.1)' : 'transparent',
+              }}
+            >
+              {Icon && <Icon size={group === 'sub' ? 15 : 18} style={{ color: active ? '#FF6633' : '#475569', flexShrink: 0 }} />}
+              {label}
+            </Link>
+          );
+        })}
         <button onClick={handleSalir}
           style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '11px 14px', borderRadius: 10, fontSize: '1rem', marginTop: 8 }}
         >
