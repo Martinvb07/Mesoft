@@ -188,7 +188,7 @@
 @media (max-width: 700px) { .mesas-metrics { grid-template-columns: 1fr; } .mesas-grid { grid-template-columns: 1fr; } .mesas-header { flex-direction: column; align-items: flex-start; } .mesas-toolbar { flex-direction: column; align-items: stretch; } }
 
 /* Modal de reserva */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding: 1rem; z-index: 50; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding: 1rem; z-index: 10000; }
 .modal-card { width: 100%; max-width: 520px; background: #fff; border:1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-lg); overflow: hidden; }
 .modal-card.lg { max-width: 720px; }
 .modal-header { display:flex; align-items:center; justify-content: space-between; padding: 1rem 1rem .75rem 1rem; border-bottom: 1px solid var(--card-border); position: relative; }

@@ -42,7 +42,7 @@
 .toolbar .search { display:flex; align-items:center; border:1px solid var(--card-border); border-radius:12px; padding:.35rem .6rem; background:#fff; }
 .toolbar .search input { border:none; outline:none; min-width: 260px; }
 
-.finz-reportes .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding: 1rem; z-index: 50; }
+.finz-reportes .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding: 1rem; z-index: 10000; }
 .finz-reportes .modal-card { width: 100%; max-width: 720px; background: #fff; border:1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
 .finz-reportes .modal-card.invoice .modal-header{ border-bottom:3px solid var(--brand); }
 .finz-reportes .modal-header { display:flex; align-items:center; justify-content: space-between; padding: 1rem 1rem .75rem 1rem; border-bottom: 1px solid var(--card-border); }

@@ -141,6 +141,7 @@ function Meseros() {
     const [editActivo, setEditActivo] = useState(true);
     const [editPassword, setEditPassword] = useState('');
     const [editCorreoConfirm, setEditCorreoConfirm] = useState('');
+    const [editRol, setEditRol] = useState('mesero');
 
         const [showEliminar, setShowEliminar] = useState(false);
         const [deleteId, setDeleteId] = useState(null);
@@ -174,7 +175,7 @@ function Meseros() {
         const abrirEditar = () => {
             if (meseros.length === 0) return Swal.fire({ icon: 'info', title: 'No hay meseros para editar' });
             const first = [...meseros].sort((a,b)=> String(a.nombre).localeCompare(String(b.nombre)))[0];
-            setEditId(first.id); setEditNombre(first.nombre || ''); setEditApellido(first.apellido || ''); setEditCorreo(first.correo || first.email || ''); setEditTelefono(first.telefono || ''); setEditActivo(first.activo === true || first.activo === 1 || `${first.estado||''}`.toLowerCase() === 'activo'); setEditPassword(''); setEditCorreoConfirm('');
+            setEditId(first.id); setEditNombre(first.nombre || ''); setEditApellido(first.apellido || ''); setEditCorreo(first.correo || first.email || ''); setEditTelefono(first.telefono || ''); setEditActivo(first.activo === true || first.activo === 1 || `${first.estado||''}`.toLowerCase() === 'activo'); setEditPassword(''); setEditCorreoConfirm(''); setEditRol(first.rol || first.role || 'mesero');
             setShowEditar(true);
         };
         const onChangeEditarSeleccion = (idStr) => {
@@ -182,7 +183,7 @@ function Meseros() {
             setEditId(id);
             const u = meseros.find(x => Number(x.id) === id);
             if (!u) return;
-            setEditNombre(u.nombre || ''); setEditApellido(u.apellido || ''); setEditCorreo(u.correo || u.email || ''); setEditTelefono(u.telefono || ''); setEditActivo(u.activo === true || u.activo === 1 || `${u.estado||''}`.toLowerCase() === 'activo'); setEditPassword(''); setEditCorreoConfirm('');
+            setEditNombre(u.nombre || ''); setEditApellido(u.apellido || ''); setEditCorreo(u.correo || u.email || ''); setEditTelefono(u.telefono || ''); setEditActivo(u.activo === true || u.activo === 1 || `${u.estado||''}`.toLowerCase() === 'activo'); setEditPassword(''); setEditCorreoConfirm(''); setEditRol(u.rol || u.role || 'mesero');
         };
         const confirmarEditar = async () => {
             if (!editId) return setShowEditar(false);
@@ -205,6 +206,11 @@ function Meseros() {
             }
             try {
                 await api.actualizarMesero(editId, { nombre, estado: editActivo ? 'activo' : 'inactivo', correo, contrasena: editPassword || undefined, confirm_correo: editCorreoConfirm || undefined });
+                // Actualizar rol del usuario si cambió
+                const original = meseros.find(x => Number(x.id) === Number(editId));
+                if (original && (original.rol || original.role || 'mesero') !== editRol) {
+                    try { await api.actualizarUsuario(original.usuario_id, { rol: editRol }); } catch {}
+                }
                 setShowEditar(false);
                 await Swal.fire({ icon: 'success', title: 'Cambios guardados', timer: 900, showConfirmButton: false });
                 cargar();
@@ -482,6 +488,15 @@ function Meseros() {
                                                 <select value={editActivo ? '1' : '0'} onChange={e => setEditActivo(e.target.value === '1')}>
                                                     <option value="1">Activo</option>
                                                     <option value="0">Inactivo</option>
+                                                </select>
+                                            </label>
+                                            <label>
+                                                <span>Rol del usuario</span>
+                                                <select value={editRol} onChange={e => setEditRol(e.target.value)}>
+                                                    <option value="mesero">Mesero</option>
+                                                    <option value="cocinero">Cocinero (solo ve Cocina)</option>
+                                                    <option value="cajero">Cajero (solo ve Finanzas)</option>
+                                                    <option value="admin">Admin (acceso total)</option>
                                                 </select>
                                             </label>
                                         </div>

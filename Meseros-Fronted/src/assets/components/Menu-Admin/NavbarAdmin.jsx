@@ -1,276 +1,414 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import '../../css/Navbar/Navbar.css';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import {
+  HiOutlineHome, HiOutlineTableCells, HiOutlineUserGroup,
+  HiOutlineCog6Tooth, HiOutlineCurrencyDollar, HiOutlineFire,
+  HiOutlineSquaresPlus, HiOutlineCalendarDays, HiOutlineUsers,
+  HiOutlineTruck, HiOutlineChartBar, HiOutlineArrowTrendingUp,
+  HiOutlineArrowTrendingDown, HiOutlineDocumentText, HiOutlineLockClosed,
+  HiOutlineArchiveBox, HiOutlineCreditCard, HiOutlineClipboardDocumentList,
+  HiOutlineArrowRightOnRectangle, HiOutlineMagnifyingGlass, HiBars3,
+  HiXMark, HiChevronDown,
+} from 'react-icons/hi2';
 import { api } from '../../../api/client';
 import { logAudit } from '../../../utils/audit';
 
-const NavbarAdmin = () => {
-    const [openFinanzas, setOpenFinanzas] = useState(false);
-    const [menuOpen, setMenuOpen] = useState(false);
-    const finanzasRef = useRef(null);
+/* ─── helpers ─── */
+function getUser() {
+  try {
+    for (const k of ['currentUser', 'usuario', 'user', 'auth_user']) {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const u = JSON.parse(raw);
+        const r = u?.rol || u?.role || u?.usuario?.rol || '';
+        const n = u?.nombre || u?.name || u?.usuario?.nombre || '';
+        if (n || r) return { rol: r, nombre: n };
+      }
+    }
+  } catch {}
+  return { rol: '', nombre: 'Admin' };
+}
 
-    // Global search state
-    const [searchOpen, setSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState({ mesas: [], productos: [], meseros: [] });
-    const [searchLoading, setSearchLoading] = useState(false);
-    const searchRef = useRef(null);
-    const searchInputRef = useRef(null);
-    const searchTimer = useRef(null);
+/* ─── Dropdown ─── */
+function Dropdown({ label, icon: Icon, children, active }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
-    useEffect(() => {
-        const onClickAway = (e) => {
-            if (!finanzasRef.current) return;
-            if (!finanzasRef.current.contains(e.target)) setOpenFinanzas(false);
-        };
-        document.addEventListener('click', onClickAway);
-        return () => document.removeEventListener('click', onClickAway);
-    }, []);
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
 
-    // Close search on outside click
-    useEffect(() => {
-        const onClickAway = (e) => {
-            if (searchRef.current && !searchRef.current.contains(e.target)) {
-                setSearchOpen(false);
-                setSearchQuery('');
-                setSearchResults({ mesas: [], productos: [], meseros: [] });
-            }
-        };
-        document.addEventListener('mousedown', onClickAway);
-        return () => document.removeEventListener('mousedown', onClickAway);
-    }, []);
+  const bg = open || active ? 'rgba(255,102,51,.15)' : 'transparent';
+  const color = open || active ? '#FF6633' : '#cbd5e1';
 
-    const navigate = useNavigate();
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(v => !v)} style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        background: bg, border: 'none', color, cursor: 'pointer',
+        padding: '7px 12px', borderRadius: 8, fontSize: '.875rem',
+        fontWeight: 500, transition: 'all .15s', whiteSpace: 'nowrap',
+      }}
+        onMouseEnter={e => { if (!open && !active) e.currentTarget.style.background = 'rgba(255,255,255,.07)'; }}
+        onMouseLeave={e => { if (!open && !active) e.currentTarget.style.background = 'transparent'; }}
+      >
+        {Icon && <Icon size={16} />}
+        {label}
+        <HiChevronDown size={12} style={{ opacity: .7, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          minWidth: 210, background: '#1e293b',
+          border: '1px solid rgba(255,255,255,.08)',
+          borderRadius: 12, boxShadow: '0 16px 48px rgba(0,0,0,.45)',
+          zIndex: 9999, padding: 6,
+          animation: 'fadeInDown .12s ease',
+        }}>
+          {React.Children.map(children, child =>
+            child ? React.cloneElement(child, { onClose: () => setOpen(false) }) : null
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
-    const toggleMenu = () => setMenuOpen((prev) => !prev);
-    const closeMenu = () => setMenuOpen(false);
+function DropItem({ to, icon: Icon, label, onClose }) {
+  const navigate = useNavigate();
+  return (
+    <button onClick={() => { navigate(to); onClose?.(); }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        width: '100%', background: 'transparent', border: 'none',
+        color: '#94a3b8', cursor: 'pointer', padding: '8px 12px',
+        borderRadius: 8, fontSize: '.875rem', textAlign: 'left',
+        transition: 'background .1s, color .1s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,102,51,.1)'; e.currentTarget.style.color = '#FF6633'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+    >
+      {Icon && <Icon size={15} style={{ flexShrink: 0 }} />}
+      {label}
+    </button>
+  );
+}
 
-    const handleSalirClick = (e) => {
-        e.preventDefault();
-        Swal.fire({
-            title: '¿Seguro que quieres salir?',
-            text: 'Se cerrará tu sesión actual.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, salir',
-            cancelButtonText: 'Cancelar',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                logAudit(null, 'logout', 'Cierre de sesión desde NavbarAdmin');
-                navigate('/login');
-            }
-        });
-    };
+function Divider() {
+  return <div style={{ height: 1, background: 'rgba(255,255,255,.06)', margin: '4px 6px' }} />;
+}
 
-    const runSearch = useCallback(async (q) => {
-        const term = q.trim().toLowerCase();
-        if (!term) {
-            setSearchResults({ mesas: [], productos: [], meseros: [] });
-            return;
-        }
-        setSearchLoading(true);
-        try {
-            const [mesasAll, productosAll, meserosAll] = await Promise.allSettled([
-                api.getMesas(),
-                api.getProductos(),
-                api.getMeseros(),
-            ]);
-            const mesas = mesasAll.status === 'fulfilled'
-                ? (Array.isArray(mesasAll.value) ? mesasAll.value : [])
-                    .filter(m => String(m.numero).includes(term) || (m.estado||'').toLowerCase().includes(term))
-                    .slice(0, 3)
-                : [];
-            const rawProductos = productosAll.status === 'fulfilled'
-                ? (Array.isArray(productosAll.value?.items) ? productosAll.value.items : Array.isArray(productosAll.value) ? productosAll.value : [])
-                : [];
-            const productos = rawProductos
-                .filter(p => (p.nombre||'').toLowerCase().includes(term) || (p.sku||'').toLowerCase().includes(term) || (p.categoria||'').toLowerCase().includes(term))
-                .slice(0, 3);
-            const meseros = meserosAll.status === 'fulfilled'
-                ? (Array.isArray(meserosAll.value) ? meserosAll.value : [])
-                    .filter(m => (m.nombre||'').toLowerCase().includes(term) || (m.correo||'').toLowerCase().includes(term))
-                    .slice(0, 3)
-                : [];
-            setSearchResults({ mesas, productos, meseros });
-        } catch {
-            setSearchResults({ mesas: [], productos: [], meseros: [] });
-        } finally {
-            setSearchLoading(false);
-        }
-    }, []);
+/* ─── NavLink ─── */
+function NavLink({ to, label, icon: Icon }) {
+  const loc = useLocation();
+  const active = loc.pathname === to || (to !== '/admin/home' && loc.pathname.startsWith(to));
+  return (
+    <Link to={to} style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      color: active ? '#FF6633' : '#cbd5e1',
+      textDecoration: 'none', fontSize: '.875rem', fontWeight: 500,
+      padding: '7px 12px', borderRadius: 8,
+      background: active ? 'rgba(255,102,51,.12)' : 'transparent',
+      transition: 'all .15s', whiteSpace: 'nowrap',
+    }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,.07)'; }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+    >
+      {Icon && <Icon size={16} />}
+      {label}
+    </Link>
+  );
+}
 
-    const handleSearchChange = (e) => {
-        const q = e.target.value;
-        setSearchQuery(q);
-        clearTimeout(searchTimer.current);
-        searchTimer.current = setTimeout(() => runSearch(q), 350);
-    };
+/* ─── Search ─── */
+function SearchBar() {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [res, setRes] = useState({ mesas: [], productos: [], meseros: [] });
+  const [loading, setLoading] = useState(false);
+  const ref = useRef(null);
+  const inputRef = useRef(null);
+  const timer = useRef(null);
+  const navigate = useNavigate();
 
-    const openSearch = () => {
-        setSearchOpen(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
-    };
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQ(''); } };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
 
-    const closeSearch = () => {
-        setSearchOpen(false);
-        setSearchQuery('');
-        setSearchResults({ mesas: [], productos: [], meseros: [] });
-    };
-
-    const goTo = (path) => {
-        closeSearch();
-        navigate(path);
-    };
-
-    const hasResults = searchResults.mesas.length > 0 || searchResults.productos.length > 0 || searchResults.meseros.length > 0;
-
-    // Role-based visibility
-    let userRol = '';
+  const search = useCallback(async (term) => {
+    if (!term.trim()) { setRes({ mesas: [], productos: [], meseros: [] }); return; }
+    setLoading(true);
     try {
-        const keys = ['currentUser', 'usuario', 'user', 'auth_user'];
-        for (const k of keys) {
-            const raw = localStorage.getItem(k);
-            if (raw) { const u = JSON.parse(raw); userRol = u?.rol || u?.role || u?.usuario?.rol || ''; if (userRol) break; }
+      const [m, p, me] = await Promise.allSettled([api.getMesas(), api.getProductos(), api.getMeseros()]);
+      const t = term.toLowerCase();
+      setRes({
+        mesas: (m.value || []).filter(x => String(x.numero).includes(t) || x.estado?.includes(t)).slice(0, 3),
+        productos: ((p.value?.items || p.value) || []).filter(x => x.nombre?.toLowerCase().includes(t) || x.sku?.toLowerCase().includes(t)).slice(0, 3),
+        meseros: (me.value || []).filter(x => x.nombre?.toLowerCase().includes(t)).slice(0, 3),
+      });
+    } catch { setRes({ mesas: [], productos: [], meseros: [] }); }
+    setLoading(false);
+  }, []);
+
+  const handleChange = (e) => {
+    setQ(e.target.value);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => search(e.target.value), 300);
+  };
+
+  const hasResults = res.mesas.length + res.productos.length + res.meseros.length > 0;
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      {!open ? (
+        <button onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.08)',
+            color: '#64748b', cursor: 'pointer', borderRadius: 8,
+            padding: '7px 12px', fontSize: '.875rem', transition: 'all .15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,.12)'; e.currentTarget.style.color = '#94a3b8'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,.07)'; e.currentTarget.style.color = '#64748b'; }}
+          title="Buscar"
+        >
+          <HiOutlineMagnifyingGlass size={16} />
+          <span style={{ display: 'none' }}>Buscar</span>
+        </button>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input ref={inputRef} value={q} onChange={handleChange} placeholder="Buscar…"
+            style={{
+              background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)',
+              color: '#f1f5f9', borderRadius: 8, padding: '7px 12px',
+              fontSize: '.875rem', width: 240, outline: 'none',
+            }}
+          />
+          <button onClick={() => { setOpen(false); setQ(''); }}
+            style={{ background: 'transparent', border: 'none', color: '#475569', cursor: 'pointer', lineHeight: 1, padding: 2 }}>
+            <HiXMark size={16} />
+          </button>
+        </div>
+      )}
+      {open && q.trim() && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+          minWidth: 290, background: '#1e293b',
+          border: '1px solid rgba(255,255,255,.08)',
+          borderRadius: 12, boxShadow: '0 16px 48px rgba(0,0,0,.45)',
+          zIndex: 9999, padding: 8,
+        }}>
+          {loading && <p style={{ color: '#475569', fontSize: '.85rem', padding: '6px 10px', margin: 0 }}>Buscando…</p>}
+          {!loading && !hasResults && q && <p style={{ color: '#475569', fontSize: '.85rem', padding: '6px 10px', margin: 0 }}>Sin resultados</p>}
+          {[
+            { key: 'mesas', label: 'Mesas', path: '/admin/mesas', Icon: HiOutlineTableCells, render: m => `Mesa ${m.numero} — ${m.estado}` },
+            { key: 'productos', label: 'Productos', path: '/admin/finanzas/inventario', Icon: HiOutlineArchiveBox, render: p => `${p.nombre}${p.categoria ? ` · ${p.categoria}` : ''}` },
+            { key: 'meseros', label: 'Meseros', path: '/admin/meseros', Icon: HiOutlineUserGroup, render: m => m.nombre },
+          ].map(({ key, label, path, Icon, render }) => res[key]?.length > 0 && (
+            <div key={key}>
+              <p style={{ color: '#334155', fontSize: '.7rem', fontWeight: 700, margin: '4px 0 2px', padding: '0 8px', textTransform: 'uppercase', letterSpacing: .8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Icon size={11} /> {label}
+              </p>
+              {res[key].map((item, i) => (
+                <button key={i} onClick={() => { navigate(path); setOpen(false); setQ(''); }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '.875rem' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,102,51,.1)'; e.currentTarget.style.color = '#FF6633'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+                >{render(item)}</button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── NavbarAdmin ─── */
+const NavbarAdmin = () => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+  const loc = useLocation();
+  const { rol, nombre } = getUser();
+  const isCocinero = rol === 'cocinero';
+
+  const handleSalir = (e) => {
+    e.preventDefault();
+    Swal.fire({
+      title: '¿Cerrar sesión?', icon: 'question',
+      showCancelButton: true, confirmButtonText: 'Sí, salir', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#FF6633',
+    }).then(r => { if (r.isConfirmed) { logAudit(nombre, 'logout', 'Cierre de sesión'); navigate('/login'); } });
+  };
+
+  const mobileLinks = [
+    { to: '/admin/home',             label: 'Inicio',        Icon: HiOutlineHome },
+    { to: '/admin/mesas',            label: 'Mesas',         Icon: HiOutlineTableCells },
+    { to: '/admin/meseros',          label: 'Meseros',       Icon: HiOutlineUserGroup },
+    { to: '/admin/cocina',           label: 'Cocina / KDS',  Icon: HiOutlineFire },
+    { to: '/admin/combos',           label: 'Combos',        Icon: HiOutlineSquaresPlus },
+    { to: '/admin/horarios',         label: 'Horarios',      Icon: HiOutlineCalendarDays },
+    { to: '/admin/clientes',         label: 'Clientes',      Icon: HiOutlineUsers },
+    { to: '/admin/proveedores',      label: 'Proveedores',   Icon: HiOutlineTruck },
+    { to: '/admin/finanzas/resumen', label: 'Finanzas',      Icon: HiOutlineCurrencyDollar },
+    { to: '/admin/configuracion',    label: 'Configuración', Icon: HiOutlineCog6Tooth },
+    { to: '/admin/auditoria',        label: 'Auditoría',     Icon: HiOutlineClipboardDocumentList },
+  ];
+
+  return (
+    <>
+      <style>{`
+        @keyframes fadeInDown {
+          from { opacity:0; transform:translateY(-5px); }
+          to   { opacity:1; transform:translateY(0); }
         }
-    } catch {}
-    const isCocinero = userRol === 'cocinero';
+        .nav-mobile-drawer { display:none; }
+        @media (max-width:900px) {
+          .nav-desktop-items { display:none !important; }
+          .nav-mobile-btn    { display:flex !important; }
+          .nav-mobile-drawer.open { display:flex; }
+        }
+        @media (min-width:901px) { .nav-mobile-btn { display:none !important; } }
+      `}</style>
 
-    return (
-        <nav className="navbar">
-        <div className="navbar-logo">Admin</div>
+      <nav style={{
+        position: 'sticky', top: 0, zIndex: 1000,
+        background: '#0f172a',
+        borderBottom: '1px solid rgba(255,255,255,.06)',
+        boxShadow: '0 1px 16px rgba(0,0,0,.35)',
+        display: 'flex', alignItems: 'center',
+        padding: '0 20px', height: 54, gap: 4,
+        fontFamily: "'Inter','Segoe UI',sans-serif",
+      }}>
 
-        {/* Global Search */}
-        <div ref={searchRef} style={{ position: 'relative', marginLeft: 'auto', marginRight: '1rem' }}>
-            {!searchOpen ? (
-                <button
-                    type="button"
-                    onClick={openSearch}
-                    style={{ background: 'transparent', border: 'none', color: '#e2e8f0', cursor: 'pointer', fontSize: '1.1rem', padding: '.3rem .5rem', borderRadius: 6 }}
-                    title="Buscar"
-                    aria-label="Abrir búsqueda"
-                >
-                    🔍
-                </button>
-            ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-                    <input
-                        ref={searchInputRef}
-                        type="text"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        placeholder="Buscar mesas, productos, meseros..."
-                        style={{
-                            background: '#374151', border: '1px solid #4b5563', color: '#f9fafb',
-                            borderRadius: 8, padding: '.35rem .65rem', fontSize: '.9rem', width: 220,
-                            outline: 'none',
-                        }}
-                    />
-                    <button type="button" onClick={closeSearch} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>✕</button>
-                </div>
-            )}
-            {/* Dropdown results */}
-            {searchOpen && searchQuery.trim() && (
-                <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                    minWidth: 300, background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 10, boxShadow: '0 10px 32px rgba(0,0,0,.3)',
-                    zIndex: 2000, padding: '.5rem',
-                }}>
-                    {searchLoading && <div style={{ color: '#9ca3af', padding: '.5rem', fontSize: '.875rem' }}>Buscando…</div>}
-                    {!searchLoading && !hasResults && <div style={{ color: '#9ca3af', padding: '.5rem', fontSize: '.875rem' }}>Sin resultados para "{searchQuery}"</div>}
-                    {!searchLoading && searchResults.mesas.length > 0 && (
-                        <div>
-                            <div style={{ color: '#6b7280', fontSize: '.75rem', fontWeight: 700, padding: '.25rem .5rem', textTransform: 'uppercase', letterSpacing: 1 }}>Mesas</div>
-                            {searchResults.mesas.map(m => (
-                                <button key={m.id} type="button" onClick={() => goTo('/admin/mesas')}
-                                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: '#e2e8f0', padding: '.4rem .6rem', borderRadius: 6, cursor: 'pointer', fontSize: '.9rem' }}
-                                    onMouseEnter={e => e.target.style.background='#374151'} onMouseLeave={e => e.target.style.background='transparent'}
-                                >
-                                    Mesa {m.numero} — {m.estado}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    {!searchLoading && searchResults.productos.length > 0 && (
-                        <div>
-                            <div style={{ color: '#6b7280', fontSize: '.75rem', fontWeight: 700, padding: '.25rem .5rem', textTransform: 'uppercase', letterSpacing: 1 }}>Productos</div>
-                            {searchResults.productos.map(p => (
-                                <button key={p.id} type="button" onClick={() => goTo('/admin/finanzas/inventario')}
-                                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: '#e2e8f0', padding: '.4rem .6rem', borderRadius: 6, cursor: 'pointer', fontSize: '.9rem' }}
-                                    onMouseEnter={e => e.target.style.background='#374151'} onMouseLeave={e => e.target.style.background='transparent'}
-                                >
-                                    {p.nombre} · {p.categoria || 'Sin categoría'}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    {!searchLoading && searchResults.meseros.length > 0 && (
-                        <div>
-                            <div style={{ color: '#6b7280', fontSize: '.75rem', fontWeight: 700, padding: '.25rem .5rem', textTransform: 'uppercase', letterSpacing: 1 }}>Meseros</div>
-                            {searchResults.meseros.map(m => (
-                                <button key={m.id} type="button" onClick={() => goTo('/admin/meseros')}
-                                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: '#e2e8f0', padding: '.4rem .6rem', borderRadius: 6, cursor: 'pointer', fontSize: '.9rem' }}
-                                    onMouseEnter={e => e.target.style.background='#374151'} onMouseLeave={e => e.target.style.background='transparent'}
-                                >
-                                    {m.nombre} {m.correo ? `· ${m.correo}` : ''}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
+        {/* Logo */}
+        <Link to={isCocinero ? '/admin/cocina' : '/admin/home'} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          textDecoration: 'none', marginRight: 12, flexShrink: 0,
+        }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 7,
+            background: 'linear-gradient(135deg,#FF6633,#ff9a6c)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(255,102,51,.4)',
+          }}>
+            <HiOutlineFire size={16} color="#fff" />
+          </div>
+          <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '.95rem', letterSpacing: -.3 }}>Mesoft</span>
+        </Link>
+
+        {/* Separador */}
+        <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,.08)', marginRight: 6 }} />
+
+        {/* Nav desktop */}
+        <div className="nav-desktop-items" style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+          {isCocinero ? (
+            <NavLink to="/admin/cocina" label="Cocina" icon={HiOutlineFire} />
+          ) : (
+            <>
+              <NavLink to="/admin/home"    label="Inicio"   icon={HiOutlineHome} />
+              <NavLink to="/admin/mesas"   label="Mesas"    icon={HiOutlineTableCells} />
+              <NavLink to="/admin/meseros" label="Meseros"  icon={HiOutlineUserGroup} />
+
+              <Dropdown label="Operaciones" icon={HiOutlineCog6Tooth}
+                active={['/admin/cocina','/admin/combos','/admin/horarios','/admin/clientes','/admin/proveedores'].some(p => loc.pathname.startsWith(p))}
+              >
+                <DropItem to="/admin/cocina"      icon={HiOutlineFire}           label="Cocina / KDS" />
+                <DropItem to="/admin/combos"      icon={HiOutlineSquaresPlus}    label="Combos" />
+                <DropItem to="/admin/horarios"    icon={HiOutlineCalendarDays}   label="Horarios" />
+                <Divider />
+                <DropItem to="/admin/clientes"    icon={HiOutlineUsers}          label="Clientes" />
+                <DropItem to="/admin/proveedores" icon={HiOutlineTruck}          label="Proveedores" />
+              </Dropdown>
+
+              <Dropdown label="Finanzas" icon={HiOutlineCurrencyDollar}
+                active={loc.pathname.startsWith('/admin/finanzas')}
+              >
+                <DropItem to="/admin/finanzas/resumen"    icon={HiOutlineChartBar}            label="Resumen" />
+                <DropItem to="/admin/finanzas/ingresos"   icon={HiOutlineArrowTrendingUp}     label="Ingresos" />
+                <DropItem to="/admin/finanzas/egresos"    icon={HiOutlineArrowTrendingDown}   label="Egresos" />
+                <DropItem to="/admin/finanzas/reportes"   icon={HiOutlineDocumentText}        label="Reportes" />
+                <DropItem to="/admin/finanzas/cierre"     icon={HiOutlineLockClosed}          label="Cierre de caja" />
+                <Divider />
+                <DropItem to="/admin/finanzas/inventario" icon={HiOutlineArchiveBox}          label="Inventario" />
+                <DropItem to="/admin/finanzas/nominas"    icon={HiOutlineCreditCard}          label="Nóminas" />
+              </Dropdown>
+            </>
+          )}
         </div>
 
-        <button
-            type="button"
-            className={`navbar-toggle ${menuOpen ? 'open' : ''}`}
-            aria-label="Abrir menú"
-            aria-expanded={menuOpen}
-            onClick={toggleMenu}
-        >
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
+        {/* Derecha */}
+        <div className="nav-desktop-items" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {!isCocinero && <SearchBar />}
 
-        <ul className={`navbar-links ${menuOpen ? 'open' : ''}`}>
-            {!isCocinero && <li><Link to="/admin/home" onClick={closeMenu}>Inicio</Link></li>}
-            {!isCocinero && <li><Link to="/admin/mesas" onClick={closeMenu}>Mesas</Link></li>}
-            {!isCocinero && <li><Link to="/admin/meseros" onClick={closeMenu}>Meseros</Link></li>}
-            {!isCocinero && (
-            <li className="navbar-item dropdown" ref={finanzasRef}>
-                <button
-                    type="button"
-                    className="dropdown-toggle"
-                    aria-haspopup="true"
-                    aria-expanded={openFinanzas}
-                    onClick={() => setOpenFinanzas(v => !v)}
-                >
-                    Finanzas ▾
-                </button>
-                <div className={`dropdown-menu ${openFinanzas ? 'open' : ''}`} role="menu">
-                    <Link to="/admin/finanzas/resumen" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Resumen</Link>
-                    <Link to="/admin/finanzas/ingresos" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Ingresos</Link>
-                    <Link to="/admin/finanzas/egresos" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Egresos</Link>
-                    <Link to="/admin/finanzas/reportes" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Reportes</Link>
-                    <Link to="/admin/finanzas/cierre" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Cierre de caja</Link>
-                    <Link to="/admin/finanzas/inventario" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Inventario</Link>
-                    <Link to="/admin/finanzas/nominas" className="dropdown-item" onClick={() => { setOpenFinanzas(false); closeMenu(); }}>Nóminas</Link>
-                </div>
-            </li>
+          <Dropdown
+            label=""
+            icon={() => (
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: 'linear-gradient(135deg,#FF6633,#ff9a6c)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 700, fontSize: '.8rem', flexShrink: 0,
+              }}>
+                {nombre.charAt(0).toUpperCase()}
+              </div>
             )}
-            <li><Link to="/admin/cocina" onClick={closeMenu}>Cocina</Link></li>
-            {!isCocinero && <li><Link to="/admin/combos" onClick={closeMenu}>Combos</Link></li>}
-            {!isCocinero && <li><Link to="/admin/clientes" onClick={closeMenu}>Clientes</Link></li>}
-            {!isCocinero && <li><Link to="/admin/proveedores" onClick={closeMenu}>Proveedores</Link></li>}
-            {!isCocinero && <li><Link to="/admin/horarios" onClick={closeMenu}>Horarios</Link></li>}
-            {!isCocinero && <li><Link to="/admin/configuracion" onClick={closeMenu}>Configuración</Link></li>}
-            {!isCocinero && <li><Link to="/admin/auditoria" onClick={closeMenu}>Auditoría</Link></li>}
-            <li><Link to="/" onClick={(e) => { handleSalirClick(e); closeMenu(); }}>Salir</Link></li>
-        </ul>
-        </nav>
-    );
+            active={false}
+          >
+            <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid rgba(255,255,255,.07)', marginBottom: 4 }}>
+              <p style={{ margin: 0, color: '#f1f5f9', fontWeight: 600, fontSize: '.875rem' }}>{nombre}</p>
+              <p style={{ margin: 0, color: '#334155', fontSize: '.75rem', textTransform: 'capitalize' }}>{rol || 'Admin'}</p>
+            </div>
+            {!isCocinero && <DropItem to="/admin/configuracion" icon={HiOutlineCog6Tooth}             label="Configuración" />}
+            {!isCocinero && <DropItem to="/admin/auditoria"     icon={HiOutlineClipboardDocumentList} label="Auditoría" />}
+            <Divider />
+            <button onClick={handleSalir}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: '8px 12px', borderRadius: 8, fontSize: '.875rem', textAlign: 'left', transition: 'background .1s' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,113,.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <HiOutlineArrowRightOnRectangle size={15} /> Cerrar sesión
+            </button>
+          </Dropdown>
+        </div>
+
+        {/* Mobile toggle */}
+        <button className="nav-mobile-btn" onClick={() => setMobileOpen(v => !v)}
+          style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: 6, display: 'none' }}
+        >
+          {mobileOpen ? <HiXMark size={22} /> : <HiBars3 size={22} />}
+        </button>
+      </nav>
+
+      {/* Mobile drawer */}
+      <div className={`nav-mobile-drawer ${mobileOpen ? 'open' : ''}`}
+        style={{
+          position: 'fixed', top: 54, left: 0, right: 0, bottom: 0,
+          background: '#0f172a', zIndex: 999, flexDirection: 'column',
+          padding: 12, overflowY: 'auto', gap: 2,
+        }}
+      >
+        {(isCocinero ? [{ to: '/admin/cocina', label: 'Cocina', Icon: HiOutlineFire }] : mobileLinks).map(({ to, label, Icon }) => (
+          <Link key={to} to={to} onClick={() => setMobileOpen(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#e2e8f0', textDecoration: 'none', padding: '11px 14px', borderRadius: 10, fontSize: '1rem', background: loc.pathname.startsWith(to) ? 'rgba(255,102,51,.1)' : 'transparent' }}
+          >
+            <Icon size={19} style={{ color: loc.pathname.startsWith(to) ? '#FF6633' : '#475569', flexShrink: 0 }} />
+            <span style={{ color: loc.pathname.startsWith(to) ? '#FF6633' : '#e2e8f0' }}>{label}</span>
+          </Link>
+        ))}
+        <button onClick={handleSalir}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '11px 14px', borderRadius: 10, fontSize: '1rem', marginTop: 8 }}
+        >
+          <HiOutlineArrowRightOnRectangle size={19} /> Cerrar sesión
+        </button>
+      </div>
+    </>
+  );
 };
 
 export default NavbarAdmin;

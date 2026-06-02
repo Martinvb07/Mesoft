@@ -196,27 +196,32 @@ const Proveedores = () => {
                             <button className="icon-btn" onClick={cerrarModal} aria-label="Cerrar"><HiXMark /></button>
                         </div>
                         <div className="modal-body">
-                            <div className="form-grid">
-                                <label>
-                                    <span>Nombre *</span>
-                                    <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej. Distribuidora Norte" />
-                                </label>
-                                <label>
-                                    <span>Contacto</span>
-                                    <input value={form.contacto} onChange={e => setForm(f => ({ ...f, contacto: e.target.value }))} placeholder="Nombre del contacto" />
-                                </label>
-                                <label>
-                                    <span>Teléfono</span>
-                                    <input value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} placeholder="+57 300 000 0000" />
-                                </label>
-                                <label>
-                                    <span>Email</span>
-                                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="proveedor@empresa.com" />
-                                </label>
-                                <label style={{ gridColumn: '1/-1' }}>
-                                    <span>Dirección</span>
-                                    <input value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} placeholder="Calle 1 # 2-3, Ciudad" />
-                                </label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                {[
+                                  { label: 'Nombre *', key: 'nombre', placeholder: 'Ej. Distribuidora Norte', full: false },
+                                  { label: 'Persona de contacto', key: 'contacto', placeholder: 'Juan Pérez', full: false },
+                                  { label: 'Teléfono', key: 'telefono', placeholder: '+57 300 000 0000', full: false },
+                                  { label: 'Email', key: 'email', placeholder: 'proveedor@empresa.com', type: 'email', full: false },
+                                  { label: 'Dirección', key: 'direccion', placeholder: 'Calle 1 # 2-3, Ciudad', full: true },
+                                ].map(({ label, key, placeholder, type, full }) => (
+                                  <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6, gridColumn: full ? '1/-1' : 'auto' }}>
+                                    <span style={{ fontSize: '.85rem', fontWeight: 600, color: '#374151' }}>{label}</span>
+                                    <input
+                                      type={type || 'text'}
+                                      value={form[key]}
+                                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                                      placeholder={placeholder}
+                                      style={{
+                                        padding: '9px 12px', borderRadius: 8, fontSize: '.9rem',
+                                        border: '1.5px solid #e5e7eb', outline: 'none', color: '#111827',
+                                        background: '#fff', transition: 'border .15s',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+                                      }}
+                                      onFocus={e => e.target.style.borderColor = '#FF6633'}
+                                      onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                                    />
+                                  </label>
+                                ))}
                                 <div style={{ gridColumn: '1/-1' }}>
                                     <span style={{ display: 'block', marginBottom: '.5rem', fontWeight: 600, fontSize: '.9rem' }}>Productos asociados</span>
                                     <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: '.5rem' }}>

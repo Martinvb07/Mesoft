@@ -48,7 +48,7 @@
 .status.off .dot{ background: var(--red); }
 
 /* Modal */
-.modal-overlay{ position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; padding:1rem; z-index:50; }
+.modal-overlay{ position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; padding:1rem; z-index:10000; }
 .modal-card{ width:100%; max-width:720px; background:#fff; border-radius:16px; border:1px solid var(--card-border); box-shadow: 0 10px 30px rgba(0,0,0,.18); overflow:hidden; }
 .modal-card.lg{ max-width:860px; }
 .modal-header{ display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem; border-bottom:1px solid var(--card-border); }
@@ -83,3 +83,4 @@
   .table thead th, .table tbody td{ padding: .45rem .45rem; }
   .btn, .input{ height: 34px; }
 }
+
