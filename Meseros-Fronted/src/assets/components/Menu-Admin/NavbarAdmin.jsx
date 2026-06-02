@@ -276,14 +276,14 @@ const NavbarAdmin = () => {
         @media (min-width:901px) { .nav-mobile-btn { display:none !important; } }
       `}</style>
 
-      <nav style={{
-        position: 'sticky', top: 0, zIndex: 1000,
+      <nav className="navbar" style={{
         background: '#0f172a',
         borderBottom: '1px solid rgba(255,255,255,.06)',
         boxShadow: '0 1px 16px rgba(0,0,0,.35)',
         display: 'flex', alignItems: 'center',
         padding: '0 20px', height: 54, gap: 4,
         fontFamily: "'Inter','Segoe UI',sans-serif",
+        justifyContent: 'flex-start',
       }}>
 
         {/* Logo */}

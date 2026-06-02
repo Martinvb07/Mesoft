@@ -37,10 +37,12 @@
 }
 
 /* Global responsive improvements for the main content container */
+*, *::before, *::after { box-sizing: border-box; }
+body, html { margin: 0; padding: 0; }
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: center;
+  width: 100%;
+  text-align: left;
 }
 
 .main-content {
