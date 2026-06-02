@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import { HiCube, HiCheckCircle, HiExclamationTriangle, HiCurrencyDollar, HiBanknotes, HiXMark } from 'react-icons/hi2';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Inventario.css';
 import { api } from '../../../../api/client';
+import { logAudit } from '../../../../utils/audit';
 
 // Utilidades
 const LS_KEY = 'inventario_productos_v1';
@@ -43,7 +44,17 @@ const Inventario = () => {
     // Modal estado
     const [showModal, setShowModal] = useState(false);
     const [editId, setEditId] = useState(null);
-    const [form, setForm] = useState({ sku: '', nombre: '', categoria: '', costo: '', precio: '', stock: '', minStock: '', activo: true });
+    const [form, setForm] = useState({ sku: '', nombre: '', categoria: '', costo: '', precio: '', stock: '', minStock: '', activo: true, imagen: '' });
+    const [ingredientes, setIngredientes] = useState([]);
+    const [showIngredientes, setShowIngredientes] = useState(false);
+
+    // CSV import state
+    const [showCsvModal, setShowCsvModal] = useState(false);
+    const [csvRows, setCsvRows] = useState([]);
+    const [csvFile, setCsvFile] = useState('');
+    const [csvImporting, setCsvImporting] = useState(false);
+    const [csvResult, setCsvResult] = useState(null);
+    const csvInputRef = React.useRef(null);
 
     useEffect(() => { safeWrite(LS_KEY, productos); }, [productos]);
 
@@ -65,6 +76,9 @@ const Inventario = () => {
                     stock: r.stock ?? 0,
                     minStock: r.minStock ?? r.min_stock ?? 0,
                     activo: r.activo ?? true,
+                    imagen: r.imagen ?? '',
+                    ingredientes: Array.isArray(r.ingredientes) ? r.ingredientes : [],
+                    costo_receta: r.costo_receta ?? 0,
                     createdAt: r.createdAt || r.created_at || nowIso(),
                     updatedAt: r.updatedAt || r.updated_at || nowIso(),
                 }));
@@ -112,15 +126,86 @@ const Inventario = () => {
     // Handlers
     const abrirNuevo = () => {
         setEditId(null);
-        setForm({ sku: '', nombre: '', categoria: '', costo: '', precio: '', stock: '', minStock: '', activo: true });
+        setForm({ sku: '', nombre: '', categoria: '', costo: '', precio: '', stock: '', minStock: '', activo: true, imagen: '' });
+        setIngredientes([]);
+        setShowIngredientes(false);
         setShowModal(true);
     };
     const abrirEditar = (id) => {
         const p = productos.find(x => x.id === id);
         if (!p) return;
         setEditId(id);
-        setForm({ sku: p.sku, nombre: p.nombre, categoria: p.categoria || '', costo: String(p.costo), precio: String(p.precio), stock: String(p.stock), minStock: String(p.minStock), activo: !!p.activo });
+        setForm({ sku: p.sku, nombre: p.nombre, categoria: p.categoria || '', costo: String(p.costo), precio: String(p.precio), stock: String(p.stock), minStock: String(p.minStock), activo: !!p.activo, imagen: p.imagen || '' });
+        setIngredientes(Array.isArray(p.ingredientes) ? p.ingredientes : []);
+        setShowIngredientes(Array.isArray(p.ingredientes) && p.ingredientes.length > 0);
         setShowModal(true);
+    };
+
+    // Calcular costo_receta desde ingredientes
+    const costoReceta = ingredientes.reduce((s, ing) => s + (Number(ing.cantidad || 0) * Number(ing.costo_unitario || 0)), 0);
+    const agregarIngrediente = () => setIngredientes(prev => [...prev, { nombre: '', cantidad: 1, unidad: '', costo_unitario: 0 }]);
+    const quitarIngrediente = (idx) => setIngredientes(prev => prev.filter((_, i) => i !== idx));
+    const editIngrediente = (idx, field, value) => setIngredientes(prev => prev.map((ing, i) => i === idx ? { ...ing, [field]: value } : ing));
+
+    // Sincronizar costo con costo_receta cuando se editan ingredientes
+    React.useEffect(() => {
+        if (ingredientes.length > 0 && costoReceta > 0) {
+            setForm(f => ({ ...f, costo: String(costoReceta.toFixed(2)) }));
+        }
+    }, [costoReceta]);
+
+    // CSV helpers
+    const parseCsv = (text) => {
+        const lines = text.trim().split('\n');
+        if (lines.length < 2) return [];
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+        return lines.slice(1).map(line => {
+            const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+            const row = {};
+            headers.forEach((h, i) => { row[h] = cols[i] || ''; });
+            return row;
+        }).filter(r => r.nombre || r.sku);
+    };
+
+    const handleCsvFile = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        const rows = parseCsv(text);
+        setCsvRows(rows);
+        setCsvResult(null);
+    };
+
+    const downloadCsvTemplate = () => {
+        const csv = 'sku,nombre,categoria,precio,costo,stock,minStock\nSKU-01,Producto Ejemplo,Bebidas,5000,2000,100,10';
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'plantilla_importacion.csv'; a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const importarCsv = async () => {
+        if (!csvRows.length) return;
+        setCsvImporting(true);
+        try {
+            const res = await api.importarProductosCSV(csvRows);
+            setCsvResult(res);
+            if (res?.creados > 0) {
+                // Recargar productos
+                const resp = await api.getProductos();
+                const list = Array.isArray(resp?.items) ? resp.items : Array.isArray(resp) ? resp : [];
+                setProductos(list.map(r => ({
+                    id: r.id, sku: r.sku || `SKU-${r.id}`, nombre: r.nombre, categoria: r.categoria || '',
+                    costo: r.costo ?? 0, precio: r.precio ?? 0, stock: r.stock ?? 0, minStock: r.minStock ?? r.min_stock ?? 0,
+                    activo: r.activo ?? true, imagen: r.imagen ?? '', createdAt: r.createdAt || nowIso(), updatedAt: r.updatedAt || nowIso(),
+                    ingredientes: r.ingredientes || [],
+                })));
+            }
+        } catch (e) {
+            Swal.fire('Error', e?.message || 'No se pudo importar', 'error');
+        }
+        setCsvImporting(false);
     };
     const cerrarModal = () => setShowModal(false);
 
@@ -135,6 +220,7 @@ const Inventario = () => {
         const stock = Math.floor(clampNum(parseNum(form.stock)));
         const minStock = Math.floor(clampNum(parseNum(form.minStock)));
         const activo = !!form.activo;
+        const imagen = (form.imagen || '').trim() || null;
 
         if (!sku) return Swal.fire({ icon: 'error', title: 'SKU requerido' });
         if (!nombre) return Swal.fire({ icon: 'error', title: 'Nombre requerido' });
@@ -145,17 +231,42 @@ const Inventario = () => {
         if (!res.isConfirmed) return;
     }
 
+    const ingredientesClean = ingredientes.filter(ing => ing.nombre?.trim());
+    const costoRecetaFinal = ingredientesClean.reduce((s, ing) => s + (Number(ing.cantidad || 0) * Number(ing.costo_unitario || 0)), 0);
+    const costoFinal = ingredientesClean.length > 0 ? costoRecetaFinal : costo;
+
     try {
         if (editId) {
             // Intentar en backend
-            try { await api.actualizarProducto(editId, { sku, nombre, categoria, costo, precio, stock, minStock, activo, descripcion: categoria }); } catch {}
-            setProductos(prev => prev.map(p => p.id === editId ? { ...p, sku, nombre, categoria, costo, precio, stock, minStock, activo, updatedAt: nowIso() } : p));
+            try {
+                await api.actualizarProducto(editId, {
+                    sku, nombre, categoria, costo: costoFinal, precio, stock, minStock, activo, imagen,
+                    descripcion: categoria,
+                    ingredientes: ingredientesClean,
+                });
+            } catch {}
+            setProductos(prev => prev.map(p => p.id === editId ? {
+                ...p, sku, nombre, categoria, costo: costoFinal, precio, stock, minStock, activo, imagen,
+                ingredientes: ingredientesClean, costo_receta: costoRecetaFinal, updatedAt: nowIso(),
+            } : p));
+            logAudit(null, 'editar_producto', `${nombre} (SKU: ${sku})`);
             Swal.fire({ icon: 'success', title: 'Producto actualizado', timer: 900, showConfirmButton: false });
         } else {
             let created = null;
-            try { created = await api.crearProducto({ sku, nombre, categoria, costo, precio, stock, minStock, activo, descripcion: categoria }); } catch {}
-            const nuevo = { id: created?.id || crypto.randomUUID?.() || String(Date.now()), sku, nombre, categoria, costo, precio, stock, minStock, activo, createdAt: nowIso(), updatedAt: nowIso() };
+            try {
+                created = await api.crearProducto({
+                    sku, nombre, categoria, costo: costoFinal, precio, stock, minStock, activo, imagen,
+                    descripcion: categoria,
+                });
+            } catch {}
+            const nuevo = {
+                id: created?.id || crypto.randomUUID?.() || String(Date.now()),
+                sku, nombre, categoria, costo: costoFinal, precio, stock, minStock, activo, imagen,
+                ingredientes: ingredientesClean, costo_receta: costoRecetaFinal,
+                createdAt: nowIso(), updatedAt: nowIso(),
+            };
             setProductos(prev => [nuevo, ...prev]);
+            logAudit(null, 'crear_producto', `${nombre} (SKU: ${sku})`);
             Swal.fire({ icon: 'success', title: 'Producto creado', timer: 900, showConfirmButton: false });
         }
     } finally {
@@ -170,6 +281,7 @@ const Inventario = () => {
         if (!res.isConfirmed) return;
     try { await api.eliminarProducto(id); } catch {}
         setProductos(prev => prev.filter(x => x.id !== id));
+        logAudit(null, 'eliminar_producto', `${p.nombre} (SKU: ${p.sku})`);
         Swal.fire({ icon: 'success', title: 'Producto eliminado', timer: 900, showConfirmButton: false });
     };
 
@@ -218,6 +330,7 @@ const Inventario = () => {
             <div className="toolbar">
             <div className="left">
                 <button className="btn primary" onClick={abrirNuevo}>Nuevo producto</button>
+                <button className="btn" onClick={() => { setShowCsvModal(true); setCsvRows([]); setCsvResult(null); }}>Importar CSV</button>
             </div>
             <div className="right">
                 <input className="input" placeholder="Buscar SKU, nombre, categoría" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
@@ -243,6 +356,7 @@ const Inventario = () => {
                 <table className="table">
                 <thead>
                     <tr>
+                    <th>Img</th>
                     <th className="th-sortable" onClick={() => toggleSort('sku')}>SKU {sort.by==='sku' ? (sort.dir==='asc'?'▲':'▼') : ''}</th>
                     <th className="th-sortable" onClick={() => toggleSort('nombre')}>Nombre {sort.by==='nombre' ? (sort.dir==='asc'?'▲':'▼') : ''}</th>
                     <th className="th-sortable" onClick={() => toggleSort('categoria')}>Categoría {sort.by==='categoria' ? (sort.dir==='asc'?'▲':'▼') : ''}</th>
@@ -261,6 +375,13 @@ const Inventario = () => {
                     const bajo = p.stock <= p.minStock;
                     return (
                         <tr key={p.id} className={!p.activo ? 'row-muted' : ''}>
+                        <td>
+                            {p.imagen ? (
+                                <img src={p.imagen} alt={p.nombre} style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 4, border: '1px solid #eef2f6' }} onError={e => { e.target.style.display='none'; }} />
+                            ) : (
+                                <span style={{ display:'inline-block', width:30, height:30, background:'#f3f4f6', borderRadius:4, lineHeight:'30px', textAlign:'center', fontSize:'.7rem', color:'#9ca3af' }}>–</span>
+                            )}
+                        </td>
                         <td>{p.sku}</td>
                         <td>{p.nombre}</td>
                         <td>{p.categoria || '-'}</td>
@@ -337,10 +458,127 @@ const Inventario = () => {
                     <span>Mínimo</span>
                     <input type="number" inputMode="numeric" min="0" value={form.minStock} onChange={e => setForm(f => ({ ...f, minStock: e.target.value }))} />
                     </label>
+                    <label style={{ gridColumn: '1/-1' }}>
+                    <span>URL de imagen (opcional)</span>
+                    <div style={{ display:'flex', gap:'.5rem', alignItems:'center' }}>
+                        <input
+                            type="url"
+                            value={form.imagen}
+                            onChange={e => setForm(f => ({ ...f, imagen: e.target.value }))}
+                            placeholder="https://ejemplo.com/imagen.jpg"
+                            style={{ flex: 1 }}
+                        />
+                        {form.imagen && (
+                            <img
+                                src={form.imagen}
+                                alt="preview"
+                                style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 4, border: '1px solid #eef2f6', flexShrink: 0 }}
+                                onError={e => { e.target.style.display='none'; }}
+                            />
+                        )}
+                    </div>
+                    </label>
                     <label className="switch">
                     <input type="checkbox" checked={!!form.activo} onChange={e => setForm(f => ({ ...f, activo: e.target.checked }))} />
                     <span>Activo</span>
                     </label>
+                </div>
+
+                {/* Receta / Ingredientes */}
+                <div style={{ marginTop: '1rem' }}>
+                    <button
+                        type="button"
+                        className="btn ghost"
+                        style={{ fontSize: '.875rem', marginBottom: '.5rem' }}
+                        onClick={() => setShowIngredientes(v => !v)}
+                    >
+                        {showIngredientes ? '▼' : '▶'} Receta / Ingredientes
+                    </button>
+                    {showIngredientes && (
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '.75rem' }}>
+                            <table style={{ width: '100%', fontSize: '.85rem', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: '#f9fafb' }}>
+                                        <th style={{ padding: '.4rem', textAlign: 'left' }}>Ingrediente</th>
+                                        <th style={{ padding: '.4rem', textAlign: 'right' }}>Cantidad</th>
+                                        <th style={{ padding: '.4rem', textAlign: 'left' }}>Unidad</th>
+                                        <th style={{ padding: '.4rem', textAlign: 'right' }}>Costo unit.</th>
+                                        <th style={{ padding: '.4rem', textAlign: 'right' }}>Subtotal</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ingredientes.map((ing, idx) => (
+                                        <tr key={idx}>
+                                            <td style={{ padding: '.3rem' }}>
+                                                <input
+                                                    value={ing.nombre}
+                                                    onChange={e => editIngrediente(idx, 'nombre', e.target.value)}
+                                                    placeholder="Ej. Harina"
+                                                    style={{ width: '100%', padding: '.25rem .4rem', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '.85rem' }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '.3rem' }}>
+                                                <input
+                                                    type="number" min="0" step="0.01"
+                                                    value={ing.cantidad}
+                                                    onChange={e => editIngrediente(idx, 'cantidad', e.target.value)}
+                                                    style={{ width: 70, padding: '.25rem .4rem', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '.85rem', textAlign: 'right' }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '.3rem' }}>
+                                                <input
+                                                    value={ing.unidad}
+                                                    onChange={e => editIngrediente(idx, 'unidad', e.target.value)}
+                                                    placeholder="kg, g, ml..."
+                                                    style={{ width: 60, padding: '.25rem .4rem', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '.85rem' }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '.3rem' }}>
+                                                <input
+                                                    type="number" min="0" step="0.01"
+                                                    value={ing.costo_unitario}
+                                                    onChange={e => editIngrediente(idx, 'costo_unitario', e.target.value)}
+                                                    style={{ width: 80, padding: '.25rem .4rem', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '.85rem', textAlign: 'right' }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '.3rem', textAlign: 'right', color: '#374151' }}>
+                                                {toCurrency(Number(ing.cantidad || 0) * Number(ing.costo_unitario || 0))}
+                                            </td>
+                                            <td style={{ padding: '.3rem' }}>
+                                                <button
+                                                    type="button"
+                                                    className="btn sm danger"
+                                                    onClick={() => quitarIngrediente(idx)}
+                                                >
+                                                    ×
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colSpan={4} style={{ padding: '.4rem', textAlign: 'right', fontWeight: 600 }}>Costo receta:</td>
+                                        <td style={{ padding: '.4rem', textAlign: 'right', fontWeight: 700, color: '#ff6633' }}>{toCurrency(costoReceta)}</td>
+                                        <td></td>
+                                    </tr>
+                                    {parseNum(form.precio) > 0 && costoReceta > 0 && (
+                                        <tr>
+                                            <td colSpan={4} style={{ padding: '.4rem', textAlign: 'right', fontSize: '.82rem', color: '#6b7280' }}>Margen real:</td>
+                                            <td style={{ padding: '.4rem', textAlign: 'right', fontSize: '.82rem', fontWeight: 600, color: '#16a34a' }}>
+                                                {(((parseNum(form.precio) - costoReceta) / parseNum(form.precio)) * 100).toFixed(1)}%
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    )}
+                                </tfoot>
+                            </table>
+                            <button type="button" className="btn ghost" style={{ marginTop: '.5rem', fontSize: '.85rem' }} onClick={agregarIngrediente}>
+                                + Agregar ingrediente
+                            </button>
+                        </div>
+                    )}
                 </div>
                 </div>
                 <div className="modal-footer">
@@ -348,6 +586,75 @@ const Inventario = () => {
                 <button className="btn primary" onClick={guardar}>{editId ? 'Guardar cambios' : 'Crear producto'}</button>
                 </div>
             </div>
+            </div>
+        )}
+
+        {/* CSV Import Modal */}
+        {showCsvModal && (
+            <div className="modal-overlay" role="dialog" aria-modal="true">
+                <div className="modal-card lg">
+                    <div className="modal-header">
+                        <h3>Importar productos desde CSV</h3>
+                        <button className="icon-btn" onClick={() => setShowCsvModal(false)} aria-label="Cerrar"><HiXMark /></button>
+                    </div>
+                    <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '.75rem', alignItems: 'center' }}>
+                            <button className="btn ghost" onClick={downloadCsvTemplate}>Descargar plantilla CSV</button>
+                            <span style={{ color: '#6b7280', fontSize: '.85rem' }}>Columnas: sku, nombre, categoria, precio, costo, stock, minStock</span>
+                        </div>
+                        <div>
+                            <input
+                                ref={csvInputRef}
+                                type="file"
+                                accept=".csv,text/csv"
+                                style={{ display: 'none' }}
+                                onChange={handleCsvFile}
+                            />
+                            <button className="btn primary" onClick={() => csvInputRef.current?.click()}>Seleccionar archivo CSV</button>
+                        </div>
+                        {csvRows.length > 0 && (
+                            <div>
+                                <div style={{ fontWeight: 600, marginBottom: '.4rem', fontSize: '.9rem' }}>
+                                    Vista previa — {csvRows.length} filas detectadas (mostrando primeras 5):
+                                </div>
+                                <div className="table-wrap" style={{ maxHeight: 200, overflowY: 'auto' }}>
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                {Object.keys(csvRows[0]).map(h => <th key={h}>{h}</th>)}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {csvRows.slice(0, 5).map((row, idx) => (
+                                                <tr key={idx}>
+                                                    {Object.values(row).map((v, j) => <td key={j}>{String(v)}</td>)}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                        {csvResult && (
+                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '.75rem', fontSize: '.9rem' }}>
+                                <strong>{csvResult.creados}</strong> creados, <strong>{csvResult.duplicados}</strong> duplicados ignorados.
+                                {csvResult.errores?.length > 0 && (
+                                    <div style={{ color: '#ef4444', marginTop: '.35rem', fontSize: '.82rem' }}>
+                                        Errores: {csvResult.errores.join('; ')}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className="modal-footer">
+                        <button className="btn" onClick={() => setShowCsvModal(false)}>Cerrar</button>
+                        {csvRows.length > 0 && (
+                            <button className="btn primary" onClick={importarCsv} disabled={csvImporting}>
+                                {csvImporting ? 'Importando…' : `Importar ${csvRows.length} productos`}
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
         )}
         </div>

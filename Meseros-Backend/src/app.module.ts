@@ -13,6 +13,11 @@ import { PedidosModule } from './pedidos/pedidos.module';
 import { SolicitudModule } from './solicitud/solicitud.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { PublicModule } from './public/public.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RestaurantesModule } from './restaurantes/restaurantes.module';
+import { AlegraModule } from './alegra/alegra.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { ProveedoresModule } from './proveedores/proveedores.module';
 
 @Module({
   imports: [
@@ -20,6 +25,7 @@ import { PublicModule } from './public/public.module';
     DatabaseModule,
     GatewayModule,
     PublicModule,
+    NotificationsModule,
     UsuariosModule,
     MesasModule,
     MeserosModule,
@@ -28,6 +34,10 @@ import { PublicModule } from './public/public.module';
     FinanzasModule,
     PedidosModule,
     SolicitudModule,
+    RestaurantesModule,
+    AlegraModule,
+    ReviewsModule,
+    ProveedoresModule,
   ],
   controllers: [HealthController],
 })

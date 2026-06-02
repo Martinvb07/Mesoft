@@ -9,7 +9,9 @@ import { MovimientoContable, MovimientoContableSchema } from './schemas/movimien
 import { NominaMovimiento, NominaMovimientoSchema } from './schemas/nomina-movimiento.schema';
 import { Pedido, PedidoSchema } from './schemas/pedido.schema';
 import { Producto, ProductoSchema } from './schemas/producto.schema';
+import { Proveedor, ProveedorSchema } from './schemas/proveedor.schema';
 import { Restaurante, RestauranteSchema } from './schemas/restaurante.schema';
+import { Review, ReviewSchema } from './schemas/review.schema';
 import { Usuario, UsuarioSchema } from './schemas/usuario.schema';
 
 @Global()
@@ -27,6 +29,8 @@ import { Usuario, UsuarioSchema } from './schemas/usuario.schema';
       { name: DetallePedido.name, schema: DetallePedidoSchema },
       { name: MovimientoContable.name, schema: MovimientoContableSchema },
       { name: NominaMovimiento.name, schema: NominaMovimientoSchema },
+      { name: Review.name, schema: ReviewSchema },
+      { name: Proveedor.name, schema: ProveedorSchema },
     ]),
   ],
   providers: [IdService],

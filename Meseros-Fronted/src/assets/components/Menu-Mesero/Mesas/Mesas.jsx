@@ -11,6 +11,7 @@ import {
     HiArrowPath,
 } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
+import { getCombosFromStorage } from '../../Menu-Admin/Combos/Combos';
 
 const ESTADOS = {
     libre: { key: 'libre', label: 'Libre', color: 'free' },
@@ -49,7 +50,7 @@ const Mesas = () => {
     // Nota/modificador por item al agregar
     const [notaItem, setNotaItem] = useState('');
     const [resumenPago, setResumenPago] = useState(null);
-    const [factura, setFactura] = useState({ visible: false, data: null });
+    const [factura, setFactura] = useState({ visible: false, data: null, wompi_link: null, bold_link: null });
 
     // Pago modal state
     const [pagoModal, setPagoModal] = useState({ visible: false });
@@ -144,6 +145,8 @@ const Mesas = () => {
     };
     const cancelarAccion = () => { setModalMesa(null); setModalAccion(''); };
 
+    const [pedidoTab, setPedidoTab] = useState('productos'); // 'productos' | 'combos'
+    const [combos, setCombos] = useState([]);
     const [pedidoActual, setPedidoActual] = useState(null); // { id }
     const abrirPedido = async (mesa) => {
         if (!mesa) return;
@@ -165,6 +168,8 @@ const Mesas = () => {
             setPedidoItems(items);
             const editable = mesa.estado === 'ocupada';
             setPedidoModal({ mesa, editable });
+            setPedidoTab('productos');
+            setCombos(getCombosFromStorage());
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'No se pudo abrir el pedido', text: e?.message || 'Error' });
         }
@@ -289,7 +294,7 @@ const Mesas = () => {
         }
 
         try {
-            await api.pagarPedido(pid, {
+            const pagoResp = await api.pagarPedido(pid, {
                 recibido: monto,
                 propina,
                 mesero_id: null,
@@ -304,6 +309,8 @@ const Mesas = () => {
             setPagoModal({ visible: false });
             setFactura({
                 visible: true,
+                wompi_link: pagoResp?.wompi_link || null,
+                bold_link: pagoResp?.bold_link || null,
                 data: {
                     restaurante: getRestaurantName(),
                     pedidoId: pid,
@@ -517,6 +524,76 @@ const Mesas = () => {
                             {!pedidoModal.editable && (
                                 <p className="muted" style={{marginTop:0}}>Solo lectura: esta mesa no está asignada a ti.</p>
                             )}
+                            {/* Tab selector: Productos | Combos */}
+                            <div style={{display:'flex', gap:'.25rem', borderBottom:'2px solid #e5e7eb', marginBottom:'.75rem'}}>
+                                <button
+                                    className={`btn${pedidoTab === 'productos' ? ' primary' : ' ghost'}`}
+                                    style={{borderRadius:'6px 6px 0 0', padding:'.3rem .85rem', fontSize:'.875rem'}}
+                                    onClick={() => setPedidoTab('productos')}
+                                >
+                                    Productos
+                                </button>
+                                <button
+                                    className={`btn${pedidoTab === 'combos' ? ' primary' : ' ghost'}`}
+                                    style={{borderRadius:'6px 6px 0 0', padding:'.3rem .85rem', fontSize:'.875rem'}}
+                                    onClick={() => { setPedidoTab('combos'); setCombos(getCombosFromStorage()); }}
+                                >
+                                    Combos ({combos.length})
+                                </button>
+                            </div>
+
+                            {/* Combos tab */}
+                            {pedidoTab === 'combos' && (
+                                <div style={{marginBottom:'1rem'}}>
+                                    {combos.length === 0 ? (
+                                        <div className="empty" style={{margin:0}}>No hay combos creados. Ve a Admin → Combos.</div>
+                                    ) : (
+                                        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'.5rem'}}>
+                                            {combos.map(combo => (
+                                                <div key={combo.id} style={{
+                                                    background:'#fff7f3', border:'1px solid #fed7aa', borderRadius:10, padding:'.75rem',
+                                                    display:'flex', flexDirection:'column', gap:'.35rem',
+                                                }}>
+                                                    <div style={{fontWeight:800, fontSize:'.95rem', color:'#1f2937'}}>{combo.nombre}</div>
+                                                    {combo.descripcion && <div style={{fontSize:'.8rem', color:'#6b7280'}}>{combo.descripcion}</div>}
+                                                    <div style={{fontWeight:800, color:'#ff6633', fontSize:'1rem'}}>
+                                                        ${Number(combo.precio_combo||0).toLocaleString('es-CO')}
+                                                    </div>
+                                                    {pedidoModal.editable && (
+                                                        <button
+                                                            className="btn primary"
+                                                            style={{fontSize:'.8rem', padding:'.25rem .5rem', marginTop:'.25rem'}}
+                                                            onClick={async () => {
+                                                                if (!pedidoActual?.id) return Swal.fire({ icon:'error', title:'No hay pedido abierto' });
+                                                                // Add each product in the combo to the pedido
+                                                                const prodIds = combo.productos_ids || [];
+                                                                if (!prodIds.length) return;
+                                                                for (const pid of prodIds) {
+                                                                    try {
+                                                                        await api.addPedidoItem(pedidoActual.id, { producto_id: Number(pid), cantidad: 1 });
+                                                                    } catch {}
+                                                                }
+                                                                const rows = await api.getPedidoItems(pedidoActual.id).catch(() => []);
+                                                                const items = Array.isArray(rows) ? rows.map(r => ({
+                                                                    id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad||0),
+                                                                    precio: Number(r.precio||0), subtotal: Number(r.subtotal||0), nota: r.nota||'',
+                                                                })) : [];
+                                                                setPedidoItems(items);
+                                                                Swal.fire({ icon:'success', title:`Combo "${combo.nombre}" agregado`, timer:800, showConfirmButton:false });
+                                                            }}
+                                                        >
+                                                            Agregar combo
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Productos tab */}
+                            {pedidoTab === 'productos' && <div>
                             <div className="modal-grid">
                                 <label>
                                     <span>Producto</span>
@@ -584,6 +661,7 @@ const Mesas = () => {
                                     </label>
                                 </div>
                             )}
+                            </div>}
                             <div className="consumos-wrap" style={{marginTop:'1rem'}}>
                                 <table className="table-consumos">
                                     <thead>
@@ -779,7 +857,7 @@ const Mesas = () => {
                         <div className="modal-header">
                             <h3>Factura</h3>
                             <button className="close-btn" aria-label="Cerrar" onClick={()=>{
-                                setFactura({ visible:false, data:null });
+                                setFactura({ visible:false, data:null, wompi_link:null, bold_link:null });
                                 setPedidoItems([]);
                                 setPedidoActual(null);
                                 cerrarPedido();
@@ -873,8 +951,30 @@ const Mesas = () => {
                                 w.document.close();
                                 w.onload = () => { w.focus(); w.print(); };
                             }}>Imprimir</button>
+                            {factura.wompi_link && (
+                                <a
+                                    href={factura.wompi_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn"
+                                    style={{ background: '#00c8a0', color: '#fff', textDecoration: 'none' }}
+                                >
+                                    Pagar con Wompi
+                                </a>
+                            )}
+                            {factura.bold_link && (
+                                <a
+                                    href={factura.bold_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn"
+                                    style={{ background: '#1a1a2e', color: '#fff', textDecoration: 'none' }}
+                                >
+                                    Pagar con Bold
+                                </a>
+                            )}
                             <button className="btn primary" onClick={()=>{
-                                setFactura({ visible:false, data:null });
+                                setFactura({ visible:false, data:null, wompi_link:null, bold_link:null });
                                 setPedidoItems([]);
                                 setPedidoActual(null);
                                 cerrarPedido();

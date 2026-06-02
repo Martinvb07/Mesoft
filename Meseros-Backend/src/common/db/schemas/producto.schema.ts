@@ -38,6 +38,25 @@ export class Producto {
   @Prop({ default: '' })
   descripcion?: string;
 
+  @Prop({ type: String, default: null })
+  imagen?: string | null;
+
+  @Prop({
+    type: [
+      {
+        nombre: { type: String, required: true },
+        cantidad: { type: Number, default: 0 },
+        unidad: { type: String, default: '' },
+        costo_unitario: { type: Number, default: 0 },
+      },
+    ],
+    default: [],
+  })
+  ingredientes?: { nombre: string; cantidad: number; unidad: string; costo_unitario: number }[];
+
+  @Prop({ type: Number, default: 0 })
+  costo_receta?: number;
+
   @Prop({ required: true, index: true })
   restaurant_id!: number;
 

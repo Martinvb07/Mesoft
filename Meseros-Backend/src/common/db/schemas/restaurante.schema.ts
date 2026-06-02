@@ -14,6 +14,23 @@ export class Restaurante {
   @Prop({ required: true, unique: true, trim: true, index: true })
   nombre!: string;
 
+  // Pagos
+  @Prop({ type: String, default: null })
+  wompi_public_key?: string | null;
+
+  @Prop({ type: String, default: null })
+  bold_api_key?: string | null;
+
+  // DIAN / Alegra (multi-tenant)
+  @Prop({ type: String, default: null })
+  alegra_api_key?: string | null;
+
+  @Prop({ type: String, default: null })
+  alegra_email?: string | null;
+
+  @Prop({ type: String, default: null })
+  alegra_id_empresa?: string | null;
+
   @Prop()
   created_at?: Date;
 

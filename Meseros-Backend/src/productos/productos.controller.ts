@@ -16,6 +16,12 @@ export class ProductosController {
     return this.productos.crearProducto(req.restaurantId!, body);
   }
 
+  @Post('import-csv')
+  importarCSV(@Req() req: RequestWithTenant, @Body() body: any) {
+    const rows = Array.isArray(body) ? body : body?.rows;
+    return this.productos.importarCSV(req.restaurantId!, rows || []);
+  }
+
   @Put(':id')
   actualizarProducto(@Req() req: RequestWithTenant, @Param('id') id: string, @Body() body: any) {
     return this.productos.actualizarProducto(req.restaurantId!, id, body);

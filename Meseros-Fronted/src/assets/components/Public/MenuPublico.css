@@ -152,6 +152,29 @@
     border-top: 1px solid var(--mp-border);
 }
 
+/* Product image */
+.menu-pub-card-img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--mp-border);
+    flex-shrink: 0;
+}
+
+.menu-pub-card-img-placeholder {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    border: 1px solid var(--mp-border);
+}
+
 /* Tablet+ */
 @media (min-width: 480px) {
     .menu-pub-products {

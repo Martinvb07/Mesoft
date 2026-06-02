@@ -49,6 +49,10 @@ const Home = () => {
     const [enTurno, setEnTurno] = useState(false);
     const [turnoInicio, setTurnoInicio] = useState(null); // ISO string
     const [turnoLoading, setTurnoLoading] = useState(false);
+    // PIN apertura (Feature 11)
+    const [pinModalOpen, setPinModalOpen] = useState(false);
+    const [pinInput, setPinInput] = useState('');
+    const [pinError, setPinError] = useState('');
 
     // Totales por mesa (pedido abierto)
     const [pedidoPorMesa, setPedidoPorMesa] = useState({}); // mesaId -> { total, items }
@@ -220,7 +224,7 @@ const Home = () => {
         return `${m}m`;
     };
 
-    const handleCheckin = async () => {
+    const doCheckin = async () => {
         setTurnoLoading(true);
         try {
             const res = await api.meseroCheckin();
@@ -230,6 +234,38 @@ const Home = () => {
             alert(`Error al iniciar turno: ${e.message}`);
         } finally {
             setTurnoLoading(false);
+        }
+    };
+
+    const handleCheckin = () => {
+        // Feature 11: check if PIN apertura is configured
+        try {
+            const settings = JSON.parse(localStorage.getItem('app_settings_v1') || '{}');
+            const pin = settings.pinApertura || '';
+            if (pin) {
+                setPinInput('');
+                setPinError('');
+                setPinModalOpen(true);
+                return;
+            }
+        } catch {}
+        doCheckin();
+    };
+
+    const confirmarPIN = () => {
+        try {
+            const settings = JSON.parse(localStorage.getItem('app_settings_v1') || '{}');
+            const pin = settings.pinApertura || '';
+            if (pinInput === pin) {
+                setPinModalOpen(false);
+                setPinInput('');
+                setPinError('');
+                doCheckin();
+            } else {
+                setPinError('PIN incorrecto. Intenta de nuevo.');
+            }
+        } catch {
+            setPinError('Error al verificar el PIN.');
         }
     };
 
@@ -499,6 +535,42 @@ const Home = () => {
                         <div className="modal-footer">
                             <button className="btn" onClick={cerrarPedido}>Cerrar</button>
                             <Link className="btn primary" to="/mesero/mesas">Gestionar en Mesas</Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PIN Modal (Feature 11) */}
+            {pinModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                    <div style={{ background: '#fff', borderRadius: 18, padding: '1.75rem', width: 320, boxShadow: '0 8px 32px rgba(44,62,80,.2)', textAlign: 'center' }}>
+                        <h3 style={{ margin: '0 0 .5rem', fontSize: '1.2rem', fontWeight: 800 }}>Apertura de turno</h3>
+                        <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '.9rem' }}>Ingresa el PIN de 4 dígitos para comenzar.</p>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '.35rem', marginBottom: '.75rem' }}>
+                            {[0,1,2,3].map(i => (
+                                <div key={i} style={{ width: 44, height: 52, border: `2px solid ${i < pinInput.length ? '#ff6633' : '#e5e7eb'}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', fontWeight: 800, color: '#1f2937', background: i < pinInput.length ? '#fff7e6' : '#f9fafb' }}>
+                                    {i < pinInput.length ? '●' : ''}
+                                </div>
+                            ))}
+                        </div>
+                        {pinError && <div style={{ color: '#dc2626', fontSize: '.85rem', marginBottom: '.5rem', fontWeight: 600 }}>{pinError}</div>}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.4rem', marginBottom: '.75rem' }}>
+                            {[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((k, idx) => (
+                                <button key={idx} type="button"
+                                    style={{ padding: '.75rem', borderRadius: 10, border: '1px solid #e5e7eb', background: k === '' ? 'transparent' : '#f9fafb', fontSize: '1.25rem', fontWeight: 700, cursor: k === '' ? 'default' : 'pointer', color: '#1f2937', transition: 'background .1s' }}
+                                    disabled={k === ''}
+                                    onClick={() => {
+                                        if (k === '⌫') { setPinInput(p => p.slice(0,-1)); setPinError(''); }
+                                        else if (typeof k === 'number' && pinInput.length < 4) { const next = pinInput + String(k); setPinInput(next); setPinError(''); if (next.length === 4) setTimeout(() => { /* auto-confirm handled below */ }, 100); }
+                                    }}
+                                >
+                                    {k}
+                                </button>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center' }}>
+                            <button type="button" style={{ padding: '.5rem 1.25rem', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontWeight: 600 }} onClick={() => { setPinModalOpen(false); setPinInput(''); setPinError(''); }}>Cancelar</button>
+                            <button type="button" style={{ padding: '.5rem 1.25rem', borderRadius: 10, border: 'none', background: '#ff6633', color: '#fff', cursor: 'pointer', fontWeight: 700 }} onClick={confirmarPIN}>Confirmar</button>
                         </div>
                     </div>
                 </div>

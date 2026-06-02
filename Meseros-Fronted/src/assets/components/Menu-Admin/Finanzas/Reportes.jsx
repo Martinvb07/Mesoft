@@ -84,26 +84,59 @@ const Reportes = () => {
     const totalVentas = useMemo(()=> filtered.reduce((s,f)=> s + Number(f.total||0), 0), [filtered]);
     const totalPropinas = useMemo(()=> filtered.reduce((s,f)=> s + Number(f.propina||0), 0), [filtered]);
 
+    const downloadCsv = (csvContent, filename) => {
+        const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const escapeCsv = (val) => {
+        const s = String(val == null ? '' : val);
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+
     const exportCSV = () => {
-        const header = ['ticket','fecha','mesa','mesero','total','propina'];
+        const header = ['Ticket','Fecha','Mesa','Mesero','Total','Propina'];
         const rows = filtered.map(f => [
             f.ticket || f.pedido_id,
-            f.pagado_en ? new Date(f.pagado_en).toISOString() : '',
+            f.pagado_en ? new Date(f.pagado_en).toLocaleString('es-CO') : '',
             f.mesa_numero ?? f.mesa_id,
             f.mesero_nombre || f.mesero_id || '',
             Number(f.total||0),
             Number(f.propina||0)
         ]);
-        const csv = [header, ...rows].map(r => r.map(val => {
-            const s = String(val==null?'':val);
-            return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s;
-        }).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `facturas_${desde}_${hasta}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const csv = [header, ...rows].map(r => r.map(escapeCsv).join(',')).join('\n');
+        downloadCsv(csv, `ventas_${desde}_${hasta}.csv`);
+    };
+
+    const exportPropinasPorMesero = () => {
+        // Aggregate propinas per mesero from filtered facturas
+        const map = {};
+        filtered.forEach(f => {
+            const key = f.mesero_nombre || f.mesero_id || 'Desconocido';
+            if (!map[key]) map[key] = { mesero: key, totalPropinas: 0, totalVentas: 0, facturas: 0 };
+            map[key].totalPropinas += Number(f.propina || 0);
+            map[key].totalVentas += Number(f.total || 0);
+            map[key].facturas += 1;
+        });
+        const rows = Object.values(map).sort((a, b) => b.totalPropinas - a.totalPropinas);
+        const header = ['Mesero','Facturas','Total ventas','Total propinas'];
+        const csv = [header, ...rows.map(r => [r.mesero, r.facturas, r.totalVentas, r.totalPropinas])].map(r => r.map(escapeCsv).join(',')).join('\n');
+        downloadCsv(csv, `propinas_por_mesero_${desde}_${hasta}.csv`);
+    };
+
+    const exportTopProductos = async () => {
+        try {
+            const tp = await api.topProductos({ desde, hasta, limit: 50 });
+            const rows = Array.isArray(tp) ? tp : [];
+            const header = ['Producto','Unidades','Ingresos','Tendencia(%)'];
+            const csv = [header, ...rows.map(r => [r.nombre, Number(r.unidades||0), Number(r.ingresos||0), Number(r.tendenciaPct||0)])].map(r => r.map(escapeCsv).join(',')).join('\n');
+            downloadCsv(csv, `top_productos_${desde}_${hasta}.csv`);
+        } catch (e) {
+            alert('No se pudo exportar top productos: ' + (e?.message || e));
+        }
     };
 
     // TanStack Table setup
@@ -190,6 +223,13 @@ const Reportes = () => {
                         </div>
                     </div>
                     {cargando && <div className="kpi-loading muted">Cargando…</div>}
+                </div>
+
+                {/* Export buttons */}
+                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.75rem' }}>
+                    <button className="btn" onClick={exportCSV}>⬇ Exportar ventas CSV</button>
+                    <button className="btn" onClick={exportPropinasPorMesero}>⬇ Propinas por mesero</button>
+                    <button className="btn" onClick={exportTopProductos}>⬇ Top productos</button>
                 </div>
 
                 <div style={{overflowX:'auto', marginTop:'.75rem'}}>

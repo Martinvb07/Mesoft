@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Admin/Mesas/Mesas.css';
 import { api } from '../../../../api/client';
 import { useSocket } from '../../../../hooks/useSocket';
+import { logAudit } from '../../../../utils/audit';
+import { upsertCliente } from '../Clientes/Clientes';
 import {
     HiSquares2X2,
     HiUsers,
@@ -45,6 +47,7 @@ const normalizar = (row) => ({
     meseroNombre: row.mesero_nombre ?? '',
     reservaAt: row.reserva_at ?? null,
     updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now(),
+    categoria: row.categoria ?? '',
 });
 
 function Mesas() {
@@ -57,6 +60,9 @@ function Mesas() {
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('todos');
     const [filtroCapacidad, setFiltroCapacidad] = useState('todas');
+    const [filtroCategoria, setFiltroCategoria] = useState('todas');
+
+    const CATEGORIAS_MESA = ['Salón', 'Terraza', 'Barra', 'VIP'];
     const [meserosActivosCount, setMeserosActivosCount] = useState(0);
     const [showMeserosModal, setShowMeserosModal] = useState(false);
     const [meserosEnTurno, setMeserosEnTurno] = useState([]);
@@ -86,7 +92,7 @@ function Mesas() {
     const [formOpen, setFormOpen] = useState(false);
     const [formMode, setFormMode] = useState('create');
     const [formMesaId, setFormMesaId] = useState(null);
-    const [formData, setFormData] = useState({ numero: '', capacidad: 4, estado: 'libre' });
+    const [formData, setFormData] = useState({ numero: '', capacidad: 4, estado: 'libre', categoria: '' });
     const [formMsg, setFormMsg] = useState('');
 
     const cargarMesas = useCallback(async () => {
@@ -156,14 +162,14 @@ function Mesas() {
     const abrirCrearModal = () => {
         setFormMode('create');
         setFormMesaId(null);
-        setFormData({ numero: '', capacidad: 4, estado: 'libre' });
+        setFormData({ numero: '', capacidad: 4, estado: 'libre', categoria: '' });
         setFormMsg('');
         setFormOpen(true);
     };
     const abrirEditarModal = (mesa) => {
         setFormMode('edit');
         setFormMesaId(mesa.id);
-        setFormData({ numero: mesa.numero, capacidad: mesa.capacidad, estado: mesa.estado });
+        setFormData({ numero: mesa.numero, capacidad: mesa.capacidad, estado: mesa.estado, categoria: mesa.categoria || '' });
         setFormMsg('');
         setFormOpen(true);
     };
@@ -174,10 +180,11 @@ function Mesas() {
         if (!num || num < 1) { setFormMsg('Número inválido'); return; }
         if (!cap || cap < 1) { setFormMsg('Capacidad inválida'); return; }
         try {
+            const categoria = formData.categoria || undefined;
             if (formMode === 'create') {
-                await api.createMesa({ numero: num, capacidad: cap, estado: formData.estado });
+                await api.createMesa({ numero: num, capacidad: cap, estado: formData.estado, categoria });
             } else {
-                await api.updateMesa(formMesaId, { numero: num, capacidad: cap, estado: formData.estado });
+                await api.updateMesa(formMesaId, { numero: num, capacidad: cap, estado: formData.estado, categoria });
             }
             await cargarMesas();
             cerrarFormModal();
@@ -398,6 +405,11 @@ function Mesas() {
         const reserva_at = `${fecha} ${hora}:00`;
         try {
             await api.reservarMesa(detalleMesa.id, { reserva_at, reservado_por: nombre || null, telefono: telefono || null });
+            // Auto-save cliente if nombre provided
+            if (nombre && nombre.trim()) {
+                upsertCliente({ nombre: nombre.trim(), telefono: telefono || '' });
+            }
+            logAudit(null, 'reservar_mesa', `Mesa ${detalleMesa.numero} — ${nombre || 'Sin nombre'} ${fecha} ${hora}`);
             await cargarMesas();
             setReservaOpen(false);
             // refrescar detalle
@@ -427,9 +439,10 @@ function Mesas() {
         return mesas
             .filter(m => (filtroEstado === 'todos' ? true : m.estado === filtroEstado))
             .filter(m => (filtroCapacidad === 'todas' ? true : m.capacidad === Number(filtroCapacidad)))
+            .filter(m => (filtroCategoria === 'todas' ? true : (m.categoria || '') === filtroCategoria))
             .filter(m => !q || String(m.numero).includes(q))
             .sort((a, b) => a.numero - b.numero);
-    }, [mesas, busqueda, filtroEstado, filtroCapacidad]);
+    }, [mesas, busqueda, filtroEstado, filtroCapacidad, filtroCategoria]);
 
     const total = mesas.length;
     const libres = mesas.filter(m => m.estado === 'libre').length;
@@ -490,6 +503,14 @@ function Mesas() {
                 </div>
             </div>
 
+            {/* Categoria filter chips */}
+            <div className="categoria-chips">
+                <button type="button" className={`chip-btn${filtroCategoria === 'todas' ? ' active' : ''}`} onClick={() => setFiltroCategoria('todas')}>Todas</button>
+                {CATEGORIAS_MESA.map(cat => (
+                    <button key={cat} type="button" className={`chip-btn${filtroCategoria === cat ? ' active' : ''}`} onClick={() => setFiltroCategoria(cat)}>{cat}</button>
+                ))}
+            </div>
+
             <div className="mesas-toolbar">
                 <div className="search">
                     <HiMagnifyingGlass />
@@ -546,6 +567,7 @@ function Mesas() {
                             <div className="cap">
                                 <HiUsers />
                                 <span>Capacidad {m.capacidad}</span>
+                                {m.categoria && <span className="mesa-categoria-badge">{m.categoria}</span>}
                             </div>
                             {m.meseroNombre && (
                                 <div className="cap">
@@ -817,6 +839,13 @@ function Mesas() {
                                         <option value="ocupada">Ocupada</option>
                                         <option value="reservada">Reservada</option>
                                         <option value="limpieza">Limpieza</option>
+                                    </select>
+                                </div>
+                                <div className="form-row">
+                                    <label>Categoría</label>
+                                    <select value={formData.categoria} onChange={e=>setFormData({ ...formData, categoria: e.target.value })}>
+                                        <option value="">Sin categoría</option>
+                                        {CATEGORIAS_MESA.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                     </select>
                                 </div>
                             </div>

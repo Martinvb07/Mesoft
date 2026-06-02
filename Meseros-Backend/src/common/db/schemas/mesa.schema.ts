@@ -35,6 +35,9 @@ export class Mesa {
   @Prop({ type: String, default: null })
   telefono_reserva?: string | null;
 
+  @Prop({ type: String, default: null })
+  categoria?: string | null;
+
   @Prop()
   created_at?: Date;
 

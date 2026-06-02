@@ -153,11 +153,33 @@ const Resumen = () => {
     const money = (n) => `$${Number(n||0).toLocaleString('es-CO')}`;
     const pct = (n) => `${Number(n||0).toFixed(0)}%`;
 
+    const exportarResumenCSV = () => {
+        const today = new Date().toISOString().slice(0,10);
+        const header = ['Métrica','Valor'];
+        const rows = [
+            ['Ventas hoy', ventasHoy],
+            ['Variación vs ayer (%)', Number(variacion).toFixed(1)],
+            ['Ticket promedio', ticketProm],
+            ['Pedidos hoy', ventasHoyPedidos],
+            ['Meta diaria', meta.meta],
+            ['Progreso meta (%)', Number(meta.progresoPct).toFixed(0)],
+        ];
+        const csvTop = top.map(p => [`Producto: ${p.nombre}`, `${p.unidades} uds / ${money(p.ingresos)}`]);
+        const csv = [header, ...rows, ...csvTop].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `resumen_${today}.csv`; a.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="fin-page">
-        <div className="fin-header">
-            <h1>Finanzas · Resumen</h1>
-            <p className="muted">Visión general de ingresos, egresos y resultados.</p>
+        <div className="fin-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+            <div>
+                <h1>Finanzas · Resumen</h1>
+                <p className="muted">Visión general de ingresos, egresos y resultados.</p>
+            </div>
+            <button className="btn" onClick={exportarResumenCSV} style={{ marginTop: '.25rem' }}>⬇ Exportar resumen</button>
         </div>
         <div className="fin-metrics">
             <div className="metric-card">

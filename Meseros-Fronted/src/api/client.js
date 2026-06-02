@@ -143,6 +143,44 @@ export const api = {
   crearProducto: (data) => request('/productos', { method: 'POST', body: data }),
   actualizarProducto: (id, data) => request(`/productos/${id}`, { method: 'PUT', body: data }),
   eliminarProducto: (id) => request(`/productos/${id}`, { method: 'DELETE' }),
+
+  // Reportes exportables
+  reporteVentas: (params) => request('/pedidos/facturas?' + new URLSearchParams(params)),
+
+  // Ranking propinas — backend endpoint; falls back client-side in Home.jsx
+  rankingPropinas: (params) => request('/finanzas/ranking-propinas?' + new URLSearchParams(params)),
+
+  // Usuarios — gestión de roles (admin puede actualizar rol de cualquier usuario)
+  actualizarUsuario: (id, data) => request(`/usuarios/${id}`, { method: 'PUT', body: data }),
+
+  // Audit logs (Feature 8)
+  // TODO: endpoint /audit/logs — uses localStorage fallback in AuditLog.jsx
+  getAuditLogs: () => request('/audit/logs'),
+
+  // Restaurante (configuración multi-tenant)
+  getRestaurante: () => request('/restaurantes/me'),
+  actualizarRestaurante: (data) => request('/restaurantes/me', { method: 'PUT', body: data }),
+
+  // Proveedores
+  getProveedores: () => request('/proveedores'),
+  crearProveedor: (data) => request('/proveedores', { method: 'POST', body: data }),
+  actualizarProveedor: (id, data) => request(`/proveedores/${id}`, { method: 'PUT', body: data }),
+  eliminarProveedor: (id) => request(`/proveedores/${id}`, { method: 'DELETE' }),
+
+  // Import CSV masivo de productos
+  importarProductosCSV: (rows) => request('/productos/import-csv', { method: 'POST', body: rows }),
+
+  // Reviews (menú público — sin auth, fetch directo)
+  getReviewsPublico: (restaurantId, producto_id) => {
+    const url = `https://mesoft.store/api/public/${restaurantId}/reviews${producto_id ? `?producto_id=${producto_id}` : ''}`;
+    return fetch(url).then(r => r.json());
+  },
+  crearReviewPublico: (restaurantId, data) =>
+    fetch(`https://mesoft.store/api/public/${restaurantId}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()),
 };
 
 export default api;

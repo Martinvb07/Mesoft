@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { IdService } from '../common/db/id.service';
 import { Producto } from '../common/db/schemas/producto.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 function mapRow(r: any) {
   return {
@@ -15,6 +16,9 @@ function mapRow(r: any) {
     stock: Number(r.stock ?? 0),
     minStock: Number(r.min_stock ?? r.minStock ?? 0),
     activo: r.activo == null ? true : Boolean(r.activo),
+    imagen: r.imagen ?? null,
+    ingredientes: Array.isArray(r.ingredientes) ? r.ingredientes : [],
+    costo_receta: Number(r.costo_receta ?? 0),
     createdAt: r.created_at || r.createdAt || null,
     updatedAt: r.updated_at || r.updatedAt || null,
   };
@@ -25,6 +29,7 @@ export class ProductosService {
   constructor(
     @InjectModel(Producto.name) private readonly productos: Model<Producto>,
     private readonly ids: IdService,
+    private readonly notif: NotificationsService,
   ) {}
 
   async listarProductos(rid: number, query: any) {
@@ -116,8 +121,16 @@ export class ProductosService {
   }
 
   async actualizarProducto(rid: number, id: string, body: any) {
-    const { sku, nombre, categoria, costo, precio, stock, minStock, activo, descripcion } = body || {};
+    const { sku, nombre, categoria, costo, precio, stock, minStock, activo, descripcion, ingredientes } = body || {};
     if (!id) throw new HttpException({ error: 'ID requerido' }, HttpStatus.BAD_REQUEST);
+
+    // Calcular costo_receta si se proveen ingredientes
+    let costo_receta: number | undefined;
+    if (Array.isArray(ingredientes)) {
+      costo_receta = ingredientes.reduce((sum: number, ing: any) => {
+        return sum + (Number(ing.cantidad || 0) * Number(ing.costo_unitario || 0));
+      }, 0);
+    }
 
     const values = [
       sku || null,
@@ -135,16 +148,23 @@ export class ProductosService {
     if (!values[0] || String(values[0]).trim().length === 0) throw new HttpException({ error: 'SKU es requerido' }, HttpStatus.BAD_REQUEST);
 
     try {
+      const $setFields: any = {
+        sku: String(values[0]).trim(),
+        nombre: String(values[1]).trim(),
+        categoria: String(values[2]).trim(),
+        costo: Number(values[3]),
+        precio: Number(values[4]),
+      };
+      if (Array.isArray(ingredientes)) {
+        $setFields.ingredientes = ingredientes;
+        $setFields.costo_receta = costo_receta ?? 0;
+      }
       const updated = await this.productos
         .findOneAndUpdate(
           { id: Number(id), restaurant_id: rid },
           {
             $set: {
-              sku: String(values[0]).trim(),
-              nombre: String(values[1]).trim(),
-              categoria: String(values[2]).trim(),
-              costo: Number(values[3]),
-              precio: Number(values[4]),
+              ...$setFields,
               stock: Number(values[5]),
               min_stock: Number(values[6]),
               activo: Boolean(values[7]),
@@ -157,6 +177,12 @@ export class ProductosService {
         .exec();
 
       if (!updated) throw new HttpException({ error: 'Producto no encontrado' }, HttpStatus.NOT_FOUND);
+      // Notificar stock bajo
+      const minStk = Number(updated.min_stock ?? 0);
+      const stk = Number(updated.stock ?? 0);
+      if (minStk > 0 && stk <= minStk) {
+        this.notif.notifyStockBajo(rid, updated.nombre, stk).catch(() => {});
+      }
       return mapRow(updated);
     } catch (err: any) {
       if (String(err?.code || '') === '11000') {
@@ -174,5 +200,41 @@ export class ProductosService {
     } catch (err: any) {
       throw new HttpException({ error: err?.message || 'DB error' }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  async importarCSV(rid: number, rows: any[]) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new HttpException({ error: 'No se recibieron filas' }, HttpStatus.BAD_REQUEST);
+    }
+    let creados = 0;
+    let duplicados = 0;
+    const errores: string[] = [];
+
+    for (const row of rows) {
+      const sku = String(row.sku || '').trim();
+      const nombre = String(row.nombre || '').trim();
+      if (!sku || !nombre) { errores.push(`Fila sin SKU o nombre: ${JSON.stringify(row)}`); continue; }
+      const existe = await this.productos.findOne({ sku, restaurant_id: rid }, { _id: 0, id: 1 }).lean().exec();
+      if (existe) { duplicados++; continue; }
+      try {
+        const id = await this.ids.next('productos');
+        await this.productos.create({
+          id,
+          sku,
+          nombre,
+          categoria: String(row.categoria || '').trim(),
+          costo: isNaN(Number(row.costo)) ? 0 : Number(row.costo),
+          precio: isNaN(Number(row.precio)) ? 0 : Number(row.precio),
+          stock: Number.isFinite(Number(row.stock)) ? Number(row.stock) : 0,
+          min_stock: Number.isFinite(Number(row.minStock ?? row.min_stock)) ? Number(row.minStock ?? row.min_stock) : 0,
+          activo: true,
+          restaurant_id: rid,
+        });
+        creados++;
+      } catch (err: any) {
+        errores.push(`${sku}: ${err?.message || 'error'}`);
+      }
+    }
+    return { creados, duplicados, errores };
   }
 }

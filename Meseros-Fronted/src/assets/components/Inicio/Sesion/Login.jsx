@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { Link, useNavigate } from 'react-router-dom';
 import NavbarInicio from '../NavbarInicio';
 import '../../../css/Navbar/Sesion/Login.css';
+import { logAudit } from '../../../../utils/audit';
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '');
 
@@ -58,12 +59,15 @@ const Login = () => {
                 if (data.usuario?.rol) localStorage.setItem('auth:role', String(data.usuario.rol));
                 localStorage.setItem('auth:loginAt', String(Date.now()));
             } catch {}
+            logAudit(data.usuario?.nombre || data.usuario?.correo || 'usuario', 'login', `Rol: ${data.usuario?.rol || '?'}`);
             Swal.fire({
                 icon: 'success',
                 title: `Bienvenid@ ${data.usuario.nombre}`,
                 text: data.usuario?.restaurante ? `A tu plataforma: ${data.usuario.restaurante}` : 'Ingreso exitoso'
             }).then(() => {
                 if (data.usuario?.rol === 'admin') navigate('/admin/home');
+                else if (data.usuario?.rol === 'cocinero') navigate('/admin/cocina');
+                else if (data.usuario?.rol === 'cajero') navigate('/admin/finanzas');
                 else if (data.usuario?.rol === 'mesero') navigate('/mesero/home');
                 else navigate('/');
             });

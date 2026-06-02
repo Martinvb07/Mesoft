@@ -25,6 +25,11 @@ function Home() {
     const [meserosActivosCount, setMeserosActivosCount] = useState(0);
     const [stockAlertas, setStockAlertas] = useState([]); // productos con stock bajo
     const [toasts, setToasts] = useState([]); // { id, msg }
+    const [metaSemanal, setMetaSemanal] = useState(0);
+    const [metaMensual, setMetaMensual] = useState(0);
+    const [ventasSemana, setVentasSemana] = useState(0);
+    const [ventasMes, setVentasMes] = useState(0);
+    const [topPropinas, setTopPropinas] = useState([]); // [{ nombre, total }]
 
     const restaurantId = (() => { try { return localStorage.getItem('restaurant_id') || null; } catch { return null; } })();
 
@@ -138,6 +143,43 @@ function Home() {
                         return stock >= 0 && stock <= minStock;
                     }).slice(0, 5);
                     if (!cancel) setStockAlertas(alertas);
+                } catch {}
+
+                // Metas semanales / mensuales (Feature 6)
+                try {
+                    const settings = JSON.parse(localStorage.getItem('app_settings_v1') || '{}');
+                    if (!cancel) {
+                        setMetaSemanal(Number(settings.metaSemanal || 0));
+                        setMetaMensual(Number(settings.metaMensual || 0));
+                    }
+                    // Compute week range
+                    const now = new Date();
+                    const weekStart = new Date(now); weekStart.setDate(now.getDate() - 6);
+                    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const fmt = (d) => d.toISOString().slice(0,10);
+                    const [factSemana, factMes] = await Promise.allSettled([
+                        api.facturas({ desde: fmt(weekStart), hasta: fmt(now) }),
+                        api.facturas({ desde: fmt(monthStart), hasta: fmt(now) }),
+                    ]);
+                    const sumVentas = (rows) => (Array.isArray(rows) ? rows : []).reduce((s, f) => s + Number(f.total||0), 0);
+                    if (!cancel) {
+                        setVentasSemana(sumVentas(factSemana.status === 'fulfilled' ? factSemana.value : []));
+                        setVentasMes(sumVentas(factMes.status === 'fulfilled' ? factMes.value : []));
+                    }
+
+                    // Top propinas esta semana (Feature 7) — client-side aggregation
+                    const factRows = factSemana.status === 'fulfilled' ? (Array.isArray(factSemana.value) ? factSemana.value : []) : [];
+                    const propinaMap = {};
+                    factRows.forEach(f => {
+                        const key = f.mesero_nombre || String(f.mesero_id || 'Desconocido');
+                        if (!propinaMap[key]) propinaMap[key] = 0;
+                        propinaMap[key] += Number(f.propina || 0);
+                    });
+                    const ranking = Object.entries(propinaMap)
+                        .map(([nombre, total]) => ({ nombre, total }))
+                        .sort((a, b) => b.total - a.total)
+                        .slice(0, 3);
+                    if (!cancel) setTopPropinas(ranking);
                 } catch {}
             } finally {
                 if (!cancel) setCargando(false);
@@ -273,6 +315,26 @@ function Home() {
                         <div className="muted" style={{ marginBottom: '.25rem' }}>Meta diaria: ${metaHoy.meta.toLocaleString('es-CO')} — Ventas: ${metaHoy.ventas.toLocaleString('es-CO')} ({metaHoy.progresoPct.toFixed(0)}%)</div>
                         <div className="goal-bar"><span style={{ width: `${Math.min(100, metaHoy.progresoPct)}%` }} /></div>
                     </div>
+                    {metaSemanal > 0 && (
+                        <div className="goal" style={{ marginTop: '.5rem' }}>
+                            <div className="muted" style={{ marginBottom: '.25rem' }}>
+                                Meta semanal: ${metaSemanal.toLocaleString('es-CO')} — ${ventasSemana.toLocaleString('es-CO')} ({Math.min(100, Math.round((ventasSemana / metaSemanal) * 100))}%)
+                            </div>
+                            <div className="goal-bar" style={{ background: '#e0f2fe' }}>
+                                <span style={{ width: `${Math.min(100, (ventasSemana / metaSemanal) * 100)}%`, background: '#0284c7' }} />
+                            </div>
+                        </div>
+                    )}
+                    {metaMensual > 0 && (
+                        <div className="goal" style={{ marginTop: '.5rem' }}>
+                            <div className="muted" style={{ marginBottom: '.25rem' }}>
+                                Meta mensual: ${metaMensual.toLocaleString('es-CO')} — ${ventasMes.toLocaleString('es-CO')} ({Math.min(100, Math.round((ventasMes / metaMensual) * 100))}%)
+                            </div>
+                            <div className="goal-bar" style={{ background: '#fef9c3' }}>
+                                <span style={{ width: `${Math.min(100, (ventasMes / metaMensual) * 100)}%`, background: '#ca8a04' }} />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Meseros activos  */}
@@ -432,6 +494,26 @@ function Home() {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Top Propinas esta semana (Feature 7) */}
+                        <div className="card">
+                            <h3>Top propinas (esta semana)</h3>
+                            {topPropinas.length === 0 ? (
+                                <div className="muted" style={{ marginTop: '.5rem' }}>Sin propinas registradas esta semana.</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginTop: '.5rem' }}>
+                                    {topPropinas.map((m, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.5rem .6rem', background: idx === 0 ? '#fff7e6' : '#f9fafb', borderRadius: 10, border: '1px solid #f3f4f6' }}>
+                                            <span style={{ fontWeight: 800, fontSize: '1.1rem', color: idx === 0 ? '#ff6633' : '#6b7280', minWidth: 24, textAlign: 'center' }}>
+                                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                                            </span>
+                                            <span style={{ flex: 1, fontWeight: 600, color: '#1f2937' }}>{m.nombre}</span>
+                                            <span style={{ fontWeight: 800, color: '#16a34a' }}>${m.total.toLocaleString('es-CO')}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

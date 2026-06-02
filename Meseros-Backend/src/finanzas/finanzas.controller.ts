@@ -80,4 +80,9 @@ export class FinanzasController {
   evolucionVentas(@Req() req: RequestWithTenant, @Query() query: any) {
     return this.finanzas.evolucionVentas(req.restaurantId!, query);
   }
+
+  @Get('ranking-propinas')
+  rankingPropinas(@Req() req: RequestWithTenant, @Query() query: any) {
+    return this.finanzas.rankingPropinas(req.restaurantId!, query);
+  }
 }

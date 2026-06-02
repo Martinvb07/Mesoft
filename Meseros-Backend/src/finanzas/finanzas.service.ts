@@ -473,6 +473,46 @@ export class FinanzasService {
       .exec();
   }
 
+  async rankingPropinas(rid: number, query: any) {
+    const { desde, hasta } = query || {};
+    const r1 = parseDateOnly(desde);
+    const r2 = parseDateOnly(hasta);
+    const start = r1?.start ?? DateTime.now().setZone(APP_TZ).startOf('week').toJSDate();
+    const end = r2?.end ?? DateTime.now().setZone(APP_TZ).endOf('day').toJSDate();
+
+    return this.contables.aggregate([
+      {
+        $match: {
+          tipo: 'ingreso',
+          restaurant_id: rid,
+          fecha: { $gte: start, $lte: end },
+          $or: [{ categoria: 'propina' }, { descripcion: { $regex: /^Propina\s/i } }],
+        },
+      },
+      { $group: { _id: '$usuario_id', propinas: { $sum: '$monto' }, cantidad: { $sum: 1 } } },
+      { $sort: { propinas: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'meseros',
+          localField: '_id',
+          foreignField: 'usuario_id',
+          as: 'mesero',
+        },
+      },
+      { $unwind: { path: '$mesero', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          usuario_id: '$_id',
+          nombre: { $ifNull: ['$mesero.nombre', 'Desconocido'] },
+          propinas: 1,
+          cantidad: 1,
+        },
+      },
+    ]).exec();
+  }
+
   async evolucionVentas(rid: number, query: any) {
     const { desde, hasta } = query || {};
     const r1 = parseDateOnly(desde);

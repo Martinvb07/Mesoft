@@ -9,6 +9,9 @@ import { Mesero } from '../common/db/schemas/mesero.schema';
 import { MovimientoContable } from '../common/db/schemas/movimiento.schema';
 import { Pedido } from '../common/db/schemas/pedido.schema';
 import { Producto } from '../common/db/schemas/producto.schema';
+import { Restaurante } from '../common/db/schemas/restaurante.schema';
+import { AlegraService } from '../alegra/alegra.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const APP_TZ = process.env.APP_TZ || 'America/Bogota';
 
@@ -21,7 +24,10 @@ export class PedidosService {
     @InjectModel(Mesero.name) private readonly meseros: Model<Mesero>,
     @InjectModel(Mesa.name) private readonly mesas: Model<Mesa>,
     @InjectModel(MovimientoContable.name) private readonly contables: Model<MovimientoContable>,
+    @InjectModel(Restaurante.name) private readonly restaurantes: Model<Restaurante>,
     private readonly ids: IdService,
+    private readonly alegra: AlegraService,
+    private readonly notif: NotificationsService,
   ) {}
 
   private toNumberId(value: unknown, label: string): number {
@@ -284,7 +290,50 @@ export class PedidosService {
     await this.pedidos.updateOne({ id: pid, restaurant_id: rid }, { $set: { estado: 'cerrado' } }).exec();
     await this.mesas.updateOne({ id: pedido.mesa_id, restaurant_id: rid }, { $set: { estado: 'limpieza' } }).exec();
 
-    return { ok: true, cambio, total, propina: propinaNum, descuento: descuentoNum, metodo_pago };
+    // Notificar pago
+    this.notif.notifyPedidoCerrado(rid, pedido.mesa_id ?? pid, total + propinaNum).catch(() => {});
+
+    // Pasarelas de pago: construir links si el restaurante tiene keys configuradas
+    const rest = await this.restaurantes
+      .findOne({ id: rid }, { _id: 0, wompi_public_key: 1, bold_api_key: 1, alegra_api_key: 1, alegra_email: 1 })
+      .lean<any>()
+      .exec();
+
+    let wompi_link: string | null = null;
+    let bold_link: string | null = null;
+    if (rest?.wompi_public_key) {
+      const totalCents = Math.round(total * 100);
+      wompi_link = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(rest.wompi_public_key)}&currency=COP&amount-in-cents=${totalCents}&reference=${pid}`;
+    }
+    if (rest?.bold_api_key) {
+      bold_link = `https://checkout.bold.co/?api_key=${encodeURIComponent(rest.bold_api_key)}&amount=${total}&reference=${pid}`;
+    }
+
+    // Facturación DIAN via Alegra (async, no bloquea respuesta)
+    const facturaItems = await this.detalle
+      .aggregate<any>([
+        { $match: { pedido_id: pid } },
+        { $lookup: { from: 'productos', localField: 'producto_id', foreignField: 'id', as: 'producto' } },
+        { $unwind: { path: '$producto', preserveNullAndEmptyArrays: true } },
+        { $project: { _id: 0, producto_id: 1, cantidad: 1, subtotal: 1, nombre: '$producto.nombre', precio: '$producto.precio' } },
+      ])
+      .exec();
+
+    let alegra_result: any = null;
+    try {
+      alegra_result = await this.alegra.crearFactura(rest || {}, {
+        mesa: pedido.mesa_id,
+        total,
+        items: facturaItems.map((it: any) => ({
+          producto_id: it.producto_id,
+          nombre: it.nombre || 'Producto',
+          cantidad: it.cantidad,
+          precio: it.precio || 0,
+        })),
+      });
+    } catch {}
+
+    return { ok: true, cambio, total, propina: propinaNum, descuento: descuentoNum, metodo_pago, wompi_link, bold_link, alegra: alegra_result };
   }
 
   async marcarItemListo(rid: number, pedidoId: string, itemId: string, listo: boolean) {
