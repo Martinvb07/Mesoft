@@ -12,11 +12,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </React.StrictMode>
 );
 
-// Register service worker (PWA - Feature 12)
+// Desregistrar cualquier Service Worker previamente instalado (causaba pantallas en blanco tras deploys)
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {
-            // SW registration failed silently
-        });
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
     });
+    caches?.keys?.().then((keys) => keys.forEach((key) => caches.delete(key)));
 }
