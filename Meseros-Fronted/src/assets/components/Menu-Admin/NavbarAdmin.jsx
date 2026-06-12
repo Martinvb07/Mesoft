@@ -243,7 +243,15 @@ const NavbarAdmin = () => {
       title: '¿Cerrar sesión?', icon: 'question',
       showCancelButton: true, confirmButtonText: 'Sí, salir', cancelButtonText: 'Cancelar',
       confirmButtonColor: '#FF6633',
-    }).then(r => { if (r.isConfirmed) { logAudit(nombre, 'logout', 'Cierre de sesión'); navigate('/login'); } });
+    }).then(r => {
+      if (r.isConfirmed) {
+        logAudit(nombre, 'logout', 'Cierre de sesión');
+        try {
+          ['currentUser','auth:user','auth:role','auth:loginAt','auth_token','restaurant_id','restaurant_name'].forEach(k => localStorage.removeItem(k));
+        } catch {}
+        navigate('/login');
+      }
+    });
   };
 
   const mobileLinks = [

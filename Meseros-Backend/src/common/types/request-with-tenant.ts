@@ -1,9 +1,8 @@
 import type { Request } from 'express';
+import type { JwtPayload } from '../../auth/jwt-payload';
 
 export type RequestWithTenant = Request & {
   restaurantId?: number;
   userId?: number;
-  // optionally: req.user (if you later add auth)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user?: any;
+  user?: JwtPayload;
 };

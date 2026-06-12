@@ -367,7 +367,7 @@ export class PedidosService {
 
   async enCursoDelMeseroActual(rid: number, userId?: number) {
     const uid = userId;
-    if (!uid) throw new HttpException({ error: 'usuario_id requerido (X-Usuario-Id)' }, HttpStatus.BAD_REQUEST);
+    if (!uid) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
 
     const mesero = await this.meseros
       .findOne({ usuario_id: Number(uid), restaurant_id: rid }, { _id: 0, id: 1 })

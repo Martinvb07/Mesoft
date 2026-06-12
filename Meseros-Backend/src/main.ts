@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { AppModule } from './app.module';
 
@@ -20,12 +21,14 @@ function buildCorsOptions(): CorsOptions {
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Restaurant-Id', 'Restaurant-Id', 'X-Usuario-Id', 'X-User-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   };
 }
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(helmet());
 
   const trustProxy = Number(process.env.TRUST_PROXY || 1);
   // Nest runs on Express by default

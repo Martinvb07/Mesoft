@@ -66,7 +66,7 @@ export class MeserosService {
 
   async obtenerMiPerfilMesero(rid: number, uid: number) {
     if (!rid) throw new HttpException({ error: 'restaurantId no resuelto' }, HttpStatus.BAD_REQUEST);
-    if (!uid) throw new HttpException({ error: 'usuario_id requerido (X-Usuario-Id)' }, HttpStatus.BAD_REQUEST);
+    if (!uid) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
     const rows = await this.meseros
       .aggregate([
         { $match: { restaurant_id: rid, usuario_id: uid } },

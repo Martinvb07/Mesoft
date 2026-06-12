@@ -1,8 +1,12 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthController } from './health/health.controller';
 import { DatabaseModule } from './common/db/database.module';
-import { ResolveTenantMiddleware } from './common/middleware/resolve-tenant.middleware';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { MesasModule } from './mesas/mesas.module';
 import { MeserosModule } from './meseros/meseros.module';
@@ -22,6 +26,8 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    AuthModule,
     DatabaseModule,
     GatewayModule,
     PublicModule,
@@ -40,11 +46,10 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
     ProveedoresModule,
   ],
   controllers: [HealthController],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(ResolveTenantMiddleware).forRoutes('*');
-  }
-}
-
-
+export class AppModule {}

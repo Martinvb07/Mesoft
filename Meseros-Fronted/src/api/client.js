@@ -1,21 +1,22 @@
 const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '');
 
 function defaultHeaders() {
-  const rid = localStorage.getItem('restaurant_id');
-  let uid = null;
-  try {
-    const raw = localStorage.getItem('currentUser') || localStorage.getItem('auth:user');
-    if (raw) {
-      const u = JSON.parse(raw);
-      const cand = u?.id ?? u?.usuario_id ?? u?.userId ?? null;
-      if (cand != null) uid = String(cand);
-    }
-  } catch {}
+  const token = localStorage.getItem('auth_token');
   return {
     'Content-Type': 'application/json',
-    ...(rid ? { 'X-Restaurant-Id': rid } : {}),
-    ...(uid ? { 'X-Usuario-Id': uid } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
+
+function handleUnauthorized() {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('currentUser');
+  localStorage.removeItem('auth:user');
+  localStorage.removeItem('auth:role');
+  localStorage.removeItem('restaurant_id');
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login';
+  }
 }
 
 export async function request(path, options = {}) {
@@ -30,6 +31,9 @@ export async function request(path, options = {}) {
     res = await fetch(url, { ...options, body, headers });
   } catch (networkErr) {
     throw new Error('NETWORK');
+  }
+  if (res.status === 401) {
+    handleUnauthorized();
   }
   const contentType = res.headers.get('content-type') || '';
   let payload = null;

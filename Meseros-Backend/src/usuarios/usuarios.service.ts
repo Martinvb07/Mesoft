@@ -27,11 +27,11 @@ export class UsuariosService {
   ) {}
 
   async getAll() {
-    return this.usuarios.find({}, { _id: 0, __v: 0 }).sort({ id: 1 }).lean<UsuarioRow[]>().exec();
+    return this.usuarios.find({}, { _id: 0, __v: 0, contrasena: 0 }).sort({ id: 1 }).lean<UsuarioRow[]>().exec();
   }
 
   async getById(id: number) {
-    return this.usuarios.findOne({ id }, { _id: 0, __v: 0 }).lean<UsuarioRow>().exec();
+    return this.usuarios.findOne({ id }, { _id: 0, __v: 0, contrasena: 0 }).lean<UsuarioRow>().exec();
   }
 
   async create(usuario: Record<string, any>) {

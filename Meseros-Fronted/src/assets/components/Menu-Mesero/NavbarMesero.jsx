@@ -41,7 +41,7 @@ const NavbarMesero = () => {
     }).then(r => {
       if (r.isConfirmed) {
         try {
-          ['currentUser','auth:user','auth:role','auth:loginAt'].forEach(k => localStorage.removeItem(k));
+          ['currentUser','auth:user','auth:role','auth:loginAt','auth_token','restaurant_id','restaurant_name'].forEach(k => localStorage.removeItem(k));
         } catch {}
         navigate('/login');
       }

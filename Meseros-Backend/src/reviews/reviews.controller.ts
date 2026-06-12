@@ -3,7 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { IdService } from '../common/db/id.service';
 import { Review } from '../common/db/schemas/review.schema';
+import { Public } from '../auth/decorators/public.decorator';
 
+@Public()
 @Controller(['public/:restaurantId/reviews', 'api/public/:restaurantId/reviews'])
 export class ReviewsController {
   constructor(

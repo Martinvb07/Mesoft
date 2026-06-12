@@ -14,7 +14,7 @@ export class MesasController {
   @Get('mias')
   listarMisMesas(@Req() req: RequestWithTenant) {
     if (!req.restaurantId) throw new HttpException({ error: 'restaurantId no resuelto' }, HttpStatus.BAD_REQUEST);
-    if (!req.userId) throw new HttpException({ error: 'usuario_id requerido (X-Usuario-Id)' }, HttpStatus.BAD_REQUEST);
+    if (!req.userId) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
     return this.mesas.listarMisMesas(req.restaurantId, req.userId);
   }
 

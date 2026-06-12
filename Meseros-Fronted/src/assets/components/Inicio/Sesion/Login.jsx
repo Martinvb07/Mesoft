@@ -50,6 +50,7 @@ const Login = () => {
         }
         if (data.success) {
             try {
+                if (data.token) localStorage.setItem('auth_token', data.token);
                 const rid = data.restaurantId || data.usuario?.restaurantId || data.usuario?.restaurant_id;
                 if (rid) localStorage.setItem('restaurant_id', String(rid));
                 if (data.usuario?.restaurante) localStorage.setItem('restaurant_name', data.usuario.restaurante);

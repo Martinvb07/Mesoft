@@ -17,9 +17,11 @@ export function useSocket(restaurantId, onEvent) {
 
     useEffect(() => {
         if (!restaurantId) return;
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
 
         socketRef.current = io('https://mesoft.store', {
-            query: { restaurantId },
+            auth: { token },
             transports: ['websocket', 'polling'],
         });
 
