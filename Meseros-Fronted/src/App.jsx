@@ -1,11 +1,14 @@
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 // Navbars
 import NavbarInicio from './assets/components/Inicio/NavbarInicio';
+import FooterInicio from './assets/components/Inicio/FooterInicio';
 import NavbarAdmin from './assets/components/Menu-Admin/NavbarAdmin';
 import NavbarMesero from './assets/components/Menu-Mesero/NavbarMesero';
 // Páginas públicas
 import Inicio from './assets/components/Inicio/Inicio';
+import Funciones from './assets/components/Inicio/Funciones/Funciones';
+import Precios from './assets/components/Inicio/Precios/Precios';
 import QuienesSomos from './assets/components/Inicio/QuienesSomos/QuienesSomos';
 import Solicitar from './assets/components/Inicio/Solicitar/Solicitar';
 import Login from './assets/components/Inicio/Sesion/Login';
@@ -36,6 +39,15 @@ import FinInventario from './assets/components/Menu-Admin/Finanzas/Inventario';
 import FinNominas from './assets/components/Menu-Admin/Finanzas/Nominas';
 import { api } from './api/client';
 import './App.css';
+
+// Al cambiar de ruta, sube al inicio de la página (salvo cuando hay un ancla #seccion)
+function ScrollToTop() {
+    const { pathname, hash } = useLocation();
+    useEffect(() => {
+        if (!hash) window.scrollTo(0, 0);
+    }, [pathname, hash]);
+    return null;
+}
 
 // Helper: read user role from localStorage
 function getUserRol() {
@@ -103,6 +115,7 @@ function App() {
 
     return (
         <BrowserRouter>
+            <ScrollToTop />
             <Routes>
                 {/* Ruta pública menú QR — sin navbar ni auth */}
                 <Route path="/menu/:restaurantId" element={<MenuPublico />} />
@@ -114,6 +127,25 @@ function App() {
                         <div className="main-content">
                             <Inicio />
                         </div>
+                        <FooterInicio />
+                    </>
+                } />
+                <Route path="/funciones" element={
+                    <>
+                        <NavbarInicio />
+                        <div className="main-content">
+                            <Funciones />
+                        </div>
+                        <FooterInicio />
+                    </>
+                } />
+                <Route path="/precios" element={
+                    <>
+                        <NavbarInicio />
+                        <div className="main-content">
+                            <Precios />
+                        </div>
+                        <FooterInicio />
                     </>
                 } />
                 <Route path="/quienes-somos" element={
@@ -122,6 +154,7 @@ function App() {
                         <div className="main-content">
                             <QuienesSomos />
                         </div>
+                        <FooterInicio />
                     </>
                 } />
                 <Route path="/solicitar" element={
@@ -130,6 +163,7 @@ function App() {
                         <div className="main-content">
                             <Solicitar />
                         </div>
+                        <FooterInicio />
                     </>
                 } />
                 <Route path="/login" element={
@@ -138,6 +172,7 @@ function App() {
                         <div className="main-content">
                             <Login />
                         </div>
+                        <FooterInicio />
                     </>
                 } />
 

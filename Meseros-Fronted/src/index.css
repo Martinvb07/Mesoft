@@ -1,6 +1,7 @@
 /* Updated to avoid centering entire app and improve base responsive behavior */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --navbar-h: 60px;
+  font-family: 'Plus Jakarta Sans', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 

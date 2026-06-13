@@ -1,0 +1,22 @@
+/* Tailwind solo para las páginas públicas (landing, quiénes somos, solicitar, login).
+   Se importa sin "preflight" (el reset global de Tailwind) para no afectar
+   los estilos existentes del panel admin/mesero. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Marquee infinito (strip de tipos de negocio en la landing) */
+@keyframes landing-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+.landing-marquee {
+    animation: landing-marquee 28s linear infinite;
+}
+.landing-marquee:hover {
+    animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+    .landing-marquee {
+        animation: none;
+    }
+}

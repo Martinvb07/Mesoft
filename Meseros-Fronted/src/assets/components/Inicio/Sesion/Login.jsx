@@ -1,27 +1,28 @@
 import React from 'react';
-import { FiUser, FiLock } from 'react-icons/fi';
+import { FiLock } from 'react-icons/fi';
 import { CgMail } from "react-icons/cg";
+import { HiCheckCircle, HiArrowRight } from 'react-icons/hi2';
 
 import Swal from 'sweetalert2';
 import { Link, useNavigate } from 'react-router-dom';
-import NavbarInicio from '../NavbarInicio';
-import '../../../css/Navbar/Sesion/Login.css';
+import Button from '../../ui/button';
+import '../../../css/landing-tailwind.css';
 import { logAudit } from '../../../../utils/audit';
+
+const beneficios = [
+    'Punto de venta y pedidos en mesa',
+    'Inventario en tiempo real',
+    'Reportes y cierre de caja',
+    'Soporte cuando lo necesites',
+];
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '');
 
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100';
+const labelClass = 'mb-1.5 block text-sm font-semibold text-slate-700';
+
 const Login = () => {
     const navigate = useNavigate();
-    const handleEspecialidades = () => {
-        navigate('/');
-        setTimeout(() => {
-            const section = document.querySelector('.inicio-especialidades-section');
-            if (section) section.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-    };
-    const handleContactanos = () => {
-        navigate('/solicitar');
-    };
     const handleSubmit = async (e) => {
         e.preventDefault();
         const correo = document.getElementById('usuario').value.trim();
@@ -77,37 +78,86 @@ const Login = () => {
         }
     };
     return (
-        <>
-            <NavbarInicio />
-            <div className="login-hero-section">
-                <div className="login-hero-left">
-                    <h1 className="login-hero-title">Iniciar Sesión</h1>
-                    <p className="login-hero-desc">
-                        Ingresa tus credenciales para acceder al sistema y gestionar tu restaurante de forma profesional.
-                    </p>
-                    <form className="login-form" onSubmit={handleSubmit}>
-                        <div style={{ width: '100%', marginBottom: '1.2rem' }}>
-                            <label htmlFor="usuario" style={{ display: 'block', fontWeight: 600, color: '#333', marginBottom: '0.5rem', textAlign: 'left' }}>Correo</label>
-                            <div className="login-input-icon-container">
-                                <CgMail className="login-input-icon" />
-                                <input id="usuario" type="text" placeholder="Ingresa tu correo" className="login-input with-icon" autoComplete="username" />
-                            </div>
+        <div className="bg-gradient-to-b from-orange-50 via-white to-white">
+            <div className="mx-auto flex min-h-[calc(100vh-60px)] max-w-md items-center px-4 py-12 lg:max-w-5xl">
+                <div className="grid w-full overflow-hidden rounded-3xl bg-white shadow-2xl shadow-slate-300/40 ring-1 ring-slate-100 lg:grid-cols-2">
+                    {/* PANEL DE MARCA */}
+                    <div className="relative hidden flex-col justify-between overflow-hidden bg-slate-900 p-10 lg:flex">
+                        <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-16 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
+                        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-orange-500/10 blur-3xl" />
+
+                        <Link to="/" className="relative flex items-center gap-2.5 text-white no-underline">
+                            <img src="/logopngmesoft.png" alt="Mesoft" className="h-9 w-9 rounded-lg object-contain" />
+                            <span className="text-xl font-extrabold tracking-tight">Mesoft</span>
+                        </Link>
+
+                        <div className="relative">
+                            <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-white">
+                                Tu restaurante,<br /><span className="text-orange-400">bajo control.</span>
+                            </h2>
+                            <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-300">
+                                Todo lo que necesitas para administrar tu negocio en un solo lugar.
+                            </p>
+                            <ul className="mt-8 space-y-3.5">
+                                {beneficios.map((b) => (
+                                    <li key={b} className="flex items-center gap-3 text-sm text-slate-200">
+                                        <HiCheckCircle className="h-5 w-5 shrink-0 text-orange-400" />
+                                        {b}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                        <div style={{ width: '100%', marginBottom: '1.2rem' }}>
-                            <label htmlFor="password" style={{ display: 'block', fontWeight: 600, color: '#333', marginBottom: '0.5rem', textAlign: 'left' }}>Contraseña</label>
-                            <div className="login-input-icon-container">
-                                <FiLock className="login-input-icon" />
-                                <input id="password" type="password" placeholder="Ingresa tu contraseña" className="login-input with-icon" autoComplete="current-password" />
+
+                        <p className="relative text-xs text-slate-500">
+                            © {new Date().getFullYear()} Mesoft · Llano Studio
+                        </p>
+                    </div>
+
+                    {/* FORMULARIO */}
+                    <div className="flex flex-col justify-center p-8 sm:p-12">
+                        <Link to="/" className="mb-8 flex items-center justify-center gap-2 text-slate-900 no-underline lg:hidden">
+                            <img src="/logopngmesoft.png" alt="Mesoft" className="h-9 w-9 rounded-lg object-contain" />
+                            <span className="text-xl font-extrabold tracking-tight">Mesoft</span>
+                        </Link>
+
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+                            Iniciar sesión
+                        </h1>
+                        <p className="mt-2 text-sm text-slate-500">
+                            Ingresa tus credenciales para acceder a tu plataforma.
+                        </p>
+
+                        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+                            <div>
+                                <label htmlFor="usuario" className={labelClass}>Correo</label>
+                                <div className="relative">
+                                    <CgMail className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                    <input id="usuario" type="text" placeholder="Ingresa tu correo" className={inputClass} autoComplete="username" />
+                                </div>
                             </div>
-                        </div>
-                        <button type="submit" className="login-btn-main" style={{ width: '100%', marginTop: '0.5rem', fontSize: '1.1rem' }}>Ingresar</button>
-                    </form>
-                    <div className="login-info-extra" style={{ marginTop: '1.5rem' }}>
-                        <span>¿No tienes cuenta? <Link to="/solicitar" className="login-link">Solicita tu permiso aquí</Link></span>
+                            <div>
+                                <label htmlFor="password" className={labelClass}>Contraseña</label>
+                                <div className="relative">
+                                    <FiLock className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                    <input id="password" type="password" placeholder="Ingresa tu contraseña" className={inputClass} autoComplete="current-password" />
+                                </div>
+                            </div>
+                            <Button type="submit" size="lg" className="w-full">
+                                Ingresar
+                                <HiArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                            </Button>
+                        </form>
+
+                        <p className="mt-6 text-center text-sm text-slate-600">
+                            ¿No tienes cuenta?{' '}
+                            <Link to="/solicitar" className="font-semibold text-orange-500 hover:text-orange-600">
+                                Solicita tu acceso
+                            </Link>
+                        </p>
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 

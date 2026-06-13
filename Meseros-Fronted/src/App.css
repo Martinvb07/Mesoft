@@ -1,3 +1,24 @@
+/* Tipografía global */
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: #f97316;
+  color: #fff;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 /* Global responsive improvements */
 @media (max-width: 900px) {
   body, html {
@@ -42,6 +63,8 @@ body, html { margin: 0; padding: 0; }
 
 #root {
   width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   text-align: left;
 }
 
