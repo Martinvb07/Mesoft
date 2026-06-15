@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 // Navbars
 import NavbarInicio from './assets/components/Inicio/NavbarInicio';
 import FooterInicio from './assets/components/Inicio/FooterInicio';
-import NavbarAdmin from './assets/components/Menu-Admin/NavbarAdmin';
+import Sidebar from './assets/components/Menu-Admin/Sidebar';
 import NavbarMesero from './assets/components/Menu-Mesero/NavbarMesero';
 // Páginas públicas
 import Inicio from './assets/components/Inicio/Inicio';
@@ -93,16 +93,26 @@ function OnboardingGate({ children }) {
 }
 
 function App() {
-    const AdminLayout = () => (
-        <>
-            <NavbarAdmin />
-            <div className="main-content">
-                <OnboardingGate>
-                    <Outlet />
-                </OnboardingGate>
-            </div>
-        </>
-    );
+    const AdminLayout = () => {
+        const [collapsed, setCollapsed] = useState(() => {
+            try { return localStorage.getItem('admin_sidebar_collapsed') === '1'; } catch { return false; }
+        });
+
+        useEffect(() => {
+            try { localStorage.setItem('admin_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
+        }, [collapsed]);
+
+        return (
+            <>
+                <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
+                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
+                    <OnboardingGate>
+                        <Outlet />
+                    </OnboardingGate>
+                </div>
+            </>
+        );
+    };
 
     const MeseroLayout = () => (
         <>
@@ -176,7 +186,7 @@ function App() {
                     </>
                 } />
 
-                {/* Rutas para admin con NavbarAdmin */}
+                {/* Rutas para admin con Sidebar */}
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminGuard><HomeAdmin /></AdminGuard>} />
                     <Route path="home" element={<AdminGuard><HomeAdmin /></AdminGuard>} />

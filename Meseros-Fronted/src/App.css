@@ -92,6 +92,40 @@ body, html { margin: 0; padding: 0; }
   }
 }
 
+/* Layout admin con sidebar lateral */
+.admin-main {
+  margin-left: 256px; /* w-64 */
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: #f8fafc;
+  transition: margin-left 0.2s ease;
+}
+
+.admin-main.admin-main-collapsed {
+  margin-left: 76px;
+}
+
+@media (max-width: 1024px) {
+  .admin-main,
+  .admin-main.admin-main-collapsed {
+    margin-left: 0;
+    margin-top: 60px;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-main {
+    padding: 0.8rem 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-main {
+    padding: 0.6rem 0.4rem;
+  }
+}
+
 /* keep vite starter styles below (unchanged) */
 .logo {
   height: 6em;
