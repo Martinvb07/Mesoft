@@ -8,6 +8,7 @@ import {
 } from 'react-icons/hi2';
 import { api } from '../../../api/client';
 import { useSocket } from '../../../hooks/useSocket';
+import ToastStack from '../ui/ToastStack';
 
 const METODOS_PAGO = ['Efectivo', 'Tarjeta', 'Transferencia', 'Mixto'];
 const POLL = 20_000;
@@ -87,9 +88,9 @@ const Caja = () => {
     const [saving, setSaving] = useState(false);
     const [toasts, setToasts] = useState([]);
 
-    const pushToast = useCallback((msg) => {
+    const pushToast = useCallback((toast) => {
         const id = Date.now() + Math.random();
-        setToasts(prev => [...prev.slice(-3), { id, msg }]);
+        setToasts(prev => [...prev.slice(-3), { id, ...toast }]);
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000);
     }, []);
 
@@ -122,7 +123,7 @@ const Caja = () => {
         if (event === 'pedido_por_cobrar') {
             const mesa = data?.mesa_numero ?? data?.mesa_id ?? '';
             const total = data?.total != null ? ` · ${fmtCOP(data.total)}` : '';
-            pushToast(`Nuevo pedido por cobrar${mesa ? ` — Mesa ${mesa}` : ''}${total}`);
+            pushToast({ tone: 'caja', title: 'Nuevo pedido por cobrar', msg: `${mesa ? `Mesa ${mesa}` : 'Pedido'}${total}` });
             cargar();
         } else if (event === 'pedido_cerrado') {
             cargar();
@@ -190,14 +191,7 @@ const Caja = () => {
     return (
         <div className="ms-caja mx-auto max-w-7xl">
             {/* Toasts de notificación (nuevo pedido por cobrar) */}
-            <div className="fixed bottom-4 right-4 z-[2000] flex flex-col gap-2">
-                {toasts.map(t => (
-                    <div key={t.id} className="flex items-center gap-2.5 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-xl ring-1 ring-slate-100">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600"><HiOutlineBanknotes className="h-4 w-4" /></span>
-                        {t.msg}
-                    </div>
-                ))}
-            </div>
+            <ToastStack toasts={toasts} />
             <style>{`:where(.ms-caja) button{-webkit-appearance:none;appearance:none;border:0;background-color:transparent;cursor:pointer;font:inherit;color:inherit;}`}</style>
 
             {/* Header */}

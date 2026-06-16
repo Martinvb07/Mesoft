@@ -46,6 +46,14 @@ const Login = () => {
         let data;
         try { data = await res.json(); } catch { data = {}; }
         if(!res.ok){
+            if (res.status === 429) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Demasiados intentos',
+                    text: 'Has intentado iniciar sesión muchas veces seguidas. Espera un momento (alrededor de 1 minuto) y vuelve a intentarlo.',
+                });
+                return;
+            }
             const msg = data.error || (res.status === 0 ? 'Error desconocido' : `Error ${res.status}`);
             Swal.fire({ icon: 'error', title: 'Error de acceso', text: msg });
             return;
