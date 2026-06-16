@@ -12,6 +12,7 @@ import {
 } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 import { getCombosFromStorage } from '../../Menu-Admin/Combos/Combos';
+import Select from '../../ui/Select';
 
 const ESTADOS = {
     libre: { key: 'libre', label: 'Libre', color: 'free' },
@@ -414,21 +415,21 @@ const Mesas = () => {
                 <div className="filters">
                     <div className="filter">
                         <HiAdjustmentsHorizontal />
-                        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+                        <Select variant="bare" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
                             <option value="todos">Todos</option>
                             <option value="libre">Libres</option>
                             <option value="ocupada">Ocupadas</option>
                             <option value="limpieza">Limpieza</option>
-                        </select>
+                        </Select>
                     </div>
                     <div className="filter">
                         <HiUser />
-                        <select value={filtroCapacidad} onChange={e => setFiltroCapacidad(e.target.value)}>
+                        <Select variant="bare" value={filtroCapacidad} onChange={e => setFiltroCapacidad(e.target.value)}>
                             <option value="todas">Capacidad: Todas</option>
                             <option value="2">2</option>
                             <option value="4">4</option>
                             <option value="6">6</option>
-                        </select>
+                        </Select>
                     </div>
                 </div>
             </div>
@@ -597,12 +598,12 @@ const Mesas = () => {
                             <div className="modal-grid">
                                 <label>
                                     <span>Producto</span>
-                                    <select value={productoSel} onChange={e=>setProductoSel(e.target.value)} disabled={!pedidoModal.editable}>
+                                    <Select className="w-full" placeholder="Selecciona un producto" value={productoSel} onChange={e=>setProductoSel(e.target.value)} disabled={!pedidoModal.editable}>
                                         <option value="">Selecciona un producto</option>
                                         {productos.map(p => (
                                             <option key={p.id} value={p.id}>{p.nombre} · ${Number(p.precio||0).toLocaleString('es-CO')}</option>
                                         ))}
-                                    </select>
+                                    </Select>
                                 </label>
                                 <label>
                                     <span>Cantidad</span>
@@ -749,14 +750,14 @@ const Mesas = () => {
                             <div>
                                 <div style={{fontSize:'.85rem', fontWeight:600, marginBottom:'.35rem'}}>Descuento</div>
                                 <div style={{display:'flex', gap:'.5rem', alignItems:'center'}}>
-                                    <select
+                                    <Select
+                                        className="min-w-[160px]"
                                         value={pagoForm.descuentoTipo}
                                         onChange={e => setPagoForm(f => ({ ...f, descuentoTipo: e.target.value }))}
-                                        style={{padding:'.35rem .5rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'.875rem'}}
                                     >
                                         <option value="pct">Porcentaje (%)</option>
                                         <option value="fijo">Monto fijo ($)</option>
-                                    </select>
+                                    </Select>
                                     <input
                                         type="number"
                                         min="0"

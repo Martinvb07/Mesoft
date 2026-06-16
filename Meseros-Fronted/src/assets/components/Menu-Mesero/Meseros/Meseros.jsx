@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import '../../../css/Navbar/Menu-Meseros/Meseros/Meseros.css';
 import { HiUsers, HiMagnifyingGlass, HiAdjustmentsHorizontal, HiClock, HiUser, HiPhone, HiClipboard } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
+import Select from '../../ui/Select';
 
 const Meseros = () => {
     const copyToClipboard = (text) => {
@@ -161,12 +162,12 @@ const Meseros = () => {
                 <div className="filters">
                     <div className="filter">
                         <HiAdjustmentsHorizontal />
-                        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+                        <Select variant="bare" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
                             <option value="todos">Todos</option>
                             <option value="en-turno">En turno</option>
                             <option value="activos">Activos</option>
                             <option value="inactivos">Inactivos</option>
-                        </select>
+                        </Select>
                     </div>
                 </div>
             </div>

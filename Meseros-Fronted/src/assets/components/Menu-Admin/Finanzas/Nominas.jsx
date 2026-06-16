@@ -3,6 +3,9 @@ import Swal from 'sweetalert2';
 import { HiReceiptPercent, HiClock, HiCheckCircle, HiBanknotes, HiCurrencyDollar, HiXMark } from 'react-icons/hi2';
 import '../../../css/Navbar/Menu-Admin/Finanzas/Nominas.css';
 import { api } from '../../../../api/client';
+import Select from '../../ui/Select';
+import DatePicker from '../../ui/DatePicker';
+import DateRangePicker from '../../ui/DateRangePicker';
 
 const nowIso = () => new Date().toISOString();
 const toCurrency = (n) => (isNaN(n) ? '$0' : n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }));
@@ -328,12 +331,12 @@ const Nominas = () => {
           </div>
           <div className="right">
             <input className="input" placeholder="Buscar por empleado" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-            <select className="input" value={fEstado} onChange={e => setFEstado(e.target.value)}>
+            <Select className="min-w-[150px]" value={fEstado} onChange={e => setFEstado(e.target.value)}>
               <option value="todos">Todos</option>
               <option value="pendiente">Pendiente</option>
               <option value="pagado">Pagado</option>
-            </select>
-            <input className="input" type="month" value={fMes} onChange={e => setFMes(e.target.value)} />
+            </Select>
+            <DatePicker mode="month" placeholder="Todos los meses" className="min-w-[150px]" value={fMes} onChange={e => setFMes(e.target.value)} />
             <button className="btn" onClick={exportarCSV}>Exportar CSV</button>
             <button className="btn danger" onClick={restablecerDemo}>Restablecer demo</button>
           </div>
@@ -408,17 +411,13 @@ const Nominas = () => {
               <div className="form-grid">
                 <label>
                   <span>Empleado</span>
-                  <select value={form.empleadoId} onChange={e => setForm(f => ({ ...f, empleadoId: Number(e.target.value) }))}>
+                  <Select className="w-full" placeholder="Selecciona un empleado" value={form.empleadoId} onChange={e => setForm(f => ({ ...f, empleadoId: Number(e.target.value) }))}>
                     {meseros.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-                  </select>
+                  </Select>
                 </label>
-                <label>
-                  <span>Inicio</span>
-                  <input type="date" value={form.inicio} onChange={e => setForm(f => ({ ...f, inicio: e.target.value }))} />
-                </label>
-                <label>
-                  <span>Fin</span>
-                  <input type="date" value={form.fin} onChange={e => setForm(f => ({ ...f, fin: e.target.value }))} />
+                <label style={{ gridColumn: '1/-1' }}>
+                  <span>Periodo (inicio → fin)</span>
+                  <DateRangePicker value={{ start: form.inicio, end: form.fin }} onChange={(s, e) => setForm(f => ({ ...f, inicio: s, fin: e }))} />
                 </label>
                 <label>
                   <span>Sueldo base</span>

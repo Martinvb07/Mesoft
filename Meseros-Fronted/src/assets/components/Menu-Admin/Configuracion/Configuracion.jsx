@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import { HiCog6Tooth, HiCloudArrowDown, HiCloudArrowUp, HiArrowPath, HiShieldCheck, HiPaintBrush, HiBuildingStorefront, HiCreditCard, HiDocumentText } from 'react-icons/hi2';
 import '../../../css/Navbar/Menu-Admin/Configuracion/Configuracion.css';
 import { api } from '../../../../api/client';
+import Select from '../../ui/Select';
 
 const SETTINGS_KEY = 'app_settings_v1';
 
@@ -376,15 +377,15 @@ const Configuracion = () => {
             </label>
             <label>
               <span>Moneda</span>
-              <select className="input" value={settings.currency} onChange={e => onChange('currency', e.target.value)}>
+              <Select className="w-full" value={settings.currency} onChange={e => onChange('currency', e.target.value)}>
                 {currencyOptions.map(c => (<option key={c} value={c}>{c}</option>))}
-              </select>
+              </Select>
             </label>
             <label>
               <span>Idioma/Región</span>
-              <select className="input" value={settings.locale} onChange={e => onChange('locale', e.target.value)}>
+              <Select className="w-full" value={settings.locale} onChange={e => onChange('locale', e.target.value)}>
                 {localeOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
+              </Select>
             </label>
             <label>
               <span>Mesas por defecto</span>
@@ -406,11 +407,11 @@ const Configuracion = () => {
           <div className="card-body form-grid">
             <label>
               <span>Tema</span>
-              <select className="input" value={settings.theme} onChange={e => onChange('theme', e.target.value)}>
+              <Select className="w-full" value={settings.theme} onChange={e => onChange('theme', e.target.value)}>
                 <option value="system">Seguir sistema</option>
                 <option value="light">Claro</option>
                 <option value="dark">Oscuro</option>
-              </select>
+              </Select>
             </label>
             <label>
               <span>Color de marca</span>
