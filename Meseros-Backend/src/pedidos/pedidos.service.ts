@@ -99,6 +99,7 @@ export class PedidosService {
             cantidad: 1,
             subtotal: 1,
             nota: 1,
+            listo: 1,
             nombre: '$producto.nombre',
             precio: '$producto.precio',
           },

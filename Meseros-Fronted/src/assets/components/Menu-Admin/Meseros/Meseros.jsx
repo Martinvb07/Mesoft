@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
+import { useSocket } from '../../../../hooks/useSocket';
 import {
     HiOutlineUserGroup,
     HiOutlineMagnifyingGlass,
@@ -150,6 +151,12 @@ function Meseros() {
             document.removeEventListener('visibilitychange', onFocus);
         };
     }, []);
+
+    // Tiempo real: cuando un empleado hace check-in/out, refrescar al instante
+    const restaurantId = (() => { try { return localStorage.getItem('restaurant_id'); } catch { return null; } })();
+    useSocket(restaurantId, useCallback((event) => {
+        if (event === 'turno_update') cargar();
+    }, []));
 
     const [turnos, setTurnos] = useState(() => {
         try {

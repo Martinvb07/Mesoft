@@ -85,6 +85,13 @@ const Caja = () => {
     const [pagoForm, setPagoForm] = useState({ metodoPago: 'Efectivo', propina: '0', monto: '' });
     const [factura, setFactura] = useState({ visible: false, data: null });
     const [saving, setSaving] = useState(false);
+    const [toasts, setToasts] = useState([]);
+
+    const pushToast = useCallback((msg) => {
+        const id = Date.now() + Math.random();
+        setToasts(prev => [...prev.slice(-3), { id, msg }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000);
+    }, []);
 
     const restaurantId = (() => { try { return localStorage.getItem('restaurant_id') || null; } catch { return null; } })();
 
@@ -111,9 +118,16 @@ const Caja = () => {
     }, [cargar]);
 
     // Tiempo real: refrescar cuando un mesero envía a caja o se cierra un pago
-    useSocket(restaurantId, useCallback((event) => {
-        if (event === 'pedido_por_cobrar' || event === 'pedido_cerrado') cargar();
-    }, [cargar]));
+    useSocket(restaurantId, useCallback((event, data) => {
+        if (event === 'pedido_por_cobrar') {
+            const mesa = data?.mesa_numero ?? data?.mesa_id ?? '';
+            const total = data?.total != null ? ` · ${fmtCOP(data.total)}` : '';
+            pushToast(`Nuevo pedido por cobrar${mesa ? ` — Mesa ${mesa}` : ''}${total}`);
+            cargar();
+        } else if (event === 'pedido_cerrado') {
+            cargar();
+        }
+    }, [cargar, pushToast]));
 
     const totalPorCobrar = useMemo(() => pedidos.reduce((s, p) => s + Number(p.total || 0), 0), [pedidos]);
 
@@ -175,6 +189,15 @@ const Caja = () => {
 
     return (
         <div className="ms-caja mx-auto max-w-7xl">
+            {/* Toasts de notificación (nuevo pedido por cobrar) */}
+            <div className="fixed bottom-4 right-4 z-[2000] flex flex-col gap-2">
+                {toasts.map(t => (
+                    <div key={t.id} className="flex items-center gap-2.5 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-xl ring-1 ring-slate-100">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600"><HiOutlineBanknotes className="h-4 w-4" /></span>
+                        {t.msg}
+                    </div>
+                ))}
+            </div>
             <style>{`:where(.ms-caja) button{-webkit-appearance:none;appearance:none;border:0;background-color:transparent;cursor:pointer;font:inherit;color:inherit;}`}</style>
 
             {/* Header */}

@@ -6,6 +6,7 @@ import { IdService } from '../common/db/id.service';
 import { Mesero } from '../common/db/schemas/mesero.schema';
 import { Restaurante } from '../common/db/schemas/restaurante.schema';
 import { Usuario } from '../common/db/schemas/usuario.schema';
+import { AppGateway } from '../gateway/app.gateway';
 
 @Injectable()
 export class MeserosService {
@@ -14,6 +15,7 @@ export class MeserosService {
     @InjectModel(Usuario.name) private readonly usuarios: Model<Usuario>,
     @InjectModel(Restaurante.name) private readonly restaurantes: Model<Restaurante>,
     private readonly ids: IdService,
+    private readonly gateway: AppGateway,
   ) {}
 
   async listarMeseros(rid: number) {
@@ -47,11 +49,13 @@ export class MeserosService {
     if (!uid) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
     const mesero = await this.meseros.findOne({ usuario_id: uid, restaurant_id: rid }).exec();
     if (!mesero) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
+    const inicio = new Date();
     await this.meseros.updateOne(
       { id: mesero.id, restaurant_id: rid },
-      { $set: { esta_en_turno: true, turno_inicio: new Date() } },
+      { $set: { esta_en_turno: true, turno_inicio: inicio } },
     ).exec();
-    return { ok: true, turno_inicio: new Date() };
+    this.gateway.emitTurnoUpdate(rid, { usuario_id: uid, mesero_id: mesero.id, esta_en_turno: true, turno_inicio: inicio });
+    return { ok: true, turno_inicio: inicio };
   }
 
   async checkout(rid: number, uid: number) {
@@ -62,6 +66,7 @@ export class MeserosService {
       { id: mesero.id, restaurant_id: rid },
       { $set: { esta_en_turno: false, turno_inicio: null } },
     ).exec();
+    this.gateway.emitTurnoUpdate(rid, { usuario_id: uid, mesero_id: mesero.id, esta_en_turno: false, turno_inicio: null });
     return { ok: true };
   }
 

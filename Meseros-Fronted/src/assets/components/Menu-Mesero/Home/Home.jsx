@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useSocket } from '../../../../hooks/useSocket';
 import {
     HiOutlineTableCells, HiOutlineUserGroup, HiOutlineBanknotes, HiOutlineCreditCard,
     HiOutlineClock, HiOutlineEnvelope, HiOutlinePhone, HiOutlineIdentification,
@@ -156,6 +157,37 @@ const Home = () => {
         };
         loadNomina();
     }, [meseroInfo?.id]);
+
+    // Tiempo real: cuando el cajero cierra un pago (con propina), refrescar
+    // las propinas de hoy y la nómina sin tener que recargar la página.
+    const restaurantId = (() => { try { return localStorage.getItem('restaurant_id'); } catch { return null; } })();
+    const meseroIdRef = useRef(null);
+    useEffect(() => { meseroIdRef.current = meseroInfo?.id ?? null; }, [meseroInfo?.id]);
+
+    const refrescarGanancias = useCallback(async () => {
+        const mid = meseroIdRef.current;
+        if (!mid) return;
+        const hoy = todayKey();
+        try {
+            const p = await api.propinas(mid, hoy, hoy).catch(() => ({ propinas: 0 }));
+            setPropinasHoy(Number(p?.propinas || 0));
+            const enCursoMi = await api.pedidosEnCursoMi().catch(() => ({ count: 0 }));
+            setMesasHoy(Number(enCursoMi?.count || 0));
+        } catch {}
+        try {
+            const r = await api.nominaResumen(mid);
+            setSueldoBase(Number(r?.sueldo_base || 0));
+            setBonosMes(Number(r?.bonos || 0));
+            setAdelantosMes(Number(r?.adelantos || 0));
+            setDescuentosMes(Number(r?.descuentos || 0));
+            setPagosNominaMes(Number(r?.pagado || 0));
+            setPropinasMes(Number(r?.propinas_mes || 0));
+        } catch {}
+    }, []);
+
+    useSocket(restaurantId, useCallback((event) => {
+        if (event === 'pedido_cerrado') refrescarGanancias();
+    }, [refrescarGanancias]));
 
     const [misMesasBase, setMisMesasBase] = useState([]);
     useEffect(() => {

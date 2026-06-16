@@ -75,7 +75,7 @@ export class MesasService {
 
     const pedidos = await this.pedidos
       .find(
-        { restaurant_id: restaurantId, mesero_id: mesero.id, estado: { $in: ['en proceso', 'entregado'] } },
+        { restaurant_id: restaurantId, mesero_id: mesero.id, estado: { $in: ['en proceso', 'entregado', 'por_cobrar'] } },
         { _id: 0, mesa_id: 1 },
       )
       .lean<{ mesa_id: number }[]>()

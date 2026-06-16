@@ -146,7 +146,8 @@ const Login = () => {
                                         onClick={() => setShowPwd(v => !v)}
                                         aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                                         title={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                                        style={{ appearance: 'none', WebkitAppearance: 'none', border: 0, background: 'transparent', padding: 0 }}
+                                        className="absolute right-3.5 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center text-slate-400 outline-none transition-colors hover:text-orange-500"
                                     >
                                         {showPwd ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
                                     </button>
