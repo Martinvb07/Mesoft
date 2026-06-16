@@ -45,13 +45,19 @@ export class MeserosService {
       .exec();
   }
 
+  private async buscarMeseroDeUsuario(rid: number, uid: number) {
+    let mesero = await this.meseros.findOne({ usuario_id: uid, restaurant_id: rid }).exec();
+    if (!mesero) mesero = await this.meseros.findOne({ usuario_id: uid }).exec();
+    return mesero;
+  }
+
   async checkin(rid: number, uid: number) {
     if (!uid) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
-    const mesero = await this.meseros.findOne({ usuario_id: uid, restaurant_id: rid }).exec();
+    const mesero = await this.buscarMeseroDeUsuario(rid, uid);
     if (!mesero) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
     const inicio = new Date();
     await this.meseros.updateOne(
-      { id: mesero.id, restaurant_id: rid },
+      { id: mesero.id },
       { $set: { esta_en_turno: true, turno_inicio: inicio } },
     ).exec();
     this.gateway.emitTurnoUpdate(rid, { usuario_id: uid, mesero_id: mesero.id, esta_en_turno: true, turno_inicio: inicio });
@@ -60,10 +66,10 @@ export class MeserosService {
 
   async checkout(rid: number, uid: number) {
     if (!uid) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
-    const mesero = await this.meseros.findOne({ usuario_id: uid, restaurant_id: rid }).exec();
+    const mesero = await this.buscarMeseroDeUsuario(rid, uid);
     if (!mesero) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
     await this.meseros.updateOne(
-      { id: mesero.id, restaurant_id: rid },
+      { id: mesero.id },
       { $set: { esta_en_turno: false, turno_inicio: null } },
     ).exec();
     this.gateway.emitTurnoUpdate(rid, { usuario_id: uid, mesero_id: mesero.id, esta_en_turno: false, turno_inicio: null });
