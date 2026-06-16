@@ -89,6 +89,8 @@ export const api = {
   addPedidoItem: (pedidoId, data) => request(`/pedidos/${pedidoId}/items`, { method: 'POST', body: data }),
   deletePedidoItem: (pedidoId, itemId) => request(`/pedidos/${pedidoId}/items/${itemId}`, { method: 'DELETE' }),
   pagarPedido: (pedidoId, data) => request(`/pedidos/${pedidoId}/pagar`, { method: 'POST', body: data }),
+  enviarPedidoACaja: (pedidoId) => request(`/pedidos/${pedidoId}/enviar-caja`, { method: 'POST' }),
+  pedidosPorCobrar: () => request('/pedidos/por-cobrar'),
 
   // Finanzas
   ventasHoy: () => request('/finanzas/ventas-hoy'),

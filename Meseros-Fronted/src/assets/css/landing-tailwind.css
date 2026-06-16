@@ -4,6 +4,138 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* Habilita el modo oscuro por clase (.dark en <html>) en Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ───────────────────────────────────────────────────────────────────────
+   MODO OSCURO — acotado al shell del panel admin (.admin-main, .ms-sidebar)
+   y a los popovers (Select / DatePicker / DateRangePicker). No afecta la
+   landing ni las vistas del mesero. Remapea las utilidades slate/white más
+   usadas en los rediseños para no tener que editar cada vista.
+   ─────────────────────────────────────────────────────────────────────── */
+html.dark { background-color: #020617; }
+.dark .admin-main { background-color: #020617; }
+
+/* Transición suave SOLO durante el cambio de tema (se quita a los ~450ms para
+   no ralentizar los hovers normales). */
+html.theme-transition :is(.admin-main, .ms-sidebar) ,
+html.theme-transition :is(.admin-main, .ms-sidebar) * {
+  transition: background-color .4s ease, border-color .4s ease, color .4s ease, box-shadow .4s ease, fill .4s ease !important;
+}
+
+.dark :is(.admin-main, .ms-sidebar, .ms-select-list, .ms-datepicker, .ms-rangepicker) {
+  /* Superficies */
+  &.bg-white, & .bg-white { background-color: #0f172a; }
+  &.bg-slate-50, & .bg-slate-50 { background-color: #1e293b; }
+  & .bg-slate-100 { background-color: #1e293b; }
+  & .bg-slate-50\/60, & .bg-slate-50\/60 { background-color: #182234; }
+  & .hover\:bg-slate-50:hover { background-color: #1e293b; }
+  & .hover\:bg-slate-50\/60:hover { background-color: #182234; }
+  & .hover\:bg-slate-100:hover { background-color: #283449; }
+  & .hover\:bg-white:hover { background-color: #0f172a; }
+  & .focus\:bg-white:focus { background-color: #0b1220; }
+
+  /* Texto */
+  & .text-slate-900 { color: #f1f5f9; }
+  & .text-slate-800 { color: #e2e8f0; }
+  & .text-slate-700 { color: #cbd5e1; }
+  & .text-slate-600 { color: #cbd5e1; }
+  & .text-slate-500 { color: #94a3b8; }
+  & .text-slate-400 { color: #8c9bb1; }
+
+  /* Bordes y anillos */
+  &.border-slate-100, & .border-slate-100 { border-color: #1e293b; }
+  & .border-slate-50 { border-color: #1e293b; }
+  & .border-slate-200 { border-color: #334155; }
+  & .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
+  &.ring-slate-100, & .ring-slate-100 { --tw-ring-color: #1e293b; }
+  & .ring-slate-200 { --tw-ring-color: #334155; }
+  & .ring-black\/5 { --tw-ring-color: rgba(255,255,255,.06); }
+  & .focus\:ring-orange-400:focus { --tw-ring-color: #fb923c; }
+
+  /* Acentos suaves (fondos -50 → translúcidos, textos -600/700 más claros) */
+  & .bg-orange-50 { background-color: rgba(249,115,22,.16); }
+  & .bg-emerald-50, & .bg-emerald-50\/60 { background-color: rgba(16,185,129,.15); }
+  & .bg-sky-50 { background-color: rgba(56,189,248,.15); }
+  & .bg-amber-50 { background-color: rgba(245,158,11,.15); }
+  & .bg-red-50 { background-color: rgba(239,68,68,.15); }
+  & .hover\:bg-orange-50:hover { background-color: rgba(249,115,22,.22); }
+  & .hover\:bg-red-50:hover { background-color: rgba(239,68,68,.20); }
+
+  & .text-orange-600 { color: #fb923c; }
+  & .text-orange-700 { color: #fdba74; }
+  & .text-orange-500 { color: #fb923c; }
+  & .text-emerald-600 { color: #34d399; }
+  & .text-emerald-700 { color: #6ee7b7; }
+  & .text-sky-600 { color: #38bdf8; }
+  & .text-sky-700 { color: #7dd3fc; }
+  & .text-amber-600 { color: #fbbf24; }
+  & .text-amber-700 { color: #fcd34d; }
+  & .text-red-600 { color: #f87171; }
+  & .text-red-700 { color: #fca5a5; }
+  & .text-red-500 { color: #f87171; }
+
+  & .ring-orange-100 { --tw-ring-color: rgba(249,115,22,.30); }
+  & .ring-orange-200 { --tw-ring-color: rgba(249,115,22,.38); }
+  & .ring-emerald-100 { --tw-ring-color: rgba(16,185,129,.30); }
+  & .ring-emerald-200 { --tw-ring-color: rgba(16,185,129,.38); }
+  & .ring-sky-200 { --tw-ring-color: rgba(56,189,248,.38); }
+  & .ring-amber-200 { --tw-ring-color: rgba(245,158,11,.38); }
+  & .ring-red-100 { --tw-ring-color: rgba(239,68,68,.30); }
+  & .ring-red-200 { --tw-ring-color: rgba(239,68,68,.38); }
+
+  /* Sombras: en oscuro el halo claro se ve como "glow" blanco → lo fundimos
+     con el fondo usando una sombra oscura y nos apoyamos en el ring/borde.
+     Incluye el propio elemento raíz (&) porque los popovers llevan la sombra
+     sobre sí mismos, no sobre un hijo. */
+  &.shadow-slate-200\/60, & .shadow-slate-200\/60 { --tw-shadow-color: rgba(0,0,0,.45); }
+  &.shadow-slate-200\/40, & .shadow-slate-200\/40 { --tw-shadow-color: rgba(0,0,0,.40); }
+  &.shadow-slate-200\/80, & .shadow-slate-200\/80 { --tw-shadow-color: rgba(0,0,0,.50); }
+  &.shadow-slate-300\/40, & .shadow-slate-300\/40 { --tw-shadow-color: rgba(0,0,0,.55); }
+  &.shadow-2xl, & .shadow-2xl { --tw-shadow-color: rgba(0,0,0,.6); }
+  &.ring-black\/5, & .ring-black\/5 { --tw-ring-color: rgba(255,255,255,.08); }
+
+  /* Inputs: placeholder más tenue */
+  & input::placeholder, & textarea::placeholder { color: #64748b; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────
+   MODO OSCURO — SweetAlert2 (se renderiza en <body>, fuera de .admin-main).
+   ─────────────────────────────────────────────────────────────────────── */
+html.dark .swal2-popup {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6) !important;
+}
+html.dark .swal2-title { color: #f1f5f9 !important; }
+html.dark .swal2-html-container,
+html.dark .swal2-content { color: #cbd5e1 !important; }
+html.dark .swal2-close { color: #94a3b8 !important; }
+html.dark .swal2-close:hover { color: #f87171 !important; }
+html.dark .swal2-input,
+html.dark .swal2-textarea,
+html.dark .swal2-select,
+html.dark .swal2-file {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+  box-shadow: none !important;
+}
+html.dark .swal2-input::placeholder,
+html.dark .swal2-textarea::placeholder { color: #64748b !important; }
+html.dark .swal2-cancel {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+html.dark .swal2-cancel:hover { background-color: #3f4d63 !important; }
+html.dark .swal2-icon.swal2-question { border-color: rgba(148,163,184,.4) !important; color: #94a3b8 !important; }
+html.dark .swal2-icon.swal2-info { border-color: rgba(56,189,248,.4) !important; color: #38bdf8 !important; }
+html.dark .swal2-validation-message {
+  background-color: #1e293b !important;
+  color: #fca5a5 !important;
+}
+html.dark .swal2-timer-progress-bar { background-color: rgba(249,115,22,.5) !important; }
+
 /* Marquee infinito (strip de tipos de negocio en la landing) */
 @keyframes landing-marquee {
     from { transform: translateX(0); }

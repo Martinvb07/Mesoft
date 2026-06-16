@@ -75,4 +75,8 @@ export class AppGateway implements OnGatewayConnection {
   emitItemListo(restaurantId: number, data: any) {
     this.server?.to(`r:${restaurantId}`).emit('item_listo', data);
   }
+
+  emitPedidoPorCobrar(restaurantId: number, data: any) {
+    this.server?.to(`r:${restaurantId}`).emit('pedido_por_cobrar', data);
+  }
 }

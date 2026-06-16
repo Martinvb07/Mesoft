@@ -3,32 +3,28 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Swal from 'sweetalert2';
 import {
-  HiOutlineHome, HiOutlineTableCells, HiOutlineUserGroup,
-  HiOutlineArrowRightOnRectangle, HiBars3, HiXMark,
+  HiOutlineBanknotes, HiOutlineArrowRightOnRectangle, HiBars3, HiXMark,
   HiChevronLeft, HiChevronRight, HiOutlineMoon, HiOutlineSun,
 } from 'react-icons/hi2';
 import { getTheme, toggleTheme } from '../../../lib/theme';
 
-/* ─── helpers ─── */
 function getUser() {
   try {
     for (const k of ['currentUser', 'usuario', 'user', 'auth_user']) {
       const raw = localStorage.getItem(k);
       if (raw) {
         const u = JSON.parse(raw);
-        const r = u?.rol || u?.role || u?.usuario?.rol || 'mesero';
+        const r = u?.rol || u?.role || u?.usuario?.rol || 'cajero';
         const n = u?.nombre || u?.name || u?.usuario?.nombre || '';
-        if (n || r) return { rol: r, nombre: n || 'Mesero' };
+        if (n || r) return { rol: r, nombre: n || 'Cajero' };
       }
     }
   } catch {}
-  return { rol: 'mesero', nombre: 'Mesero' };
+  return { rol: 'cajero', nombre: 'Cajero' };
 }
 
 const LINKS = [
-  { to: '/mesero/home', label: 'Inicio', icon: HiOutlineHome },
-  { to: '/mesero/mesas', label: 'Mesas', icon: HiOutlineTableCells },
-  { to: '/mesero/meseros', label: 'Compañeros', icon: HiOutlineUserGroup },
+  { to: '/cajero/caja', label: 'Caja', icon: HiOutlineBanknotes },
 ];
 
 const navContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.04, delayChildren: 0.06 } } };
@@ -37,7 +33,7 @@ const navItem = { hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0, t
 function ActiveBar() {
   return (
     <motion.span
-      layoutId="mesero-sidebar-active-bar"
+      layoutId="cajero-sidebar-active-bar"
       className="absolute inset-y-1 left-0 w-1 rounded-r-full bg-gradient-to-b from-orange-500 to-orange-600"
       transition={{ type: 'spring', stiffness: 500, damping: 38 }}
     />
@@ -70,7 +66,7 @@ function SectionLabel({ children, collapsed }) {
 
 function Logo({ collapsed }) {
   return (
-    <Link to="/mesero/home" className="flex items-center gap-2.5 text-slate-900 no-underline">
+    <Link to="/cajero/caja" className="flex items-center gap-2.5 text-slate-900 no-underline">
       <motion.img
         src="/logopngmesoft.png"
         alt="Mesoft"
@@ -113,7 +109,7 @@ function ThemeToggle({ collapsed }) {
   );
 }
 
-const NavbarMesero = ({ collapsed = false, onToggleCollapse = () => {} }) => {
+const SidebarCajero = ({ collapsed = false, onToggleCollapse = () => {} }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const loc = useLocation();
@@ -183,7 +179,7 @@ const NavbarMesero = ({ collapsed = false, onToggleCollapse = () => {} }) => {
               </span>
               <div className="min-w-0">
                 <p className="m-0 truncate text-sm font-semibold text-slate-900">{nombre}</p>
-                <p className="m-0 truncate text-xs capitalize text-slate-400">{rol || 'mesero'}</p>
+                <p className="m-0 truncate text-xs capitalize text-slate-400">{rol || 'cajero'}</p>
               </div>
             </div>
           )}
@@ -225,16 +221,12 @@ const NavbarMesero = ({ collapsed = false, onToggleCollapse = () => {} }) => {
         {mobileOpen && (
           <>
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
               className="fixed inset-0 top-[60px] z-[998] bg-slate-900/30 backdrop-blur-sm lg:hidden"
             />
             <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
               className="ms-sidebar ms-scroll fixed inset-x-0 top-[60px] z-[999] flex max-h-[calc(100vh-60px)] flex-col gap-0.5 overflow-y-auto border-b border-slate-100 bg-white p-3 shadow-xl lg:hidden"
             >
@@ -271,4 +263,4 @@ const NavbarMesero = ({ collapsed = false, onToggleCollapse = () => {} }) => {
   );
 };
 
-export default NavbarMesero;
+export default SidebarCajero;

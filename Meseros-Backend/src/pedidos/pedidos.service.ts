@@ -12,6 +12,7 @@ import { Producto } from '../common/db/schemas/producto.schema';
 import { Restaurante } from '../common/db/schemas/restaurante.schema';
 import { AlegraService } from '../alegra/alegra.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AppGateway } from '../gateway/app.gateway';
 
 const APP_TZ = process.env.APP_TZ || 'America/Bogota';
 
@@ -28,6 +29,7 @@ export class PedidosService {
     private readonly ids: IdService,
     private readonly alegra: AlegraService,
     private readonly notif: NotificationsService,
+    private readonly gateway: AppGateway,
   ) {}
 
   private toNumberId(value: unknown, label: string): number {
@@ -290,8 +292,10 @@ export class PedidosService {
     await this.pedidos.updateOne({ id: pid, restaurant_id: rid }, { $set: { estado: 'cerrado' } }).exec();
     await this.mesas.updateOne({ id: pedido.mesa_id, restaurant_id: rid }, { $set: { estado: 'limpieza' } }).exec();
 
-    // Notificar pago
+    // Notificar pago (push FCM + socket en tiempo real)
     this.notif.notifyPedidoCerrado(rid, pedido.mesa_id ?? pid, total + propinaNum).catch(() => {});
+    this.gateway.emitPedidoCerrado(rid, { pedido_id: pid, mesa_id: pedido.mesa_id, total: total + propinaNum });
+    this.gateway.emitMesaUpdate(rid, { mesa_id: pedido.mesa_id, estado: 'limpieza' });
 
     // Pasarelas de pago: construir links si el restaurante tiene keys configuradas
     const rest = await this.restaurantes
@@ -343,7 +347,91 @@ export class PedidosService {
       { id: iid, pedido_id: pid },
       { $set: { listo } },
     ).exec();
+
+    // Notificar al mesero (por ítem) cuando la cocina lo marca listo
+    if (listo) {
+      try {
+        const pedido = await this.pedidos
+          .findOne({ id: pid, restaurant_id: rid }, { _id: 0, mesa_id: 1, mesero_id: 1 })
+          .lean<{ mesa_id: number; mesero_id?: number | null }>()
+          .exec();
+        const detRows = await this.detalle
+          .aggregate<any>([
+            { $match: { id: iid, pedido_id: pid } },
+            { $lookup: { from: 'productos', localField: 'producto_id', foreignField: 'id', as: 'p' } },
+            { $unwind: { path: '$p', preserveNullAndEmptyArrays: true } },
+            { $project: { _id: 0, cantidad: 1, nombre: '$p.nombre' } },
+          ])
+          .exec();
+        const det = detRows?.[0];
+        this.gateway.emitItemListo(rid, {
+          pedido_id: pid,
+          item_id: iid,
+          mesa_id: pedido?.mesa_id ?? null,
+          mesero_id: pedido?.mesero_id ?? null,
+          nombre: det?.nombre ?? null,
+          cantidad: det?.cantidad ?? null,
+        });
+      } catch {
+        // no romper la operación por un fallo de notificación
+      }
+    }
     return { ok: true, listo };
+  }
+
+  // Mesero envía la cuenta a caja → estado 'por_cobrar' (cola del cajero)
+  async enviarACaja(rid: number, pedidoId: string) {
+    const pid = this.toNumberId(pedidoId, 'pedidoId');
+    const pedido = await this.pedidos
+      .findOne({ id: pid, restaurant_id: rid }, { _id: 0, id: 1, mesa_id: 1, total: 1 })
+      .lean<{ id: number; mesa_id: number; total?: number }>()
+      .exec();
+    if (!pedido) throw new HttpException({ error: 'Pedido no encontrado' }, HttpStatus.NOT_FOUND);
+
+    await this.pedidos
+      .updateOne({ id: pid, restaurant_id: rid }, { $set: { estado: 'por_cobrar' } })
+      .exec();
+
+    const mesa = await this.mesas
+      .findOne({ id: pedido.mesa_id, restaurant_id: rid }, { _id: 0, numero: 1 })
+      .lean<{ numero?: number }>()
+      .exec();
+
+    this.gateway.emitPedidoPorCobrar(rid, {
+      pedido_id: pid,
+      mesa_id: pedido.mesa_id,
+      mesa_numero: mesa?.numero ?? null,
+      total: Number(pedido.total || 0),
+    });
+
+    return { ok: true, estado: 'por_cobrar' };
+  }
+
+  // Cola de caja: pedidos enviados a cobrar
+  async listarPorCobrar(rid: number) {
+    const pedidos = await this.pedidos
+      .aggregate<any>([
+        { $match: { restaurant_id: rid, estado: 'por_cobrar' } },
+        { $sort: { fecha_hora: 1 } },
+        { $lookup: { from: 'mesas', localField: 'mesa_id', foreignField: 'id', as: 'mesa' } },
+        { $unwind: { path: '$mesa', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'meseros', localField: 'mesero_id', foreignField: 'id', as: 'mesero' } },
+        { $unwind: { path: '$mesero', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: 0,
+            id: 1,
+            mesa_id: 1,
+            mesa_numero: '$mesa.numero',
+            mesero_id: 1,
+            mesero_nombre: '$mesero.nombre',
+            total: 1,
+            fecha_hora: 1,
+          },
+        },
+      ])
+      .exec();
+    return { count: pedidos.length, pedidos };
   }
 
   async listarEnCurso(rid: number) {

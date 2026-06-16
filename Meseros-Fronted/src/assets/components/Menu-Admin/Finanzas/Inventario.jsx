@@ -5,7 +5,7 @@ import {
     HiOutlineCube, HiOutlineCheckCircle, HiOutlineExclamationTriangle, HiOutlineCurrencyDollar,
     HiOutlineBanknotes, HiXMark, HiOutlineMagnifyingGlass, HiOutlinePlus, HiOutlineArrowUpTray,
     HiOutlineArrowDownTray, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowsUpDown,
-    HiOutlineChevronDown, HiOutlineArrowDownTray as HiDownload,
+    HiOutlineChevronDown,
 } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 import { logAudit } from '../../../../utils/audit';
@@ -648,7 +648,7 @@ const Inventario = () => {
                 >
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
-                            <button className={btnGhost} onClick={downloadCsvTemplate}><HiDownload className="h-4 w-4" /> Descargar plantilla</button>
+                            <button className={btnGhost} onClick={downloadCsvTemplate}><HiOutlineArrowDownTray className="h-4 w-4" /> Descargar plantilla</button>
                             <span className="text-sm text-slate-400">Columnas: sku, nombre, categoria, precio, costo, stock, minStock</span>
                         </div>
                         <div>

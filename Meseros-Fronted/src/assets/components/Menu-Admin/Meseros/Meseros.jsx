@@ -40,6 +40,15 @@ const PILL = {
 };
 const pillUI = (color) => PILL[color] || { pill: 'bg-slate-100 text-slate-600 ring-slate-200', dot: 'bg-slate-400', bar: 'bg-slate-300', avatar: 'bg-slate-100 text-slate-500 ring-slate-200' };
 
+const ROL_LABEL = { mesero: 'Mesero', cajero: 'Cajero', cocinero: 'Cocina', admin: 'Admin' };
+const ROL_TONE = {
+    mesero: 'bg-slate-100 text-slate-600',
+    cajero: 'bg-sky-50 text-sky-700',
+    cocinero: 'bg-orange-50 text-orange-700',
+    admin: 'bg-violet-50 text-violet-700',
+};
+const rolKey = (u) => `${u?.rol || 'mesero'}`.toLowerCase();
+
 function Chip({ children, tone = 'slate' }) {
     const tones = {
         slate: 'bg-slate-100 text-slate-500',
@@ -356,15 +365,15 @@ function Meseros() {
             >
                 <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-orange-500">Equipo de trabajo</span>
-                    <h1 className="m-0 mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Gestión de Meseros</h1>
-                    <p className="m-0 mt-1 text-sm text-slate-500">Administra disponibilidad, turnos y estados de tu equipo</p>
+                    <h1 className="m-0 mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Gestión de Personal</h1>
+                    <p className="m-0 mt-1 text-sm text-slate-500">Meseros, cajeros y cocina · roles, disponibilidad y estados</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button className={btnGhost} onClick={refresh} title="Recargar listado">
                         <HiOutlineArrowPath className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> {loading ? 'Cargando…' : 'Recargar'}
                     </button>
                     <button className={btnPrimary} onClick={abrirNuevo}>
-                        <HiOutlinePlus className="h-4 w-4" /> Nuevo mesero
+                        <HiOutlinePlus className="h-4 w-4" /> Nuevo empleado
                     </button>
                 </div>
             </motion.div>
@@ -376,7 +385,7 @@ function Meseros() {
                 animate="visible"
                 className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
             >
-                <MetricCard icon={HiOutlineUserGroup} value={total} label="Meseros" chip={<Chip>Equipo</Chip>} />
+                <MetricCard icon={HiOutlineUserGroup} value={total} label="Empleados" chip={<Chip>Equipo</Chip>} />
                 <MetricCard icon={HiOutlineClock} value={enTurno} label="En turno" chip={<Chip tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> En vivo</Chip>} />
                 <MetricCard
                     icon={HiOutlineCheckCircle}
@@ -476,9 +485,12 @@ function Meseros() {
                                         </span>
                                         <div className="min-w-0">
                                             <p className="m-0 truncate text-sm font-extrabold text-slate-900">{u.nombre} {u.apellido}</p>
-                                            <span className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${ui.pill}`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} /> {pill.label}
-                                            </span>
+                                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${ui.pill}`}>
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} /> {pill.label}
+                                                </span>
+                                                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${ROL_TONE[rolKey(u)] || ROL_TONE.mesero}`}>{ROL_LABEL[rolKey(u)] || 'Mesero'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -527,16 +539,16 @@ function Meseros() {
             {/* Modal Nuevo mesero */}
             {showNuevo && (
                 <Modal
-                    title="Nuevo mesero"
+                    title="Nuevo empleado"
                     onClose={() => setShowNuevo(false)}
                     footer={
                         <>
                             <button className={btnGhost} onClick={() => setShowNuevo(false)}>Cancelar</button>
-                            <button className={btnPrimary} onClick={confirmarNuevo} disabled={!nuevoValido} title={!nuevoValido ? 'Completa nombre, correo válido y contraseña (≥6)' : undefined}>Crear mesero</button>
+                            <button className={btnPrimary} onClick={confirmarNuevo} disabled={!nuevoValido} title={!nuevoValido ? 'Completa nombre, correo válido y contraseña (≥6)' : undefined}>Crear empleado</button>
                         </>
                     }
                 >
-                    <p className="m-0 mb-4 text-sm text-slate-500">Crea un nuevo perfil de mesero. Los campos marcados con <span className="font-bold text-orange-500">*</span> son obligatorios.</p>
+                    <p className="m-0 mb-4 text-sm text-slate-500">Crea un nuevo empleado. Luego puedes asignarle el rol (mesero, cajero o cocina). Los campos con <span className="font-bold text-orange-500">*</span> son obligatorios.</p>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className={labelCls}>Nombre *</label>
@@ -572,7 +584,7 @@ function Meseros() {
             {/* Modal Editar mesero */}
             {showEditar && (
                 <Modal
-                    title="Editar mesero"
+                    title="Editar empleado"
                     onClose={() => setShowEditar(false)}
                     footer={
                         <>
@@ -581,10 +593,10 @@ function Meseros() {
                         </>
                     }
                 >
-                    <p className="m-0 mb-4 text-sm text-slate-500">Actualiza los datos del mesero.</p>
+                    <p className="m-0 mb-4 text-sm text-slate-500">Actualiza los datos del empleado.</p>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="sm:col-span-2">
-                            <label className={labelCls}>Seleccione mesero</label>
+                            <label className={labelCls}>Seleccione empleado</label>
                             <Select className="w-full" value={editId ?? ''} onChange={e => onChangeEditarSeleccion(e.target.value)}>
                                 {[...meseros].sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(m => (
                                     <option key={m.id} value={m.id}>{m.nombre} {m.apellido}</option>
@@ -636,9 +648,9 @@ function Meseros() {
                         <div>
                             <label className={labelCls}>Rol del usuario</label>
                             <Select className="w-full" value={editRol} onChange={e => setEditRol(e.target.value)}>
-                                <option value="mesero">Mesero</option>
+                                <option value="mesero">Mesero (mesas y pedidos)</option>
                                 <option value="cocinero">Cocinero (solo ve Cocina)</option>
-                                <option value="cajero">Cajero (solo ve Finanzas)</option>
+                                <option value="cajero">Cajero (solo ve Caja)</option>
                                 <option value="admin">Admin (acceso total)</option>
                             </Select>
                         </div>
@@ -649,7 +661,7 @@ function Meseros() {
             {/* Modal Eliminar mesero */}
             {showEliminar && (
                 <Modal
-                    title="Eliminar mesero"
+                    title="Eliminar empleado"
                     onClose={() => setShowEliminar(false)}
                     danger
                     maxW="max-w-lg"

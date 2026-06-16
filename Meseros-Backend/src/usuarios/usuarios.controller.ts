@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Put } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';
 import { UsuariosService } from './usuarios.service';
@@ -25,6 +25,12 @@ export class UsuariosController {
   async getById(@Param('id') id: string) {
     const user = await this.usuarios.getById(Number(id));
     return user;
+  }
+
+  @Put(':id')
+  @Roles('admin')
+  async update(@Param('id') id: string, @Body() body: any) {
+    return this.usuarios.update(Number(id), body || {});
   }
 
   @Post()

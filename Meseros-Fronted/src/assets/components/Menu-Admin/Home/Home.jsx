@@ -160,7 +160,8 @@ function Home() {
                 // Meseros activos (lista y conteo)
                 try {
                     const lista = await api.getMeseros();
-                    const activos = (Array.isArray(lista) ? lista : []).filter(u => (u.activo === 1 || u.activo === true || `${u.estado || ''}`.toLowerCase() === 'activo'));
+                    const esMesero = (u) => `${u.rol || 'mesero'}`.toLowerCase() === 'mesero';
+                    const activos = (Array.isArray(lista) ? lista : []).filter(u => esMesero(u) && (u.activo === 1 || u.activo === true || `${u.estado || ''}`.toLowerCase() === 'activo'));
                     if (!cancel) {
                         setMeserosLista(activos);
                         setMeserosActivosCount(activos.length);

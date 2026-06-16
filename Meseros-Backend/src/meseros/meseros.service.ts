@@ -32,6 +32,7 @@ export class MeserosService {
             estado: 1,
             sueldo_base: 1,
             correo: '$u.correo',
+            rol: '$u.rol',
             restaurante: '$u.restaurante',
             esta_en_turno: 1,
             turno_inicio: 1,

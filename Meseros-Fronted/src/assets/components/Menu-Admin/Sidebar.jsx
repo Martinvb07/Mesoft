@@ -12,9 +12,30 @@ import {
   HiOutlineArchiveBox, HiOutlineCreditCard, HiOutlineClipboardDocumentList,
   HiOutlineArrowRightOnRectangle, HiOutlineMagnifyingGlass, HiBars3,
   HiXMark, HiChevronDown, HiChevronLeft, HiChevronRight, HiOutlineShieldCheck,
+  HiOutlineMoon, HiOutlineSun,
 } from 'react-icons/hi2';
 import { api } from '../../../api/client';
 import { logAudit } from '../../../utils/audit';
+import { getTheme, toggleTheme } from '../../../lib/theme';
+
+/* ─── Botón de tema claro/oscuro ─── */
+function ThemeToggle({ collapsed }) {
+  const [theme, setThemeState] = useState(() => getTheme());
+  const dark = theme === 'dark';
+  const onClick = () => setThemeState(toggleTheme());
+  return (
+    <button
+      onClick={onClick}
+      title={dark ? 'Modo claro' : 'Modo oscuro'}
+      className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 ${collapsed ? 'justify-center px-0' : ''}`}
+    >
+      {dark
+        ? <HiOutlineSun className="h-[18px] w-[18px] shrink-0 text-amber-500 transition-transform duration-200 group-hover:rotate-45" />
+        : <HiOutlineMoon className="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:-rotate-12" />}
+      {!collapsed && (dark ? 'Modo claro' : 'Modo oscuro')}
+    </button>
+  );
+}
 
 /* ─── helpers ─── */
 function getUser() {
@@ -58,7 +79,7 @@ const SISTEMA_ITEMS = [
 const PRINCIPAL_ITEMS = [
   { to: '/admin/home',    label: 'Inicio',  icon: HiOutlineHome },
   { to: '/admin/mesas',   label: 'Mesas',   icon: HiOutlineTableCells },
-  { to: '/admin/meseros', label: 'Meseros', icon: HiOutlineUserGroup },
+  { to: '/admin/meseros', label: 'Personal', icon: HiOutlineUserGroup },
 ];
 
 /* Variantes para la entrada con stagger */
@@ -456,7 +477,7 @@ const Sidebar = ({ collapsed, onToggleCollapse }) => {
               <SectionLabel collapsed={collapsed}>Principal</SectionLabel>
               <motion.div variants={navItem}><SidebarLink to="/admin/home"    label="Inicio"   icon={HiOutlineHome} collapsed={collapsed} /></motion.div>
               <motion.div variants={navItem}><SidebarLink to="/admin/mesas"   label="Mesas"    icon={HiOutlineTableCells} collapsed={collapsed} /></motion.div>
-              <motion.div variants={navItem}><SidebarLink to="/admin/meseros" label="Meseros"  icon={HiOutlineUserGroup} collapsed={collapsed} /></motion.div>
+              <motion.div variants={navItem}><SidebarLink to="/admin/meseros" label="Personal"  icon={HiOutlineUserGroup} collapsed={collapsed} /></motion.div>
 
               <SectionLabel collapsed={collapsed}>Operaciones</SectionLabel>
               <motion.div variants={navItem}>
@@ -486,8 +507,11 @@ const Sidebar = ({ collapsed, onToggleCollapse }) => {
           )}
         </motion.nav>
 
-        {/* Footer: perfil + logout + colapsar */}
+        {/* Footer: tema + perfil + logout + colapsar */}
         <div className="shrink-0 border-t border-slate-100 p-3">
+          <div className="mb-1">
+            <ThemeToggle collapsed={collapsed} />
+          </div>
           {!collapsed && (
             <div className="mb-1 flex items-center gap-2.5 rounded-xl px-2 py-1.5">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 text-sm font-bold text-white shadow-sm shadow-orange-500/30">
@@ -510,9 +534,11 @@ const Sidebar = ({ collapsed, onToggleCollapse }) => {
           <button
             onClick={onToggleCollapse}
             title={collapsed ? 'Expandir' : 'Contraer'}
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            className={`group mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 ${collapsed ? 'justify-center px-0' : ''}`}
           >
-            {collapsed ? <HiChevronRight className="h-4 w-4" /> : <><HiChevronLeft className="h-4 w-4" /> Contraer</>}
+            {collapsed
+              ? <HiChevronRight className="h-[18px] w-[18px] shrink-0" />
+              : <><HiChevronLeft className="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:-translate-x-0.5" /> Contraer</>}
           </button>
         </div>
       </motion.aside>
@@ -598,6 +624,7 @@ const Sidebar = ({ collapsed, onToggleCollapse }) => {
                 </>
               )}
               <div className="my-1.5 h-px bg-slate-100" />
+              <ThemeToggle collapsed={false} />
               <button
                 onClick={handleSalir}
                 className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-base font-semibold text-red-500 transition-colors hover:bg-red-50"

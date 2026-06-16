@@ -68,8 +68,8 @@ const Login = () => {
                 text: data.usuario?.restaurante ? `A tu plataforma: ${data.usuario.restaurante}` : 'Ingreso exitoso'
             }).then(() => {
                 if (data.usuario?.rol === 'admin') navigate('/admin/home');
-                else if (data.usuario?.rol === 'cocinero') navigate('/admin/cocina');
-                else if (data.usuario?.rol === 'cajero') navigate('/admin/finanzas');
+                else if (data.usuario?.rol === 'cocinero') navigate('/cocinero/cocina');
+                else if (data.usuario?.rol === 'cajero') navigate('/cajero/caja');
                 else if (data.usuario?.rol === 'mesero') navigate('/mesero/home');
                 else navigate('/');
             });

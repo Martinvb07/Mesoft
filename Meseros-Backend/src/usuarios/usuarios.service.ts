@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import type { Model } from 'mongoose';
@@ -32,6 +32,29 @@ export class UsuariosService {
 
   async getById(id: number) {
     return this.usuarios.findOne({ id }, { _id: 0, __v: 0, contrasena: 0 }).lean<UsuarioRow>().exec();
+  }
+
+  async update(id: number, data: Record<string, any>) {
+    const $set: Record<string, any> = {};
+    const allowed = ['rol', 'nombre', 'correo', 'estado'];
+    for (const k of allowed) {
+      if (data?.[k] !== undefined && data[k] !== null) $set[k] = data[k];
+    }
+    if (data?.rol) {
+      const validRoles = ['admin', 'mesero', 'cocinero', 'cajero'];
+      if (!validRoles.includes(String(data.rol))) {
+        throw new HttpException({ error: 'Rol inválido' }, HttpStatus.BAD_REQUEST);
+      }
+    }
+    if (data?.correo) $set.correo = String(data.correo).trim().toLowerCase();
+    if (data?.contrasena) {
+      const raw = String(data.contrasena);
+      $set.contrasena = raw.startsWith('$2') ? raw : await bcrypt.hash(raw, 10);
+    }
+    if (!Object.keys($set).length) return { ok: true, affected: 0 };
+    const res = await this.usuarios.updateOne({ id }, { $set }).exec();
+    if (!res.matchedCount) throw new HttpException({ error: 'Usuario no encontrado' }, HttpStatus.NOT_FOUND);
+    return { ok: true, affected: res.modifiedCount, rol: data?.rol };
   }
 
   async create(usuario: Record<string, any>) {

@@ -16,6 +16,11 @@ export class PedidosController {
     return this.pedidos.enCursoDelMeseroActual(req.restaurantId!, req.userId);
   }
 
+  @Get('por-cobrar')
+  listarPorCobrar(@Req() req: RequestWithTenant) {
+    return this.pedidos.listarPorCobrar(req.restaurantId!);
+  }
+
   @Get('facturas')
   facturas(@Req() req: RequestWithTenant, @Query() query: any) {
     return this.pedidos.listarFacturas(req.restaurantId!, query);
@@ -44,6 +49,11 @@ export class PedidosController {
   @Post(':id/cerrar')
   cerrarPedido(@Req() req: RequestWithTenant, @Param('id') id: string) {
     return this.pedidos.cerrarPedido(req.restaurantId!, id);
+  }
+
+  @Post(':id/enviar-caja')
+  enviarACaja(@Req() req: RequestWithTenant, @Param('id') id: string) {
+    return this.pedidos.enviarACaja(req.restaurantId!, id);
   }
 
   @Post(':id/pagar')

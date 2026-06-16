@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
-import { HiCog6Tooth, HiCloudArrowDown, HiCloudArrowUp, HiArrowPath, HiShieldCheck, HiPaintBrush, HiBuildingStorefront, HiCreditCard, HiDocumentText } from 'react-icons/hi2';
-import '../../../css/Navbar/Menu-Admin/Configuracion/Configuracion.css';
+import {
+    HiOutlineCog6Tooth, HiOutlineCloudArrowDown, HiOutlineCloudArrowUp, HiOutlineArrowPath,
+    HiOutlineShieldCheck, HiOutlinePaintBrush, HiOutlineBuildingStorefront, HiOutlineCreditCard,
+    HiOutlineDocumentText, HiOutlineBell,
+} from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 import Select from '../../ui/Select';
 
@@ -11,7 +15,7 @@ const defaultSettings = Object.freeze({
     businessName: 'Mi Restaurante',
     currency: 'COP',
     locale: 'es-CO',
-    theme: 'system', // system | light | dark
+    theme: 'system',
     brandColor: '#ff6633',
     tipsEnabled: true,
     taxPercent: 0,
@@ -30,34 +34,67 @@ const defaultSettings = Object.freeze({
 
 function safeParse(key, fallback) {
     try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return fallback;
-      return JSON.parse(raw);
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        return JSON.parse(raw);
     } catch {
-      return fallback;
+        return fallback;
     }
 }
-
-function saveSettingsToStorage(settings) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-}
-
+function saveSettingsToStorage(settings) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
 function loadSettingsFromStorage() {
     const s = safeParse(SETTINGS_KEY, null);
     if (!s) return { ...defaultSettings };
     return { ...defaultSettings, ...s };
 }
-
 function downloadJson(filename, data) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
+}
+
+/* ─── helpers de presentación (alineados con Inicio / Mesas) ─── */
+const cardBase = 'rounded-2xl bg-white p-5 ring-1 ring-slate-100 shadow-lg shadow-slate-200/60';
+const btnPrimary = 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-orange-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-500/30 transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-60';
+const btnGhost = 'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-60';
+const btnDanger = 'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 transition-colors hover:bg-red-50';
+const inputCls = 'w-full rounded-xl border-0 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-orange-400';
+const labelCls = 'mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400';
+
+const gridStagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
+const itemUp = {
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+};
+
+function SectionCard({ icon: Icon, title, children, className = '' }) {
+    return (
+        <motion.div variants={itemUp} className={`${cardBase} ${className}`}>
+            <div className="mb-4 flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-500"><Icon className="h-5 w-5" /></span>
+                <h3 className="m-0 text-base font-extrabold tracking-tight text-slate-900">{title}</h3>
+            </div>
+            {children}
+        </motion.div>
+    );
+}
+
+function Field({ label, children }) {
+    return <div><label className={labelCls}>{label}</label>{children}</div>;
+}
+
+function Toggle({ checked, onChange, label }) {
+    return (
+        <button type="button" onClick={() => onChange(!checked)} className="flex w-full items-center justify-between gap-3 rounded-xl bg-slate-50 px-3.5 py-2.5 ring-1 ring-slate-100 transition-colors hover:bg-slate-100">
+            <span className="text-sm font-medium text-slate-700">{label}</span>
+            <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-orange-500' : 'bg-slate-300'}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${checked ? 'left-[22px]' : 'left-0.5'}`} />
+            </span>
+        </button>
+    );
 }
 
 const Configuracion = () => {
@@ -66,11 +103,7 @@ const Configuracion = () => {
 
     // Integraciones de pago y DIAN
     const [integ, setInteg] = useState({
-        wompi_public_key: '',
-        bold_api_key: '',
-        alegra_email: '',
-        alegra_api_key: '',
-        alegra_configurado: false,
+        wompi_public_key: '', bold_api_key: '', alegra_email: '', alegra_api_key: '', alegra_configurado: false,
     });
     const [integLoading, setIntegLoading] = useState(false);
 
@@ -103,484 +136,334 @@ const Configuracion = () => {
         }
     };
 
+    useEffect(() => { setSettings(loadSettingsFromStorage()); }, []);
+
     useEffect(() => {
-      setSettings(loadSettingsFromStorage());
-  }, []);
+        const root = document.documentElement;
+        if (settings.theme === 'system') root.removeAttribute('data-theme');
+        else root.setAttribute('data-theme', settings.theme);
+    }, [settings.theme]);
 
-  useEffect(() => {
-      // Aplicar preferencia de tema (opcional: otros módulos pueden aprovecharlo más tarde)
-      const root = document.documentElement;
-      if (settings.theme === 'system') {
-        root.removeAttribute('data-theme');
-      } else {
-        root.setAttribute('data-theme', settings.theme);
-      }
-  }, [settings.theme]);
-
-  const currencyOptions = useMemo(() => (
-      ['COP','MXN','USD','EUR','CLP','ARS','PEN','BRL']
-  ), []);
-
-  const localeOptions = useMemo(() => (
-      [
+    const currencyOptions = useMemo(() => (['COP', 'MXN', 'USD', 'EUR', 'CLP', 'ARS', 'PEN', 'BRL']), []);
+    const localeOptions = useMemo(() => ([
         { value: 'es-CO', label: 'Español (Colombia)' },
         { value: 'es-MX', label: 'Español (México)' },
         { value: 'es-ES', label: 'Español (España)' },
         { value: 'en-US', label: 'English (US)' },
-        { value: 'pt-BR', label: 'Português (Brasil)' }
-      ]
-  ), []);
+        { value: 'pt-BR', label: 'Português (Brasil)' },
+    ]), []);
 
-  const onChange = (field, value) => {
-      setSettings(prev => ({ ...prev, [field]: value }));
-  };
+    const onChange = (field, value) => setSettings(prev => ({ ...prev, [field]: value }));
 
-  const save = async () => {
-      // Validaciones simples
-      if (!settings.businessName?.trim()) {
-        return Swal.fire('Nombre requerido', 'Ingresa el nombre del comercio.', 'warning');
-      }
-      if (settings.taxPercent < 0 || settings.taxPercent > 99) {
-        return Swal.fire('Impuesto inválido', 'El impuesto debe estar entre 0% y 99%.', 'warning');
-      }
-      if (settings.defaultTables < 0 || settings.defaultTables > 500) {
-        return Swal.fire('Mesas inválidas', 'Define un número razonable de mesas (0-500).', 'warning');
-      }
-      if (settings.inventoryLowStockThreshold < 0 || settings.inventoryLowStockThreshold > 9999) {
-        return Swal.fire('Umbral inválido', 'El umbral de bajo stock debe ser 0-9999.', 'warning');
-      }
-      if (settings.payrollPayday < 1 || settings.payrollPayday > 31) {
-        return Swal.fire('Día de pago inválido', 'El día de nómina debe estar entre 1 y 31.', 'warning');
-    }
+    const save = async () => {
+        if (!settings.businessName?.trim()) return Swal.fire('Nombre requerido', 'Ingresa el nombre del comercio.', 'warning');
+        if (settings.taxPercent < 0 || settings.taxPercent > 99) return Swal.fire('Impuesto inválido', 'El impuesto debe estar entre 0% y 99%.', 'warning');
+        if (settings.defaultTables < 0 || settings.defaultTables > 500) return Swal.fire('Mesas inválidas', 'Define un número razonable de mesas (0-500).', 'warning');
+        if (settings.inventoryLowStockThreshold < 0 || settings.inventoryLowStockThreshold > 9999) return Swal.fire('Umbral inválido', 'El umbral de bajo stock debe ser 0-9999.', 'warning');
+        if (settings.payrollPayday < 1 || settings.payrollPayday > 31) return Swal.fire('Día de pago inválido', 'El día de nómina debe estar entre 1 y 31.', 'warning');
+        saveSettingsToStorage(settings);
+        await Swal.fire('Guardado', 'La configuración ha sido actualizada.', 'success');
+    };
 
-      saveSettingsToStorage(settings);
-      await Swal.fire('Guardado', 'La configuración ha sido actualizada.', 'success');
-  };
+    const [backupLoading, setBackupLoading] = useState(false);
+    const [backupPreview, setBackupPreview] = useState(null);
+    const importJsonRef = useRef(null);
 
-  const [backupLoading, setBackupLoading] = useState(false);
-  const [backupPreview, setBackupPreview] = useState(null);
-  const importJsonRef = useRef(null);
-
-  const exportBackup = async () => {
-      setBackupLoading(true);
-      try {
-          // Fetch backend data in parallel (with fallback to localStorage)
-          const [productosRes, meserosRes, mesasRes, facturasRes] = await Promise.allSettled([
-              api.getProductos(),
-              api.getMeseros(),
-              api.getMesas(),
-              api.facturas({ limit: 500 }),
-          ]);
-          const productos = productosRes.status === 'fulfilled'
-              ? (Array.isArray(productosRes.value?.items) ? productosRes.value.items : Array.isArray(productosRes.value) ? productosRes.value : safeParse('inventario_productos_v1', []))
-              : safeParse('inventario_productos_v1', []);
-          const meseros = meserosRes.status === 'fulfilled' ? (Array.isArray(meserosRes.value) ? meserosRes.value : safeParse('usuarios', [])) : safeParse('usuarios', []);
-          const mesas = mesasRes.status === 'fulfilled' ? (Array.isArray(mesasRes.value) ? mesasRes.value : safeParse('mesas_data_v1', [])) : safeParse('mesas_data_v1', []);
-          const facturas = facturasRes.status === 'fulfilled' ? (Array.isArray(facturasRes.value) ? facturasRes.value : []) : [];
-
-          const backup = {
-              version: 2,
-              exportedAt: new Date().toISOString(),
-              settings,
-              data: {
-                  productos,
-                  meseros,
-                  mesas,
-                  facturas,
-                  nominas: safeParse('fin_nominas_v1', []),
-              }
-          };
-          const today = new Date().toISOString().slice(0,10);
-          const filename = `mesoft-backup-${today}.json`;
-          downloadJson(filename, backup);
-          Swal.fire({ icon: 'success', title: 'Backup exportado', text: `${productos.length} productos, ${mesas.length} mesas, ${facturas.length} facturas.`, timer: 2500, showConfirmButton: false });
-      } catch (err) {
-          console.error(err);
-          Swal.fire('Error', 'No se pudo generar el backup completo.', 'error');
-      } finally {
-          setBackupLoading(false);
-      }
-  };
-
-  const onImportClick = () => fileRef.current?.click();
-  const onImportBackupClick = () => importJsonRef.current?.click();
-
-  const importBackup = async (e) => {
-      const file = e.target.files?.[0];
-      e.target.value = '';
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const json = JSON.parse(text);
-        if (!json || typeof json !== 'object' || !json.settings) {
-          return Swal.fire('Archivo inválido', 'El JSON no contiene un objeto de configuración válido.', 'error');
+    const exportBackup = async () => {
+        setBackupLoading(true);
+        try {
+            const [productosRes, meserosRes, mesasRes, facturasRes] = await Promise.allSettled([
+                api.getProductos(), api.getMeseros(), api.getMesas(), api.facturas({ limit: 500 }),
+            ]);
+            const productos = productosRes.status === 'fulfilled'
+                ? (Array.isArray(productosRes.value?.items) ? productosRes.value.items : Array.isArray(productosRes.value) ? productosRes.value : safeParse('inventario_productos_v1', []))
+                : safeParse('inventario_productos_v1', []);
+            const meseros = meserosRes.status === 'fulfilled' ? (Array.isArray(meserosRes.value) ? meserosRes.value : safeParse('usuarios', [])) : safeParse('usuarios', []);
+            const mesas = mesasRes.status === 'fulfilled' ? (Array.isArray(mesasRes.value) ? mesasRes.value : safeParse('mesas_data_v1', [])) : safeParse('mesas_data_v1', []);
+            const facturas = facturasRes.status === 'fulfilled' ? (Array.isArray(facturasRes.value) ? facturasRes.value : []) : [];
+            const backup = {
+                version: 2, exportedAt: new Date().toISOString(), settings,
+                data: { productos, meseros, mesas, facturas, nominas: safeParse('fin_nominas_v1', []) },
+            };
+            const today = new Date().toISOString().slice(0, 10);
+            downloadJson(`mesoft-backup-${today}.json`, backup);
+            Swal.fire({ icon: 'success', title: 'Backup exportado', text: `${productos.length} productos, ${mesas.length} mesas, ${facturas.length} facturas.`, timer: 2500, showConfirmButton: false });
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'No se pudo generar el backup completo.', 'error');
+        } finally {
+            setBackupLoading(false);
         }
-        const { settings: newSettings, data } = json;
-        const confirm = await Swal.fire({
-          title: 'Importar backup',
-          text: 'Esto sobrescribirá la configuración actual y datos (si están presentes).',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Sí, importar',
-          cancelButtonText: 'Cancelar'
-        });
+    };
+
+    const onImportClick = () => fileRef.current?.click();
+    const onImportBackupClick = () => importJsonRef.current?.click();
+
+    const importBackup = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            if (!json || typeof json !== 'object' || !json.settings) return Swal.fire('Archivo inválido', 'El JSON no contiene un objeto de configuración válido.', 'error');
+            const { settings: newSettings, data } = json;
+            const confirm = await Swal.fire({ title: 'Importar backup', text: 'Esto sobrescribirá la configuración actual y datos (si están presentes).', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, importar', cancelButtonText: 'Cancelar' });
+            if (!confirm.isConfirmed) return;
+            const merged = { ...defaultSettings, ...newSettings };
+            saveSettingsToStorage(merged); setSettings(merged);
+            if (data && typeof data === 'object') {
+                if (Array.isArray(data.inventario)) localStorage.setItem('inventario_productos_v1', JSON.stringify(data.inventario));
+                if (Array.isArray(data.nominas)) localStorage.setItem('fin_nominas_v1', JSON.stringify(data.nominas));
+                if (Array.isArray(data.usuarios)) localStorage.setItem('usuarios', JSON.stringify(data.usuarios));
+                if (Array.isArray(data.mesas)) localStorage.setItem('mesas_data_v1', JSON.stringify(data.mesas));
+            }
+            await Swal.fire('Importado', 'Se aplicó el backup correctamente.', 'success');
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'No se pudo importar el archivo. Verifica el formato JSON.', 'error');
+        }
+    };
+
+    const importFullBackup = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            if (!json || typeof json !== 'object') return Swal.fire('Archivo inválido', 'El archivo no es un backup válido de Mesoft.', 'error');
+            const { data } = json;
+            const preview = [
+                data?.productos ? `${data.productos.length} productos` : null,
+                data?.mesas ? `${data.mesas.length} mesas` : null,
+                data?.meseros ? `${data.meseros.length} meseros` : null,
+                data?.facturas ? `${data.facturas.length} facturas` : null,
+            ].filter(Boolean).join(', ');
+            setBackupPreview({ json, preview });
+        } catch {
+            Swal.fire('Error', 'No se pudo leer el archivo de backup.', 'error');
+        }
+    };
+
+    const aplicarBackupPreview = async () => {
+        if (!backupPreview) return;
+        const { json } = backupPreview;
+        const confirm = await Swal.fire({ title: 'Importar backup', text: `Se importarán: ${backupPreview.preview}. Esto sobrescribirá los datos locales.`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, importar', cancelButtonText: 'Cancelar' });
         if (!confirm.isConfirmed) return;
-
-        // Aplicar settings
-        const merged = { ...defaultSettings, ...newSettings };
-        saveSettingsToStorage(merged);
-        setSettings(merged);
-
-        // Aplicar datos si existen
-        if (data && typeof data === 'object') {
-          if (Array.isArray(data.inventario)) localStorage.setItem('inventario_productos_v1', JSON.stringify(data.inventario));
-          if (Array.isArray(data.nominas)) localStorage.setItem('fin_nominas_v1', JSON.stringify(data.nominas));
-          if (Array.isArray(data.usuarios)) localStorage.setItem('usuarios', JSON.stringify(data.usuarios));
-          if (Array.isArray(data.mesas)) localStorage.setItem('mesas_data_v1', JSON.stringify(data.mesas));
+        if (json.settings) {
+            const merged = { ...defaultSettings, ...json.settings };
+            saveSettingsToStorage(merged); setSettings(merged);
         }
+        const d = json.data || {};
+        if (Array.isArray(d.productos)) localStorage.setItem('inventario_productos_v1', JSON.stringify(d.productos));
+        if (Array.isArray(d.nominas)) localStorage.setItem('fin_nominas_v1', JSON.stringify(d.nominas));
+        if (Array.isArray(d.meseros)) localStorage.setItem('usuarios', JSON.stringify(d.meseros));
+        if (Array.isArray(d.mesas)) localStorage.setItem('mesas_data_v1', JSON.stringify(d.mesas));
+        setBackupPreview(null);
+        Swal.fire('Importado', 'Backup aplicado correctamente.', 'success');
+    };
 
-        await Swal.fire('Importado', 'Se aplicó el backup correctamente.', 'success');
-      } catch (err) {
-        console.error(err);
-        Swal.fire('Error', 'No se pudo importar el archivo. Verifica el formato JSON.', 'error');
-      }
-  };
+    const resetDefaults = async () => {
+        const confirm = await Swal.fire({ title: 'Restablecer configuración', text: 'Volverás a los valores por defecto. ¿Continuar?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, restablecer', cancelButtonText: 'Cancelar' });
+        if (!confirm.isConfirmed) return;
+        const copy = { ...defaultSettings };
+        saveSettingsToStorage(copy); setSettings(copy);
+        Swal.fire('Listo', 'Se restablecieron los valores por defecto.', 'success');
+    };
 
-  const importFullBackup = async (e) => {
-      const file = e.target.files?.[0];
-      e.target.value = '';
-      if (!file) return;
-      try {
-          const text = await file.text();
-          const json = JSON.parse(text);
-          if (!json || typeof json !== 'object') {
-              return Swal.fire('Archivo inválido', 'El archivo no es un backup válido de Mesoft.', 'error');
-          }
-          const { data } = json;
-          // Show preview
-          const preview = [
-              data?.productos ? `${data.productos.length} productos` : null,
-              data?.mesas ? `${data.mesas.length} mesas` : null,
-              data?.meseros ? `${data.meseros.length} meseros` : null,
-              data?.facturas ? `${data.facturas.length} facturas` : null,
-          ].filter(Boolean).join(', ');
-          setBackupPreview({ json, preview });
-      } catch {
-          Swal.fire('Error', 'No se pudo leer el archivo de backup.', 'error');
-      }
-  };
+    const clearData = async () => {
+        const confirm = await Swal.fire({ title: 'Limpiar datos locales', html: 'Se eliminarán Inventario y Nóminas locales.<br/>Opcionalmente, también usuarios y mesas.', icon: 'warning', input: 'checkbox', inputValue: 0, inputPlaceholder: 'Incluir usuarios y mesas', showCancelButton: true, confirmButtonText: 'Sí, limpiar', cancelButtonText: 'Cancelar' });
+        if (!confirm.isConfirmed) return;
+        localStorage.removeItem('inventario_productos_v1');
+        localStorage.removeItem('fin_nominas_v1');
+        if (confirm.value) {
+            localStorage.removeItem('usuarios');
+            localStorage.removeItem('mesas_data_v1');
+        }
+        Swal.fire('Hecho', 'Datos locales eliminados.', 'success');
+    };
 
-  const aplicarBackupPreview = async () => {
-      if (!backupPreview) return;
-      const { json } = backupPreview;
-      const confirm = await Swal.fire({
-          title: 'Importar backup',
-          text: `Se importarán: ${backupPreview.preview}. Esto sobrescribirá los datos locales.`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Sí, importar',
-          cancelButtonText: 'Cancelar',
-      });
-      if (!confirm.isConfirmed) return;
-      // Apply settings
-      if (json.settings) {
-          const merged = { ...defaultSettings, ...json.settings };
-          saveSettingsToStorage(merged);
-          setSettings(merged);
-      }
-      const d = json.data || {};
-      if (Array.isArray(d.productos)) localStorage.setItem('inventario_productos_v1', JSON.stringify(d.productos));
-      if (Array.isArray(d.nominas)) localStorage.setItem('fin_nominas_v1', JSON.stringify(d.nominas));
-      if (Array.isArray(d.meseros)) localStorage.setItem('usuarios', JSON.stringify(d.meseros));
-      if (Array.isArray(d.mesas)) localStorage.setItem('mesas_data_v1', JSON.stringify(d.mesas));
-      setBackupPreview(null);
-      Swal.fire('Importado', 'Backup aplicado correctamente.', 'success');
-  };
+    const logoutAll = async () => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_session');
+        await Swal.fire('Sesiones cerradas', 'Se invalidaron credenciales locales. Si usas backend, asegúrate de cerrar sesión allí también.', 'info');
+    };
 
-  const resetDefaults = async () => {
-    const confirm = await Swal.fire({
-      title: 'Restablecer configuración',
-      text: 'Volverás a los valores por defecto. ¿Continuar?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, restablecer',
-      cancelButtonText: 'Cancelar'
-    });
-    if (!confirm.isConfirmed) return;
-    const copy = { ...defaultSettings };
-    saveSettingsToStorage(copy);
-    setSettings(copy);
-    Swal.fire('Listo', 'Se restablecieron los valores por defecto.', 'success');
-  };
+    return (
+        <div className="ms-config mx-auto max-w-7xl">
+            <style>{`:where(.ms-config) button{-webkit-appearance:none;appearance:none;border:0;background-color:transparent;cursor:pointer;font:inherit;color:inherit;}`}</style>
 
-  const clearData = async () => {
-    const confirm = await Swal.fire({
-      title: 'Limpiar datos locales',
-      html: 'Se eliminarán Inventario y Nóminas locales.<br/>Opcionalmente, también usuarios y mesas.',
-      icon: 'warning',
-      input: 'checkbox',
-      inputValue: 0,
-      inputPlaceholder: 'Incluir usuarios y mesas',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, limpiar',
-      cancelButtonText: 'Cancelar'
-    });
-    if (!confirm.isConfirmed) return;
+            {/* Header */}
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+                className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
+            >
+                <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-orange-500">Sistema</span>
+                    <h1 className="m-0 mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Configuración</h1>
+                    <p className="m-0 mt-1 text-sm text-slate-500">Preferencias del sistema y datos locales</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button className={btnGhost} onClick={resetDefaults}><HiOutlineArrowPath className="h-4 w-4" /> Restablecer</button>
+                    <button className={btnGhost} onClick={onImportClick}><HiOutlineCloudArrowUp className="h-4 w-4" /> Importar config</button>
+                    <button className={btnGhost} onClick={onImportBackupClick} disabled={backupLoading}><HiOutlineCloudArrowUp className="h-4 w-4" /> Importar backup</button>
+                    <button className={btnGhost} onClick={exportBackup} disabled={backupLoading}><HiOutlineCloudArrowDown className="h-4 w-4" /> {backupLoading ? 'Exportando…' : 'Exportar backup'}</button>
+                    <button className={btnPrimary} onClick={save}>Guardar cambios</button>
+                    <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importBackup} />
+                    <input ref={importJsonRef} type="file" accept="application/json" className="hidden" onChange={importFullBackup} />
+                </div>
+            </motion.div>
 
-    localStorage.removeItem('inventario_productos_v1');
-    localStorage.removeItem('fin_nominas_v1');
+            <motion.div
+                variants={gridStagger}
+                initial="hidden"
+                animate="visible"
+                className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2"
+            >
+                {/* General */}
+                <SectionCard icon={HiOutlineBuildingStorefront} title="General">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                            <Field label="Nombre del comercio">
+                                <input className={inputCls} type="text" value={settings.businessName} onChange={e => onChange('businessName', e.target.value)} />
+                            </Field>
+                        </div>
+                        <Field label="Moneda">
+                            <Select className="w-full" value={settings.currency} onChange={e => onChange('currency', e.target.value)}>
+                                {currencyOptions.map(c => (<option key={c} value={c}>{c}</option>))}
+                            </Select>
+                        </Field>
+                        <Field label="Idioma / Región">
+                            <Select className="w-full" value={settings.locale} onChange={e => onChange('locale', e.target.value)}>
+                                {localeOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                            </Select>
+                        </Field>
+                        <Field label="Mesas por defecto">
+                            <input className={inputCls} type="number" min={0} max={500} value={settings.defaultTables} onChange={e => onChange('defaultTables', Number(e.target.value))} />
+                        </Field>
+                    </div>
+                    <div className="mt-4">
+                        <Toggle checked={settings.allowReservations} onChange={v => onChange('allowReservations', v)} label="Permitir reservas" />
+                    </div>
+                </SectionCard>
 
-    if (confirm.value) {
-      localStorage.removeItem('usuarios');
-      localStorage.removeItem('mesas_data_v1');
-    }
+                {/* Apariencia */}
+                <SectionCard icon={HiOutlinePaintBrush} title="Apariencia">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <Field label="Tema">
+                            <Select className="w-full" value={settings.theme} onChange={e => onChange('theme', e.target.value)}>
+                                <option value="system">Seguir sistema</option>
+                                <option value="light">Claro</option>
+                                <option value="dark">Oscuro</option>
+                            </Select>
+                        </Field>
+                        <Field label="Color de marca">
+                            <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
+                                <input type="color" value={settings.brandColor} onChange={e => onChange('brandColor', e.target.value)} className="h-8 w-10 cursor-pointer rounded-lg border-0 bg-transparent p-0" />
+                                <span className="text-sm font-semibold text-slate-700">{settings.brandColor}</span>
+                            </div>
+                        </Field>
+                    </div>
+                    <p className="m-0 mt-3 text-xs text-slate-400">El color de marca se aplicará gradualmente en los módulos con tokens.</p>
+                </SectionCard>
 
-    Swal.fire('Hecho', 'Datos locales eliminados.', 'success');
-  };
+                {/* Operación */}
+                <SectionCard icon={HiOutlineShieldCheck} title="Operación" className="lg:col-span-2">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <Field label="Impuesto (%)">
+                            <input className={inputCls} type="number" min={0} max={99} value={settings.taxPercent} onChange={e => onChange('taxPercent', Number(e.target.value))} />
+                        </Field>
+                        <Field label="Umbral bajo stock">
+                            <input className={inputCls} type="number" min={0} max={9999} value={settings.inventoryLowStockThreshold} onChange={e => onChange('inventoryLowStockThreshold', Number(e.target.value))} />
+                        </Field>
+                        <Field label="Día de pago nómina">
+                            <input className={inputCls} type="number" min={1} max={31} value={settings.payrollPayday} onChange={e => onChange('payrollPayday', Number(e.target.value))} />
+                        </Field>
+                        <Field label="PIN administrador (opcional)">
+                            <input className={inputCls} type="password" value={settings.adminPIN} onChange={e => onChange('adminPIN', e.target.value)} placeholder="••••" />
+                        </Field>
+                        <Field label="PIN de apertura de turno (4 dígitos)">
+                            <input className={inputCls} type="password" maxLength={4} value={settings.pinApertura} onChange={e => onChange('pinApertura', e.target.value.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="0000" />
+                        </Field>
+                        <Field label="Meta semanal ($)">
+                            <input className={inputCls} type="number" min={0} value={settings.metaSemanal} onChange={e => onChange('metaSemanal', Number(e.target.value))} />
+                        </Field>
+                        <Field label="Meta mensual ($)">
+                            <input className={inputCls} type="number" min={0} value={settings.metaMensual} onChange={e => onChange('metaMensual', Number(e.target.value))} />
+                        </Field>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <Toggle checked={settings.tipsEnabled} onChange={v => onChange('tipsEnabled', v)} label="Habilitar propinas" />
+                        <Toggle checked={settings.backupsAuto} onChange={v => onChange('backupsAuto', v)} label="Backups automáticos" />
+                    </div>
+                </SectionCard>
 
-  const logoutAll = async () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_session');
-    await Swal.fire('Sesiones cerradas', 'Se invalidaron credenciales locales. Si usas backend, asegúrate de cerrar sesión allí también.', 'info');
-  };
+                {/* Integraciones de pago */}
+                <SectionCard icon={HiOutlineCreditCard} title="Integraciones de pago">
+                    <div className="space-y-4">
+                        <Field label="Wompi — Public Key">
+                            <input className={inputCls} type="text" placeholder="pub_prod_..." value={integ.wompi_public_key} onChange={e => setInteg(prev => ({ ...prev, wompi_public_key: e.target.value }))} />
+                        </Field>
+                        <Field label="Bold — API Key">
+                            <input className={inputCls} type="text" placeholder="bold_sk_..." value={integ.bold_api_key} onChange={e => setInteg(prev => ({ ...prev, bold_api_key: e.target.value }))} />
+                        </Field>
+                    </div>
+                    <p className="m-0 mt-3 text-xs text-slate-400">Los links de pago aparecerán automáticamente en la factura al cerrar una cuenta.</p>
+                    <button className={`${btnPrimary} mt-4`} onClick={saveInteg} disabled={integLoading}>{integLoading ? 'Guardando…' : 'Guardar integraciones'}</button>
+                </SectionCard>
 
-  return (
-    <div className="config-page">
-      <header className="config-header">
-        <div className="title-wrap">
-          <div className="title-icon"><HiCog6Tooth /></div>
-          <div>
-            <h1>Configuración</h1>
-            <div className="muted">Preferencias del sistema y datos locales</div>
-          </div>
+                {/* Facturación DIAN (Alegra) */}
+                <SectionCard icon={HiOutlineDocumentText} title="Facturación electrónica DIAN (Alegra)">
+                    <div className="space-y-4">
+                        <Field label="Email de Alegra">
+                            <input className={inputCls} type="email" placeholder="tucuenta@empresa.com" value={integ.alegra_email} onChange={e => setInteg(prev => ({ ...prev, alegra_email: e.target.value }))} />
+                        </Field>
+                        <Field label="API Key de Alegra">
+                            <input className={inputCls} type="password" placeholder="••••••••••••••••" value={integ.alegra_api_key} onChange={e => setInteg(prev => ({ ...prev, alegra_api_key: e.target.value }))} />
+                        </Field>
+                    </div>
+                    <p className="m-0 mt-3 text-xs text-slate-400">Obtén tu API key en Alegra → Configuración → API → Generar token.</p>
+                    <div className="mt-4 flex items-center gap-3">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${integ.alegra_configurado ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${integ.alegra_configurado ? 'bg-emerald-500' : 'bg-slate-400'}`} /> {integ.alegra_configurado ? 'Configurado' : 'Sin configurar'}
+                        </span>
+                        <button className={btnPrimary} onClick={saveInteg} disabled={integLoading}>{integLoading ? 'Guardando…' : 'Guardar'}</button>
+                    </div>
+                </SectionCard>
+
+                {/* Notificaciones y seguridad */}
+                <SectionCard icon={HiOutlineBell} title="Notificaciones y seguridad" className="lg:col-span-2">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <Toggle checked={settings.notifyEmail} onChange={v => onChange('notifyEmail', v)} label="Notificar por email" />
+                        <Toggle checked={settings.notifyDesktop} onChange={v => onChange('notifyDesktop', v)} label="Notificar en escritorio" />
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                        <button className={btnGhost} onClick={logoutAll}>Cerrar sesiones</button>
+                        <button className={btnDanger} onClick={clearData}>Limpiar datos</button>
+                    </div>
+                </SectionCard>
+            </motion.div>
+
+            {/* Backup preview */}
+            {backupPreview && (
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`mx-auto mt-5 max-w-2xl ${cardBase}`}
+                >
+                    <h3 className="m-0 text-base font-extrabold tracking-tight text-slate-900">Vista previa del backup</h3>
+                    <p className="m-0 mt-1 text-sm text-slate-500">Contenido detectado: <strong className="text-slate-700">{backupPreview.preview}</strong></p>
+                    <div className="mt-4 flex gap-2">
+                        <button className={btnPrimary} onClick={aplicarBackupPreview}>Aplicar backup</button>
+                        <button className={btnGhost} onClick={() => setBackupPreview(null)}>Cancelar</button>
+                    </div>
+                </motion.div>
+            )}
         </div>
-        <div className="header-actions">
-          <button className="btn ghost" onClick={resetDefaults}><HiArrowPath /> Restablecer</button>
-          <button className="btn" onClick={onImportClick}><HiCloudArrowUp /> Importar config</button>
-          <button className="btn" onClick={onImportBackupClick} disabled={backupLoading}><HiCloudArrowUp /> Importar backup</button>
-          <button className="btn" onClick={exportBackup} disabled={backupLoading}><HiCloudArrowDown /> {backupLoading ? 'Exportando…' : 'Exportar backup'}</button>
-          <button className="btn primary" onClick={save}>Guardar cambios</button>
-          <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={importBackup} />
-          <input ref={importJsonRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={importFullBackup} />
-        </div>
-      </header>
-
-      <section className="config-grid">
-        {/* General */}
-        <div className="config-card">
-          <div className="card-header"><HiBuildingStorefront /> General</div>
-          <div className="card-body form-grid">
-            <label>
-              <span>Nombre del comercio</span>
-              <input className="input" type="text" value={settings.businessName} onChange={e => onChange('businessName', e.target.value)} />
-            </label>
-            <label>
-              <span>Moneda</span>
-              <Select className="w-full" value={settings.currency} onChange={e => onChange('currency', e.target.value)}>
-                {currencyOptions.map(c => (<option key={c} value={c}>{c}</option>))}
-              </Select>
-            </label>
-            <label>
-              <span>Idioma/Región</span>
-              <Select className="w-full" value={settings.locale} onChange={e => onChange('locale', e.target.value)}>
-                {localeOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </Select>
-            </label>
-            <label>
-              <span>Mesas por defecto</span>
-              <input className="input" type="number" min={0} max={500} value={settings.defaultTables} onChange={e => onChange('defaultTables', Number(e.target.value))} />
-            </label>
-          </div>
-          <div className="row">
-            <label className="switch">
-              <input type="checkbox" checked={settings.allowReservations} onChange={e => onChange('allowReservations', e.target.checked)} />
-              <span className="slider" />
-              <span>Permitir reservas</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Apariencia */}
-        <div className="config-card">
-          <div className="card-header"><HiPaintBrush /> Apariencia</div>
-          <div className="card-body form-grid">
-            <label>
-              <span>Tema</span>
-              <Select className="w-full" value={settings.theme} onChange={e => onChange('theme', e.target.value)}>
-                <option value="system">Seguir sistema</option>
-                <option value="light">Claro</option>
-                <option value="dark">Oscuro</option>
-              </Select>
-            </label>
-            <label>
-              <span>Color de marca</span>
-              <input className="input" type="color" value={settings.brandColor} onChange={e => onChange('brandColor', e.target.value)} />
-            </label>
-          </div>
-          <div className="muted small">El color de marca se usará gradualmente en módulos; hoy aplica a componentes con tokens.</div>
-        </div>
-
-        {/* Operación */}
-        <div className="config-card">
-          <div className="card-header"><HiShieldCheck /> Operación</div>
-          <div className="card-body form-grid">
-            <label>
-              <span>Impuesto (%)</span>
-              <input className="input" type="number" min={0} max={99} value={settings.taxPercent} onChange={e => onChange('taxPercent', Number(e.target.value))} />
-            </label>
-            <label>
-              <span>Umbral bajo stock</span>
-              <input className="input" type="number" min={0} max={9999} value={settings.inventoryLowStockThreshold} onChange={e => onChange('inventoryLowStockThreshold', Number(e.target.value))} />
-            </label>
-            <label>
-              <span>Día de pago nómina</span>
-              <input className="input" type="number" min={1} max={31} value={settings.payrollPayday} onChange={e => onChange('payrollPayday', Number(e.target.value))} />
-            </label>
-            <label>
-              <span>PIN administrador (opcional)</span>
-              <input className="input" type="password" value={settings.adminPIN} onChange={e => onChange('adminPIN', e.target.value)} placeholder="••••" />
-            </label>
-            <label>
-              <span>PIN de apertura de turno (4 dígitos)</span>
-              <input className="input" type="password" maxLength={4} value={settings.pinApertura} onChange={e => onChange('pinApertura', e.target.value.replace(/[^0-9]/g,'').slice(0,4))} placeholder="0000" />
-            </label>
-            <label>
-              <span>Meta semanal ($)</span>
-              <input className="input" type="number" min={0} value={settings.metaSemanal} onChange={e => onChange('metaSemanal', Number(e.target.value))} />
-            </label>
-            <label>
-              <span>Meta mensual ($)</span>
-              <input className="input" type="number" min={0} value={settings.metaMensual} onChange={e => onChange('metaMensual', Number(e.target.value))} />
-            </label>
-          </div>
-          <div className="row">
-            <label className="switch">
-              <input type="checkbox" checked={settings.tipsEnabled} onChange={e => onChange('tipsEnabled', e.target.checked)} />
-              <span className="slider" />
-              <span>Habilitar propinas</span>
-            </label>
-            <label className="switch">
-              <input type="checkbox" checked={settings.backupsAuto} onChange={e => onChange('backupsAuto', e.target.checked)} />
-              <span className="slider" />
-              <span>Backups automáticos</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Integraciones de pago */}
-        <div className="config-card">
-          <div className="card-header"><HiCreditCard /> Integraciones de pago</div>
-          <div className="card-body form-grid">
-            <label>
-              <span>Wompi — Public Key</span>
-              <input
-                className="input"
-                type="text"
-                placeholder="pub_prod_..."
-                value={integ.wompi_public_key}
-                onChange={e => setInteg(prev => ({ ...prev, wompi_public_key: e.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Bold — API Key</span>
-              <input
-                className="input"
-                type="text"
-                placeholder="bold_sk_..."
-                value={integ.bold_api_key}
-                onChange={e => setInteg(prev => ({ ...prev, bold_api_key: e.target.value }))}
-              />
-            </label>
-          </div>
-          <div className="muted small" style={{ padding: '0 1rem .5rem' }}>
-            Los links de pago aparecerán automáticamente en la factura al cerrar una cuenta.
-          </div>
-          <div style={{ padding: '0 1rem 1rem' }}>
-            <button className="btn primary" onClick={saveInteg} disabled={integLoading}>
-              {integLoading ? 'Guardando…' : 'Guardar integraciones'}
-            </button>
-          </div>
-        </div>
-
-        {/* Facturación electrónica DIAN (Alegra) */}
-        <div className="config-card">
-          <div className="card-header"><HiDocumentText /> Facturación electrónica DIAN (Alegra)</div>
-          <div className="card-body form-grid">
-            <label>
-              <span>Email de Alegra</span>
-              <input
-                className="input"
-                type="email"
-                placeholder="tucuenta@empresa.com"
-                value={integ.alegra_email}
-                onChange={e => setInteg(prev => ({ ...prev, alegra_email: e.target.value }))}
-              />
-            </label>
-            <label>
-              <span>API Key de Alegra</span>
-              <input
-                className="input"
-                type="password"
-                placeholder="••••••••••••••••"
-                value={integ.alegra_api_key}
-                onChange={e => setInteg(prev => ({ ...prev, alegra_api_key: e.target.value }))}
-              />
-            </label>
-          </div>
-          <div className="muted small" style={{ padding: '0 1rem' }}>
-            Obtén tu API key en Alegra → Configuración → API → Generar token
-          </div>
-          <div style={{ padding: '.5rem 1rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '.35rem',
-              padding: '.25rem .65rem', borderRadius: 20, fontSize: '.8rem', fontWeight: 600,
-              background: integ.alegra_configurado ? '#dcfce7' : '#f3f4f6',
-              color: integ.alegra_configurado ? '#16a34a' : '#6b7280',
-            }}>
-              {integ.alegra_configurado ? '✅ Configurado' : '⚪ Sin configurar'}
-            </span>
-            <button className="btn primary" onClick={saveInteg} disabled={integLoading}>
-              {integLoading ? 'Guardando…' : 'Guardar'}
-            </button>
-          </div>
-        </div>
-
-        {/* Notificaciones y seguridad */}
-        <div className="config-card">
-          <div className="card-header"><HiShieldCheck /> Notificaciones y seguridad</div>
-          <div className="row">
-            <label className="switch">
-              <input type="checkbox" checked={settings.notifyEmail} onChange={e => onChange('notifyEmail', e.target.checked)} />
-              <span className="slider" />
-              <span>Notificar por email</span>
-            </label>
-            <label className="switch">
-              <input type="checkbox" checked={settings.notifyDesktop} onChange={e => onChange('notifyDesktop', e.target.checked)} />
-              <span className="slider" />
-              <span>Notificar en escritorio</span>
-            </label>
-          </div>
-          <div className="row actions">
-            <button className="btn" onClick={logoutAll}>Cerrar sesiones</button>
-            <button className="btn danger" onClick={clearData}>Limpiar datos</button>
-          </div>
-        </div>
-      </section>
-
-      {/* Backup preview */}
-      {backupPreview && (
-          <div style={{ maxWidth: 720, margin: '1.5rem auto 0', background: '#fff', border: '1px solid #eef2f6', borderRadius: 16, padding: '1.25rem', boxShadow: '0 4px 18px rgba(44,62,80,.1)' }}>
-              <h3 style={{ margin: '0 0 .5rem', fontSize: '1.1rem', fontWeight: 800 }}>Vista previa del backup</h3>
-              <p style={{ margin: '0 0 .75rem', color: '#6b7280', fontSize: '.9rem' }}>Contenido detectado: <strong>{backupPreview.preview}</strong></p>
-              <div style={{ display: 'flex', gap: '.5rem' }}>
-                  <button className="btn primary" onClick={aplicarBackupPreview}>Aplicar backup</button>
-                  <button className="btn ghost" onClick={() => setBackupPreview(null)}>Cancelar</button>
-              </div>
-          </div>
-      )}
-    </div>
-  );
+    );
 };
 
 export default Configuracion;

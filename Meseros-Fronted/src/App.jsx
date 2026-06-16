@@ -5,6 +5,9 @@ import NavbarInicio from './assets/components/Inicio/NavbarInicio';
 import FooterInicio from './assets/components/Inicio/FooterInicio';
 import Sidebar from './assets/components/Menu-Admin/Sidebar';
 import NavbarMesero from './assets/components/Menu-Mesero/NavbarMesero';
+import SidebarCajero from './assets/components/Menu-Cajero/SidebarCajero';
+import Caja from './assets/components/Menu-Cajero/Caja';
+import SidebarCocina from './assets/components/Menu-Cocina/SidebarCocina';
 // Páginas públicas
 import Inicio from './assets/components/Inicio/Inicio';
 import Funciones from './assets/components/Inicio/Funciones/Funciones';
@@ -38,6 +41,7 @@ import MeserosMesero from './assets/components/Menu-Mesero/Meseros/Meseros';
 import FinInventario from './assets/components/Menu-Admin/Finanzas/Inventario';
 import FinNominas from './assets/components/Menu-Admin/Finanzas/Nominas';
 import { api } from './api/client';
+import { syncThemeForRoute } from './lib/theme';
 import './App.css';
 
 // Al cambiar de ruta, sube al inicio de la página (salvo cuando hay un ancla #seccion)
@@ -46,6 +50,10 @@ function ScrollToTop() {
     useEffect(() => {
         if (!hash) window.scrollTo(0, 0);
     }, [pathname, hash]);
+    // Aplica el modo oscuro solo dentro de /admin; en el resto de rutas lo quita.
+    useEffect(() => {
+        syncThemeForRoute();
+    }, [pathname]);
     return null;
 }
 
@@ -64,8 +72,8 @@ function getUserRol() {
 // Route guard: redirect cocinero → /admin/cocina, cajero → /admin/finanzas
 function AdminGuard({ children }) {
     const rol = getUserRol();
-    if (rol === 'cocinero') return <Navigate to="/admin/cocina" replace />;
-    if (rol === 'cajero') return <Navigate to="/admin/finanzas" replace />;
+    if (rol === 'cocinero') return <Navigate to="/cocinero/cocina" replace />;
+    if (rol === 'cajero') return <Navigate to="/cajero/caja" replace />;
     return children;
 }
 
@@ -114,14 +122,59 @@ function App() {
         );
     };
 
-    const MeseroLayout = () => (
-        <>
-            <NavbarMesero />
-            <div className="main-content">
-                <Outlet />
-            </div>
-        </>
-    );
+    const CocineroLayout = () => {
+        const [collapsed, setCollapsed] = useState(() => {
+            try { return localStorage.getItem('cocina_sidebar_collapsed') === '1'; } catch { return false; }
+        });
+        useEffect(() => {
+            try { localStorage.setItem('cocina_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
+        }, [collapsed]);
+
+        return (
+            <>
+                <SidebarCocina collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
+                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
+                    <Outlet />
+                </div>
+            </>
+        );
+    };
+
+    const CajeroLayout = () => {
+        const [collapsed, setCollapsed] = useState(() => {
+            try { return localStorage.getItem('cajero_sidebar_collapsed') === '1'; } catch { return false; }
+        });
+        useEffect(() => {
+            try { localStorage.setItem('cajero_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
+        }, [collapsed]);
+
+        return (
+            <>
+                <SidebarCajero collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
+                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
+                    <Outlet />
+                </div>
+            </>
+        );
+    };
+
+    const MeseroLayout = () => {
+        const [collapsed, setCollapsed] = useState(() => {
+            try { return localStorage.getItem('mesero_sidebar_collapsed') === '1'; } catch { return false; }
+        });
+        useEffect(() => {
+            try { localStorage.setItem('mesero_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
+        }, [collapsed]);
+
+        return (
+            <>
+                <NavbarMesero collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
+                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
+                    <Outlet />
+                </div>
+            </>
+        );
+    };
 
     return (
         <BrowserRouter>
@@ -207,6 +260,18 @@ function App() {
                     <Route path="clientes" element={<AdminGuard><Clientes /></AdminGuard>} />
                     <Route path="proveedores" element={<AdminGuard><Proveedores /></AdminGuard>} />
                     <Route path="horarios" element={<AdminGuard><Horarios /></AdminGuard>} />
+                </Route>
+
+                {/* Rutas para cocina con su propio Sidebar */}
+                <Route path="/cocinero" element={<CocineroLayout />}>
+                    <Route index element={<Cocina />} />
+                    <Route path="cocina" element={<Cocina />} />
+                </Route>
+
+                {/* Rutas para cajero con su propio Sidebar */}
+                <Route path="/cajero" element={<CajeroLayout />}>
+                    <Route index element={<Caja />} />
+                    <Route path="caja" element={<Caja />} />
                 </Route>
 
                 {/* Rutas para mesero con NavbarMesero */}
