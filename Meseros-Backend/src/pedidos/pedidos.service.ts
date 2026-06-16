@@ -364,10 +364,17 @@ export class PedidosService {
           ])
           .exec();
         const det = detRows?.[0];
+        const mesaRow = pedido?.mesa_id != null
+          ? await this.mesas
+              .findOne({ id: pedido.mesa_id, restaurant_id: rid }, { _id: 0, numero: 1 })
+              .lean<{ numero?: number }>()
+              .exec()
+          : null;
         this.gateway.emitItemListo(rid, {
           pedido_id: pid,
           item_id: iid,
           mesa_id: pedido?.mesa_id ?? null,
+          mesa_numero: mesaRow?.numero ?? null,
           mesero_id: pedido?.mesero_id ?? null,
           nombre: det?.nombre ?? null,
           cantidad: det?.cantidad ?? null,

@@ -300,7 +300,8 @@ const Home = () => {
                     </div>
                 </div>
                 {enTurno ? (
-                    <button className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 transition-colors hover:bg-red-50 disabled:opacity-60" disabled={turnoLoading} onClick={handleCheckout}>
+                    <button className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-60" disabled={turnoLoading} onClick={handleCheckout}>
+                        <HiOutlineClock className="h-4 w-4" />
                         {turnoLoading ? 'Finalizando…' : 'Finalizar turno'}
                     </button>
                 ) : (

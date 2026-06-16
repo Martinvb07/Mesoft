@@ -138,6 +138,19 @@ function Meseros() {
 
     useEffect(() => { cargar(); }, []);
 
+    // Refrescar al volver a la pestaña/ventana para que el estado de turno
+    // (En turno / Fuera de turno) no quede desactualizado cuando un empleado
+    // hace check-in/out desde su propio panel.
+    useEffect(() => {
+        const onFocus = () => { if (document.visibilityState !== 'hidden') cargar(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onFocus);
+        return () => {
+            window.removeEventListener('focus', onFocus);
+            document.removeEventListener('visibilitychange', onFocus);
+        };
+    }, []);
+
     const [turnos, setTurnos] = useState(() => {
         try {
             const raw = localStorage.getItem('turnos');

@@ -1,5 +1,5 @@
-import React from 'react';
-import { FiLock } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { CgMail } from "react-icons/cg";
 import { HiCheckCircle, HiArrowRight } from 'react-icons/hi2';
 
@@ -23,6 +23,7 @@ const labelClass = 'mb-1.5 block text-sm font-semibold text-slate-700';
 
 const Login = () => {
     const navigate = useNavigate();
+    const [showPwd, setShowPwd] = useState(false);
     const handleSubmit = async (e) => {
         e.preventDefault();
         const correo = document.getElementById('usuario').value.trim();
@@ -139,7 +140,16 @@ const Login = () => {
                                 <label htmlFor="password" className={labelClass}>Contraseña</label>
                                 <div className="relative">
                                     <FiLock className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                                    <input id="password" type="password" placeholder="Ingresa tu contraseña" className={inputClass} autoComplete="current-password" />
+                                    <input id="password" type={showPwd ? 'text' : 'password'} placeholder="Ingresa tu contraseña" className={inputClass.replace('pr-4', 'pr-11')} autoComplete="current-password" />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPwd(v => !v)}
+                                        aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                        title={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                                    >
+                                        {showPwd ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                                    </button>
                                 </div>
                             </div>
                             <Button type="submit" size="lg" className="w-full">

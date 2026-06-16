@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSocket } from './hooks/useSocket';
 // Navbars
 import NavbarInicio from './assets/components/Inicio/NavbarInicio';
 import FooterInicio from './assets/components/Inicio/FooterInicio';
@@ -166,11 +167,48 @@ function App() {
             try { localStorage.setItem('mesero_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
         }, [collapsed]);
 
+        // Notificaciones en tiempo real (cocina marca "listo") en CUALQUIER
+        // pantalla del mesero, no solo en Mesas.
+        const [toasts, setToasts] = useState([]);
+        const miIdRef = useRef(null);
+        const restaurantId = (() => { try { return localStorage.getItem('restaurant_id'); } catch { return null; } })();
+
+        useEffect(() => {
+            let alive = true;
+            api.getMiMesero().then(me => { if (alive) miIdRef.current = me?.id ?? null; }).catch(() => {});
+            return () => { alive = false; };
+        }, []);
+
+        const pushToast = useCallback((msg) => {
+            const id = Date.now() + Math.random();
+            setToasts(prev => [...prev.slice(-3), { id, msg }]);
+            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000);
+        }, []);
+
+        useSocket(restaurantId, useCallback((event, data) => {
+            if (event !== 'item_listo') return;
+            const myId = miIdRef.current;
+            // Solo notificar si el pedido es de este mesero (o no se sabe)
+            if (data?.mesero_id != null && myId != null && Number(data.mesero_id) !== Number(myId)) return;
+            const prod = `${data?.cantidad ? `${data.cantidad}× ` : ''}${data?.nombre || 'Pedido'}`;
+            const mesa = data?.mesa_numero ?? '';
+            pushToast(`${prod} listo${mesa ? ` — Mesa ${mesa}` : ''}`);
+        }, [pushToast]));
+
         return (
             <>
                 <NavbarMesero collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
                 <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
                     <Outlet />
+                </div>
+                {/* Toasts globales del mesero (cocina → listo) */}
+                <div className="fixed bottom-4 right-4 z-[2000] flex flex-col gap-2">
+                    {toasts.map(t => (
+                        <div key={t.id} className="flex items-center gap-2.5 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-xl ring-1 ring-slate-100">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 font-bold">✓</span>
+                            {t.msg}
+                        </div>
+                    ))}
                 </div>
             </>
         );

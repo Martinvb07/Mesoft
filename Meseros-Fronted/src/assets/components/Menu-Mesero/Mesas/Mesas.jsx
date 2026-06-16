@@ -130,18 +130,13 @@ const Mesas = () => {
     const mesasRef = useRef(mesas); mesasRef.current = mesas;
     const miIdRef = useRef(miId); miIdRef.current = miId;
 
-    useSocket(restaurantId, useCallback((event, data) => {
-        if (event === 'item_listo') {
-            const myId = miIdRef.current;
-            // Notificar solo si el pedido es de este mesero (o no se sabe)
-            if (data?.mesero_id != null && Number(data.mesero_id) !== Number(myId)) return;
-            const mesaNum = mesasRef.current.find(m => m.id === data?.mesa_id)?.numero ?? data?.mesa_id ?? '';
-            const prod = `${data?.cantidad ? `${data.cantidad}× ` : ''}${data?.nombre || 'Pedido'}`;
-            addToast(`${prod} listo${mesaNum ? ` — Mesa ${mesaNum}` : ''}`);
-        } else if (event === 'mesa_update' || event === 'pedido_cerrado') {
+    useSocket(restaurantId, useCallback((event) => {
+        // El toast de "listo" se muestra de forma global desde MeseroLayout
+        // (App.jsx) para que salga en cualquier pantalla del mesero.
+        if (event === 'item_listo' || event === 'mesa_update' || event === 'pedido_cerrado') {
             refrescar();
         }
-    }, [addToast, refrescar]));
+    }, [refrescar]));
 
     const handleAsignar = (mesa) => { setModalMesa(mesa); setModalAccion('asignar'); };
     const handleLiberar = (mesa) => { setModalMesa(mesa); setModalAccion('liberar'); };

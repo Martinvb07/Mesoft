@@ -26,6 +26,8 @@ html.theme-transition :is(.admin-main, .ms-sidebar) * {
 .dark :is(.admin-main, .ms-sidebar, .ms-select-list, .ms-datepicker, .ms-rangepicker) {
   /* Superficies */
   &.bg-white, & .bg-white { background-color: #0f172a; }
+  &.bg-white\/95, & .bg-white\/95 { background-color: rgba(15,23,42,.95); }
+  &.bg-white\/90, & .bg-white\/90 { background-color: rgba(15,23,42,.90); }
   &.bg-slate-50, & .bg-slate-50 { background-color: #1e293b; }
   & .bg-slate-100 { background-color: #1e293b; }
   & .bg-slate-50\/60, & .bg-slate-50\/60 { background-color: #182234; }
