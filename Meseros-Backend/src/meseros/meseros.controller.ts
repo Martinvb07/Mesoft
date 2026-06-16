@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Req } from '@nestjs/common';
 
+import { Roles } from '../auth/decorators/roles.decorator';
 import type { RequestWithTenant } from '../common/types/request-with-tenant';
 import { MeserosService } from './meseros.service';
 
@@ -18,16 +19,19 @@ export class MeserosController {
   }
 
   @Post()
+  @Roles('admin')
   crearMesero(@Req() req: RequestWithTenant, @Body() body: any) {
     return this.meseros.crearMesero(req.restaurantId!, body);
   }
 
   @Put(':id')
+  @Roles('admin')
   actualizarMesero(@Req() req: RequestWithTenant, @Param('id') id: string, @Body() body: any) {
     return this.meseros.actualizarMesero(req.restaurantId!, id, body);
   }
 
   @Delete(':id')
+  @Roles('admin')
   eliminarMesero(@Req() req: RequestWithTenant, @Param('id') id: string) {
     return this.meseros.eliminarMesero(req.restaurantId!, id);
   }

@@ -294,12 +294,16 @@ function Meseros() {
             }
         }
         try {
-            await api.actualizarMesero(editId, { nombre, estado: editActivo ? 'activo' : 'inactivo', correo, contrasena: editPassword || undefined, confirm_correo: editCorreoConfirm || undefined });
-            // Actualizar rol del usuario si cambió
             const orig = meseros.find(x => Number(x.id) === Number(editId));
-            if (orig && (orig.rol || orig.role || 'mesero') !== editRol) {
-                try { await api.actualizarUsuario(orig.usuario_id, { rol: editRol }); } catch {}
-            }
+            const rolCambio = orig && (orig.rol || orig.role || 'mesero') !== editRol;
+            await api.actualizarMesero(editId, {
+                nombre,
+                estado: editActivo ? 'activo' : 'inactivo',
+                correo,
+                contrasena: editPassword || undefined,
+                confirm_correo: editCorreoConfirm || undefined,
+                rol: rolCambio ? editRol : undefined,
+            });
             setShowEditar(false);
             await Swal.fire({ icon: 'success', title: 'Cambios guardados', timer: 900, showConfirmButton: false });
             cargar();

@@ -23,8 +23,13 @@ export class NominaService {
     if (!desde || !hasta) {
       throw new HttpException({ error: 'desde y hasta requeridos (YYYY-MM-DD)' }, HttpStatus.BAD_REQUEST);
     }
-    const start = DateTime.fromISO(String(desde), { zone: APP_TZ }).startOf('day').toJSDate();
-    const end = DateTime.fromISO(String(hasta), { zone: APP_TZ }).endOf('day').toJSDate();
+    const startDt = DateTime.fromISO(String(desde), { zone: APP_TZ }).startOf('day');
+    const endDt = DateTime.fromISO(String(hasta), { zone: APP_TZ }).endOf('day');
+    if (!startDt.isValid || !endDt.isValid) {
+      throw new HttpException({ error: 'desde/hasta inválidos (formato YYYY-MM-DD)' }, HttpStatus.BAD_REQUEST);
+    }
+    const start = startDt.toJSDate();
+    const end = endDt.toJSDate();
     const filter: any = { restaurant_id: rid, fecha: { $gte: start, $lte: end } };
     if (mesero_id) filter.mesero_id = Number(mesero_id);
     return this.movimientos.find(filter, { _id: 0, __v: 0 }).sort({ fecha: 1, id: 1 }).lean<any[]>().exec();
@@ -66,8 +71,12 @@ export class NominaService {
     if (!mesero_id || !fecha || typeof pagado !== 'boolean') {
       throw new HttpException({ error: 'mesero_id, fecha y pagado son requeridos' }, HttpStatus.BAD_REQUEST);
     }
-    const fechaIni = DateTime.fromISO(String(fecha), { zone: APP_TZ }).startOf('day').toJSDate();
-    const fechaFin = DateTime.fromISO(String(fecha), { zone: APP_TZ }).endOf('day').toJSDate();
+    const fechaDt = DateTime.fromISO(String(fecha), { zone: APP_TZ });
+    if (!fechaDt.isValid) {
+      throw new HttpException({ error: 'fecha inválida (formato YYYY-MM-DD)' }, HttpStatus.BAD_REQUEST);
+    }
+    const fechaIni = fechaDt.startOf('day').toJSDate();
+    const fechaFin = fechaDt.endOf('day').toJSDate();
 
     if (pagado) {
       const whenMid = DateTime.fromISO(String(fecha), { zone: APP_TZ }).set({ hour: 12, minute: 0, second: 0, millisecond: 0 }).toJSDate();

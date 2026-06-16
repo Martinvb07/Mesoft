@@ -82,7 +82,10 @@ export class MeserosService {
             estado: 1,
             sueldo_base: 1,
             correo: '$u.correo',
+            rol: '$u.rol',
             restaurante: '$u.restaurante',
+            esta_en_turno: 1,
+            turno_inicio: 1,
           },
         },
         { $limit: 1 },
@@ -163,7 +166,7 @@ export class MeserosService {
   async actualizarMesero(rid: number, idRaw: string, body: any) {
     if (!rid) throw new HttpException({ error: 'restaurantId no resuelto' }, HttpStatus.BAD_REQUEST);
     const id = Number(idRaw);
-    const { nombre, estado, sueldo_base, correo, contrasena, confirm_correo } = body || {};
+    const { nombre, estado, sueldo_base, correo, contrasena, confirm_correo, rol } = body || {};
 
     const wantsUserChange = correo !== undefined || (contrasena !== undefined && contrasena !== '');
     if (wantsUserChange) {
@@ -181,6 +184,15 @@ export class MeserosService {
       .exec();
     if (!current) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
     const currentUserId = current.usuario_id ?? null;
+
+    // Actualizar el rol del usuario vinculado (define a qué panel entra al iniciar sesión)
+    if (rol !== undefined && rol !== null && currentUserId) {
+      const validRoles = ['admin', 'mesero', 'cocinero', 'cajero'];
+      if (!validRoles.includes(String(rol))) {
+        throw new HttpException({ error: 'Rol inválido' }, HttpStatus.BAD_REQUEST);
+      }
+      await this.usuarios.updateOne({ id: currentUserId }, { $set: { rol: String(rol) } }).exec();
+    }
 
     const updateMesero = async (finalUserId: number | null | undefined) => {
       const $set: any = {};
