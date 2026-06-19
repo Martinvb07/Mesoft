@@ -41,7 +41,10 @@ function layout(opts: { heading: string; intro?: string; bodyHtml: string; foote
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <style>
+  :root { color-scheme: light; supported-color-schemes: light; }
   @media only screen and (max-width:620px) {
     .ms-card { border-radius:0 !important; }
     .ms-pad  { padding-left:22px !important; padding-right:22px !important; }
@@ -73,7 +76,7 @@ function layout(opts: { heading: string; intro?: string; bodyHtml: string; foote
         </td></tr>
 
         <!-- Footer Mesoft: texto + contacto (izq) · logos (der) -->
-        <tr><td class="ms-pad" style="padding:26px 36px;background:#0c1119;">
+        <tr><td class="ms-pad" bgcolor="#0c1119" background="https://llanostudio.co/assets/email-dark.png" style="padding:26px 36px;background:#0c1119 url('https://llanostudio.co/assets/email-dark.png') repeat;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
             <td style="vertical-align:top;">
               <p style="margin:0 0 4px;font-size:15px;color:#ffffff;font-weight:700;letter-spacing:-0.01em;">Mesoft</p>
@@ -84,7 +87,7 @@ function layout(opts: { heading: string; intro?: string; bodyHtml: string; foote
             <td align="right" style="vertical-align:top;">
               <img src="${MESOFT_LOGO}" alt="Mesoft" height="42" style="height:42px;width:auto;border:0;display:inline-block;">
               <div style="margin-top:12px;">
-                <img src="${LS_LOGO_LIGHT}" alt="Llano Studio" height="14" style="height:14px;width:auto;vertical-align:middle;opacity:.9;border:0;">
+                <img src="${LS_LOGO_LIGHT}" alt="Llano Studio" height="22" style="height:22px;width:auto;vertical-align:middle;opacity:.9;border:0;">
                 <span style="color:#8893a7;font-size:11.5px;vertical-align:middle;margin-left:6px;">Un producto de <a href="https://llanostudio.co" target="_blank" style="color:#9db2ff;text-decoration:none;">Llano Studio</a></span>
               </div>
             </td>
