@@ -1,7 +1,6 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as nodemailer from 'nodemailer';
 
 const WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -120,15 +119,6 @@ export class SolicitudService {
   private readonly storePath = path.join(this.dataDir, 'last-requests.json');
   private readonly lastRequestsStore: Record<string, number>;
 
-  // Gmail/SMTP para la notificación al estudio (sin Resend).
-  private readonly transporter = nodemailer.createTransport({
-    service: process.env.MAIL_SERVICE || 'gmail',
-    auth: {
-      user: process.env.MAIL_USER || 'set-env-user@example.com',
-      pass: process.env.MAIL_PASS || 'set-env-pass',
-    },
-  });
-
   constructor() {
     this.lastRequestsStore = this.loadStore();
   }
@@ -163,8 +153,8 @@ export class SolicitudService {
     }
   }
 
-  /** Confirmación al solicitante vía la REST API de Resend. */
-  private async sendConfirmationViaResend(opts: { to: string; subject: string; html: string }) {
+  /** Envía un correo vía la REST API de Resend (HTTPS, sin SMTP). */
+  private async sendViaResend(opts: { to: string; subject: string; html: string; replyTo?: string }) {
     if (!RESEND_API_KEY) {
       throw new Error('RESEND_API_KEY no configurada.');
     }
@@ -177,7 +167,7 @@ export class SolicitudService {
       body: JSON.stringify({
         from: MAIL_FROM,
         to: opts.to,
-        reply_to: MAIL_TO,
+        reply_to: opts.replyTo,
         subject: opts.subject,
         html: opts.html,
       }),
@@ -252,20 +242,14 @@ export class SolicitudService {
     }
 
     const nombreCompleto = `${nombre ?? ''} ${apellido ?? ''}`.trim() || 'Sin nombre';
+    let entregado = false;
 
-    // 1) Notificación al estudio (Gmail, sin Resend). Obligatoria: si falla, se revierte el rate-limit.
+    // 1) Notificación al estudio vía Resend (HTTPS) → llega a llanostudioco@gmail.com.
     try {
-      this.lastRequestsStore[nitKey] = now;
-      this.saveStore(this.lastRequestsStore);
-
-      await this.transporter.sendMail({
-        from: process.env.MAIL_USER || 'no-reply@example.com',
-        replyTo: correo,
+      await this.sendViaResend({
         to: MAIL_TO,
+        replyTo: correo,
         subject: `Nueva solicitud de acceso — ${empresa || nombreCompleto}`,
-        text:
-          `Nombre: ${nombreCompleto}\nCorreo: ${correo}\nEmpresa: ${empresa}\n` +
-          `Cargo: ${cargo}\nNIT: ${nit}\nMensaje: ${mensaje || '(sin mensaje)'}`,
         html: layout({
           heading: 'Nueva solicitud de acceso',
           intro: 'Llegó una nueva solicitud desde el formulario de <strong>mesoft.store</strong>.',
@@ -280,24 +264,38 @@ export class SolicitudService {
             ${mensaje ? quoteBox(mensaje) : '<p style="margin:0;font-size:13px;color:#8893a7;">Sin mensaje adicional.</p>'}
             <p style="margin:18px 0 0;font-size:13px;color:#8893a7;">Responde a este correo o desde el panel de Llano Studio.</p>`,
         }),
-      } as any);
+      });
+      entregado = true;
     } catch (error: any) {
-      if (this.lastRequestsStore[nitKey]) {
-        delete this.lastRequestsStore[nitKey];
-        this.saveStore(this.lastRequestsStore);
-      }
       this.logger.error(`Fallo al enviar la notificación de solicitud: ${error?.message}`);
+    }
+
+    // 2) Reenvío al panel /admin de LlanoStudio (para responder al cliente desde ahí).
+    try {
+      await this.forwardToLlanoStudio({ nombreCompleto, correo, empresa, cargo, nit, mensaje });
+      entregado = true;
+    } catch (error: any) {
+      this.logger.warn(`No se pudo reenviar la solicitud a LlanoStudio: ${error?.message}`);
+    }
+
+    // Si ningún canal entregó la solicitud, error (y se permite reintentar).
+    if (!entregado) {
       throw new HttpException(
         { success: false, error: 'No se pudo enviar la solicitud. Intenta más tarde.' },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
-    // 2) Confirmación al solicitante (Resend). Best-effort.
+    // Registrar el rate-limit solo cuando la solicitud sí se entregó.
+    this.lastRequestsStore[nitKey] = now;
+    this.saveStore(this.lastRequestsStore);
+
+    // 3) Confirmación al solicitante (best-effort).
     if (correo) {
       try {
-        await this.sendConfirmationViaResend({
+        await this.sendViaResend({
           to: correo,
+          replyTo: MAIL_TO,
           subject: 'Recibimos tu solicitud — Mesoft',
           html: layout({
             heading: `¡Gracias por tu interés, ${esc(String(nombre || '').split(' ')[0] || '')}!`,
@@ -316,13 +314,6 @@ export class SolicitudService {
       } catch (error: any) {
         this.logger.warn(`No se pudo enviar la confirmación al solicitante: ${error?.message}`);
       }
-    }
-
-    // 3) Reenvío al panel /admin de LlanoStudio. Best-effort.
-    try {
-      await this.forwardToLlanoStudio({ nombreCompleto, correo, empresa, cargo, nit, mensaje });
-    } catch (error: any) {
-      this.logger.warn(`No se pudo reenviar la solicitud a LlanoStudio: ${error?.message}`);
     }
 
     return { success: true, message: 'Solicitud enviada correctamente.' };
