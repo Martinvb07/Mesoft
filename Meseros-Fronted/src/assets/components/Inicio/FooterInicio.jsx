@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiInstagram, FiFacebook, FiMail, FiMapPin } from 'react-icons/fi';
+import { FiInstagram, FiMapPin } from 'react-icons/fi';
 import '../../css/landing-tailwind.css';
 
 const columnas = [
@@ -29,9 +29,7 @@ const columnas = [
 ];
 
 const redes = [
-    { icon: FiInstagram, label: 'Instagram', href: 'https://instagram.com' },
-    { icon: FiFacebook, label: 'Facebook', href: 'https://facebook.com' },
-    { icon: FiMail, label: 'Correo', href: 'mailto:martindavidvb@gmail.com' },
+    { icon: FiInstagram, label: 'Instagram', href: 'https://www.instagram.com/llanostudio.co/' },
 ];
 
 const FooterInicio = () => {
