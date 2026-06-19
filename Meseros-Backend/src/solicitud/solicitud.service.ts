@@ -4,20 +4,9 @@ import * as path from 'path';
 
 const WINDOW_MS = 48 * 60 * 60 * 1000;
 
-// Notificación al estudio: Gmail/SMTP (sin Resend).
-const MAIL_TO = process.env.MAIL_TO || 'llanostudioco@gmail.com';
-
-// Confirmación al solicitante: Resend, reutilizando el dominio verificado de Llano Studio.
-//   RESEND_API_KEY → API key (re_...). Si falta, no se envía la confirmación.
-//   MAIL_FROM      → remitente verificado. Ej: "Mesoft <no-reply@llanostudio.co>"
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const MAIL_FROM = process.env.MAIL_FROM || 'Mesoft <no-reply@llanostudio.co>';
-
-// Reenvío al panel /admin de LlanoStudio para poder responder a los clientes desde ahí.
-//   LLANO_API_BASE → base de la API de LlanoStudio. Ej: https://llanostudio.co
-//   LLANO_INTAKE_SECRET → secreto compartido para autorizar el reenvío.
-const LLANO_API_BASE = (process.env.LLANO_API_BASE || '').replace(/\/$/, '');
-const LLANO_INTAKE_SECRET = process.env.LLANO_INTAKE_SECRET || '';
+// Nota: las variables de entorno (RESEND_API_KEY, MAIL_FROM, MAIL_TO, LLANO_*) se leen
+// en runtime mediante getters de la clase, NO a nivel de módulo. Si se leen al importar
+// el archivo, ConfigModule (que carga el .env) todavía no se ejecutó y quedan vacías.
 
 function getNitKey(nit: string) {
   return String(nit || '')
@@ -119,6 +108,23 @@ export class SolicitudService {
   private readonly storePath = path.join(this.dataDir, 'last-requests.json');
   private readonly lastRequestsStore: Record<string, number>;
 
+  // Variables de entorno leídas en runtime (el .env ya está cargado por ConfigModule).
+  private get RESEND_API_KEY() {
+    return process.env.RESEND_API_KEY;
+  }
+  private get MAIL_FROM() {
+    return process.env.MAIL_FROM || 'Mesoft <no-reply@llanostudio.co>';
+  }
+  private get MAIL_TO() {
+    return process.env.MAIL_TO || 'llanostudioco@gmail.com';
+  }
+  private get LLANO_API_BASE() {
+    return (process.env.LLANO_API_BASE || '').replace(/\/$/, '');
+  }
+  private get LLANO_INTAKE_SECRET() {
+    return process.env.LLANO_INTAKE_SECRET || '';
+  }
+
   constructor() {
     this.lastRequestsStore = this.loadStore();
   }
@@ -155,17 +161,17 @@ export class SolicitudService {
 
   /** Envía un correo vía la REST API de Resend (HTTPS, sin SMTP). */
   private async sendViaResend(opts: { to: string; subject: string; html: string; replyTo?: string }) {
-    if (!RESEND_API_KEY) {
+    if (!this.RESEND_API_KEY) {
       throw new Error('RESEND_API_KEY no configurada.');
     }
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        Authorization: `Bearer ${this.RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: MAIL_FROM,
+        from: this.MAIL_FROM,
         to: opts.to,
         reply_to: opts.replyTo,
         subject: opts.subject,
@@ -187,6 +193,8 @@ export class SolicitudService {
     nit: string;
     mensaje: string;
   }) {
+    const LLANO_API_BASE = this.LLANO_API_BASE;
+    const LLANO_INTAKE_SECRET = this.LLANO_INTAKE_SECRET;
     if (!LLANO_API_BASE || !LLANO_INTAKE_SECRET) {
       this.logger.warn('Reenvío a LlanoStudio omitido (falta LLANO_API_BASE o LLANO_INTAKE_SECRET).');
       return;
@@ -247,7 +255,7 @@ export class SolicitudService {
     // 1) Notificación al estudio vía Resend (HTTPS) → llega a llanostudioco@gmail.com.
     try {
       await this.sendViaResend({
-        to: MAIL_TO,
+        to: this.MAIL_TO,
         replyTo: correo,
         subject: `Nueva solicitud de acceso — ${empresa || nombreCompleto}`,
         html: layout({
@@ -295,7 +303,7 @@ export class SolicitudService {
       try {
         await this.sendViaResend({
           to: correo,
-          replyTo: MAIL_TO,
+          replyTo: this.MAIL_TO,
           subject: 'Recibimos tu solicitud — Mesoft',
           html: layout({
             heading: `¡Gracias por tu interés, ${esc(String(nombre || '').split(' ')[0] || '')}!`,
