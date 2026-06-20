@@ -236,30 +236,6 @@ const Inicio = () => {
                             </Button>
                         </motion.div>
 
-                        <motion.div variants={fadeUp} className="mt-6 flex flex-wrap items-center gap-3">
-                            <div className="flex -space-x-2.5">
-                                {[
-                                    ['CM', 'bg-orange-200 text-orange-700'],
-                                    ['AR', 'bg-blue-200 text-blue-700'],
-                                    ['LG', 'bg-emerald-200 text-emerald-700'],
-                                    ['JP', 'bg-violet-200 text-violet-700'],
-                                ].map(([ini, color]) => (
-                                    <span
-                                        key={ini}
-                                        className={`flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-extrabold ring-2 ring-white ${color}`}
-                                    >
-                                        {ini}
-                                    </span>
-                                ))}
-                            </div>
-                            <div>
-                                <div className="flex gap-0.5 text-sm text-orange-400" aria-label="5 estrellas">★★★★★</div>
-                                <p className="text-xs font-semibold text-slate-500">
-                                    Restaurantes en toda Colombia ya venden con Mesoft
-                                </p>
-                            </div>
-                        </motion.div>
-
                         <motion.div variants={fadeUp} className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
                             {trust.map(({ icon: Icon, title, desc }) => (
                                 <div key={title}>
@@ -389,14 +365,6 @@ const Inicio = () => {
                             </div>
                         </motion.div>
 
-                        {/* Plato flotante decorativo */}
-                        <motion.div
-                            className="absolute -bottom-6 -left-6 hidden h-20 w-20 items-center justify-center rounded-full bg-white text-4xl shadow-xl ring-1 ring-slate-100 sm:flex"
-                            animate={{ y: [0, -8, 0], rotate: [0, 4, 0] }}
-                            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                        >
-                            🍝
-                        </motion.div>
                     </motion.div>
                 </div>
             </section>
