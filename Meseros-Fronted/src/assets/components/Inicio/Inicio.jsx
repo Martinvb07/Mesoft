@@ -126,30 +126,6 @@ const beneficios = [
     'Implementación guiada para tu equipo',
 ];
 
-const testimonios = [
-    {
-        nombre: 'Carolina Méndez',
-        negocio: 'Restaurante La Toscana',
-        iniciales: 'CM',
-        color: 'bg-orange-100 text-orange-600',
-        texto: 'Desde que usamos Mesoft los pedidos llegan a cocina sin errores y el cierre de caja pasó de una hora a diez minutos.',
-    },
-    {
-        nombre: 'Andrés Rojas',
-        negocio: 'Pizzería Don Pepe',
-        iniciales: 'AR',
-        color: 'bg-blue-100 text-blue-600',
-        texto: 'El inventario en tiempo real nos salvó. Ya no se nos agota nada a mitad de servicio y las compras son mucho más precisas.',
-    },
-    {
-        nombre: 'Laura Gutiérrez',
-        negocio: 'Café Aroma',
-        iniciales: 'LG',
-        color: 'bg-emerald-100 text-emerald-600',
-        texto: 'Lo que más me gusta son los reportes: por fin sé qué productos dejan más margen y en qué horarios vendemos más.',
-    },
-];
-
 // Variantes compartidas para entradas con stagger
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
@@ -645,58 +621,6 @@ const Inicio = () => {
                                 <p className="text-3xl font-extrabold text-orange-400">{valor}</p>
                                 <p className="mt-2 text-sm text-slate-300">{label}</p>
                             </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* TESTIMONIOS */}
-            <section className="bg-gradient-to-b from-white to-orange-50/40">
-                <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
-                    <motion.div
-                        className="text-center"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5 }}
-                    >
-                        <span className="text-xs font-bold uppercase tracking-wider text-orange-500">Testimonios</span>
-                        <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                            Restaurantes que ya{' '}
-                            <span className="relative inline-block text-orange-500">
-                                confían en Mesoft
-                                <Squiggle />
-                            </span>
-                        </h2>
-                    </motion.div>
-                    <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {testimonios.map(({ nombre, negocio, iniciales, color, texto }, idx) => (
-                            <motion.figure
-                                key={nombre}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                                className="m-0 flex flex-col rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:ring-orange-200"
-                            >
-                                <div className="flex gap-0.5 text-orange-400" aria-label="5 estrellas">
-                                    {'★★★★★'.split('').map((s, i) => (
-                                        <span key={i} className="text-base">{s}</span>
-                                    ))}
-                                </div>
-                                <blockquote className="m-0 mt-4 flex-1 text-sm leading-relaxed text-slate-600">
-                                    “{texto}”
-                                </blockquote>
-                                <figcaption className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-4">
-                                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${color}`}>
-                                        {iniciales}
-                                    </span>
-                                    <div>
-                                        <p className="m-0 text-sm font-bold text-slate-900">{nombre}</p>
-                                        <p className="m-0 text-xs text-slate-400">{negocio}</p>
-                                    </div>
-                                </figcaption>
-                            </motion.figure>
                         ))}
                     </div>
                 </div>
