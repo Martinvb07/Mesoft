@@ -9,7 +9,6 @@ const columnas = [
         links: [
             { to: '/', label: 'Inicio' },
             { to: '/funciones', label: 'Funciones' },
-            { to: '/precios', label: 'Precios' },
         ],
     },
     {

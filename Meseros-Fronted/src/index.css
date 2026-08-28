@@ -50,7 +50,9 @@ body {
   display: block;
   min-width: 320px;
   min-height: 100vh;
-  overflow-x: hidden;
+  /* Sin overflow-x aquí: `hidden` vuelve el overflow-y en `auto` y el body
+     genera una segunda barra de scroll además de la del html. El recorte
+     horizontal ya lo hace `html { overflow-x: hidden }`. */
 }
 
 h1 {

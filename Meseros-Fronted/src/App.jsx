@@ -13,7 +13,6 @@ import SidebarCocina from './assets/components/Menu-Cocina/SidebarCocina';
 // Páginas públicas
 import Inicio from './assets/components/Inicio/Inicio';
 import Funciones from './assets/components/Inicio/Funciones/Funciones';
-import Precios from './assets/components/Inicio/Precios/Precios';
 import QuienesSomos from './assets/components/Inicio/QuienesSomos/QuienesSomos';
 import Solicitar from './assets/components/Inicio/Solicitar/Solicitar';
 import Login from './assets/components/Inicio/Sesion/Login';
@@ -230,15 +229,6 @@ function App() {
                         <NavbarInicio />
                         <div className="main-content">
                             <Funciones />
-                        </div>
-                        <FooterInicio />
-                    </>
-                } />
-                <Route path="/precios" element={
-                    <>
-                        <NavbarInicio />
-                        <div className="main-content">
-                            <Precios />
                         </div>
                         <FooterInicio />
                     </>

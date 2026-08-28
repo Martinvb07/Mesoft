@@ -137,20 +137,3 @@ html.dark .swal2-validation-message {
   color: #fca5a5 !important;
 }
 html.dark .swal2-timer-progress-bar { background-color: rgba(249,115,22,.5) !important; }
-
-/* Marquee infinito (strip de tipos de negocio en la landing) */
-@keyframes landing-marquee {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-}
-.landing-marquee {
-    animation: landing-marquee 28s linear infinite;
-}
-.landing-marquee:hover {
-    animation-play-state: paused;
-}
-@media (prefers-reduced-motion: reduce) {
-    .landing-marquee {
-        animation: none;
-    }
-}

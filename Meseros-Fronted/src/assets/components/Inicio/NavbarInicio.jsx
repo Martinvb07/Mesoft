@@ -7,7 +7,6 @@ import '../../css/landing-tailwind.css';
 const links = [
     { to: '/', label: 'Inicio' },
     { to: '/funciones', label: 'Funciones' },
-    { to: '/precios', label: 'Precios' },
     { to: '/solicitar', label: 'Solicitar' },
 ];
 
@@ -30,19 +29,19 @@ const NavbarInicio = () => {
 
     return (
         <nav
-            className={`fixed top-0 left-0 w-full h-[60px] z-[1000] flex items-center justify-between gap-4 px-4 backdrop-blur-md transition-all duration-300 sm:px-8 ${
+            className={`fixed top-0 left-0 w-full h-[60px] z-[1000] flex items-center justify-between gap-4 px-4 backdrop-blur-md transition-all duration-300 sm:px-8 md:grid md:grid-cols-3 ${
                 scrolled
                     ? 'border-b border-slate-200/80 bg-white/95 shadow-md shadow-slate-900/5'
                     : 'border-b border-transparent bg-white/70'
             }`}
         >
-            <Link to="/" onClick={closeMenu} className="flex items-center gap-2 text-slate-900 no-underline">
+            <Link to="/" onClick={closeMenu} className="flex items-center gap-2 text-slate-900 no-underline md:justify-self-start">
                 <img src="/logopngmesoft.png" alt="Mesoft" className="h-8 w-8 rounded-lg object-contain" />
                 <span className="text-xl font-extrabold tracking-tight">Mesoft</span>
             </Link>
 
             {/* Links desktop */}
-            <ul className="hidden md:flex list-none items-center gap-1 m-0 p-0">
+            <ul className="hidden md:flex list-none items-center justify-center gap-1 m-0 p-0">
                 {links.map((link) => {
                     const active = pathname === link.to;
                     return (
@@ -68,7 +67,7 @@ const NavbarInicio = () => {
             </ul>
 
             {/* Acciones desktop */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center justify-end gap-2">
                 <Link
                     to="/login"
                     className="inline-flex h-9 items-center rounded-xl px-4 text-sm font-semibold text-slate-700 no-underline transition-colors hover:bg-slate-100 hover:text-slate-900"

@@ -64,7 +64,9 @@ body, html { margin: 0; padding: 0; }
 #root {
   width: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
+  /* `clip` recorta igual que `hidden` pero no crea contexto de scroll,
+     así no aparece una barra vertical extra dentro de #root. */
+  overflow-x: clip;
   text-align: left;
 }
 
