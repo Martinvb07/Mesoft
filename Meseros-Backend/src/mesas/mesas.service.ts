@@ -30,14 +30,14 @@ export class MesasService {
                     $and: [
                       { $eq: ['$mesa_id', '$$mesaId'] },
                       { $eq: ['$restaurant_id', '$$rid'] },
-                      { $in: ['$estado', ['en proceso', 'entregado']] },
+                      { $in: ['$estado', ['en proceso', 'entregado', 'por_cobrar']] },
                     ],
                   },
                 },
               },
               { $sort: { fecha_hora: -1 } },
               { $limit: 1 },
-              { $project: { _id: 0, mesero_id: 1 } },
+              { $project: { _id: 0, mesero_id: 1, estado: 1 } },
             ],
             as: 'pedido_open',
           },
@@ -56,6 +56,7 @@ export class MesasService {
           $addFields: {
             mesero_id: '$pedido_open.mesero_id',
             mesero_nombre: '$mesero.nombre',
+            pedido_estado: '$pedido_open.estado',
           },
         },
         { $project: { _id: 0, __v: 0, pedido_open: 0, mesero: 0 } },
@@ -132,7 +133,7 @@ export class MesasService {
   async obtenerPedidoAbiertoDeMesa(restaurantId: number, mesaId: string) {
     const pedido = await this.pedidos
       .findOne(
-        { mesa_id: Number(mesaId), estado: { $in: ['en proceso', 'entregado'] }, restaurant_id: restaurantId },
+        { mesa_id: Number(mesaId), estado: { $in: ['en proceso', 'entregado', 'por_cobrar'] }, restaurant_id: restaurantId },
         { _id: 0, __v: 0 },
       )
       .sort({ fecha_hora: -1 })

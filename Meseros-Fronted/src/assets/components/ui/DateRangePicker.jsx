@@ -107,7 +107,10 @@ export default function DateRangePicker({ value = {}, onChange, className = '', 
         const r = el.getBoundingClientRect();
         const vw = window.innerWidth;
         const vh = window.innerHeight;
-        const width = Math.min(vw - 16, 552);
+        /* Dos meses solo si caben de verdad: en móvil se apilaban y el panel
+           quedaba larguísimo, saliéndose de la pantalla. */
+        const dual = vw >= 640;
+        const width = Math.min(vw - 16, dual ? 552 : 312);
         const estH = 360;
         const spaceBelow = vh - r.bottom;
         const up = spaceBelow < estH && r.top > spaceBelow;
@@ -116,6 +119,8 @@ export default function DateRangePicker({ value = {}, onChange, className = '', 
             width,
             top: up ? undefined : r.bottom + 6,
             bottom: up ? vh - r.top + 6 : undefined,
+            maxH: Math.max(240, (up ? r.top : vh - r.bottom) - 14),
+            dual,
             up,
         });
     }, []);
@@ -208,7 +213,10 @@ export default function DateRangePicker({ value = {}, onChange, className = '', 
                             style={{ position: 'fixed', left: coords.left, width: coords.width, top: coords.top, bottom: coords.bottom, zIndex: 9999 }}
                         >
                             <style>{`:where(.ms-rangepicker) button{-webkit-appearance:none;appearance:none;border:0;background-color:transparent;cursor:pointer;font:inherit;color:inherit;}`}</style>
-                            <div className="ms-rangepicker rounded-2xl border border-slate-100 bg-white p-3 shadow-xl shadow-slate-300/40 ring-1 ring-black/5">
+                            <div
+                                className="ms-rangepicker overflow-y-auto overscroll-contain rounded-2xl border border-slate-100 bg-white p-3 shadow-xl shadow-slate-300/40 ring-1 ring-black/5"
+                                style={{ maxHeight: coords.maxH }}
+                            >
                                 {/* Navegación */}
                                 <div className="mb-1 flex items-center justify-between">
                                     <button type="button" onClick={prev} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
@@ -222,7 +230,9 @@ export default function DateRangePicker({ value = {}, onChange, className = '', 
                                 {/* Meses */}
                                 <div className="flex flex-wrap justify-center gap-5" onMouseLeave={() => setHover(null)}>
                                     <MonthGrid y={view.y} m={view.m} start={pickStart} end={pickEnd} hover={hover} onPick={pick} onHover={setHover} />
-                                    <MonthGrid y={nextView.y} m={nextView.m} start={pickStart} end={pickEnd} hover={hover} onPick={pick} onHover={setHover} />
+                                    {coords.dual && (
+                                        <MonthGrid y={nextView.y} m={nextView.m} start={pickStart} end={pickEnd} hover={hover} onPick={pick} onHover={setHover} />
+                                    )}
                                 </div>
 
                                 {/* Presets */}
@@ -237,7 +247,7 @@ export default function DateRangePicker({ value = {}, onChange, className = '', 
                                             {p.label}
                                         </button>
                                     ))}
-                                    <span className="ml-auto px-1 text-xs font-semibold text-slate-400">
+                                    <span className="w-full px-1 text-xs font-semibold text-slate-400 sm:ml-auto sm:w-auto">
                                         {pickStart ? display(pickStart) : '—'} <HiArrowLongRight className="inline h-3.5 w-3.5" /> {pickEnd ? display(pickEnd) : '…'}
                                     </span>
                                 </div>

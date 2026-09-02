@@ -173,6 +173,8 @@ export class PedidosService {
       };
     }
 
+    this.gateway.emitPedidoActualizado(rid, { pedido_id: pid, item_id: newId, accion: 'agregado' });
+
     return { ok: true, id: newId, total, warnings };
   }
 
@@ -199,6 +201,8 @@ export class PedidosService {
     }
 
     const total = await this.recalcPedidoTotal(pid);
+    this.gateway.emitPedidoActualizado(rid, { pedido_id: pid, item_id: detId, accion: 'quitado' });
+
     return { ok: true, total };
   }
 
@@ -346,7 +350,7 @@ export class PedidosService {
     const iid = this.toNumberId(itemId, 'itemId');
     await this.detalle.updateOne(
       { id: iid, pedido_id: pid },
-      { $set: { listo } },
+      { $set: { listo, listo_at: listo ? new Date() : null, ...(listo ? { entregado: false } : {}) } },
     ).exec();
 
     // Notificar al mesero (por ítem) cuando la cocina lo marca listo
@@ -459,6 +463,93 @@ export class PedidosService {
       .lean()
       .exec();
     return { count: pedidos.length, pedidos };
+  }
+
+  /* Mesas que el mesero atendió HOY, sin importar en qué estado quedó la
+     cuenta. El panel mostraba "mesas atendidas hoy" con los pedidos en curso,
+     así que al enviar la cuenta a caja el contador se caía a cero. */
+  async resumenDelDiaDelMeseroActual(rid: number, userId?: number) {
+    if (!userId) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
+
+    const mesero = await this.meseros
+      .findOne({ usuario_id: Number(userId), restaurant_id: rid }, { _id: 0, id: 1 })
+      .lean<{ id: number }>()
+      .exec();
+    if (!mesero?.id) return { mesas: 0, pedidos: 0, total: 0 };
+
+    const inicio = DateTime.now().setZone(APP_TZ).startOf('day').toJSDate();
+    const fin = DateTime.now().setZone(APP_TZ).endOf('day').toJSDate();
+
+    const pedidos = await this.pedidos
+      .find(
+        { restaurant_id: rid, mesero_id: mesero.id, fecha_hora: { $gte: inicio, $lte: fin } },
+        { _id: 0, mesa_id: 1, total: 1 },
+      )
+      .lean<{ mesa_id?: number; total?: number }[]>()
+      .exec();
+
+    const mesas = new Set((pedidos || []).map((p) => Number(p.mesa_id)).filter(Boolean));
+    const total = (pedidos || []).reduce((a, p) => a + Number(p.total || 0), 0);
+    return { mesas: mesas.size, pedidos: pedidos.length, total };
+  }
+
+  /* Bandeja de pendientes: lo que cocina marcó listo y el mesero todavía no
+     recoge. Es lo que evita que un aviso perdido se quede sin dueño. */
+  async listosPendientesDelMeseroActual(rid: number, userId?: number) {
+    if (!userId) throw new HttpException({ error: 'usuario_id requerido' }, HttpStatus.BAD_REQUEST);
+
+    const mesero = await this.meseros
+      .findOne({ usuario_id: Number(userId), restaurant_id: rid }, { _id: 0, id: 1 })
+      .lean<{ id: number }>()
+      .exec();
+    if (!mesero?.id) return [];
+
+    const pedidos = await this.pedidos
+      .find(
+        { restaurant_id: rid, mesero_id: mesero.id, estado: { $in: ['en proceso', 'entregado', 'por_cobrar'] } },
+        { _id: 0, id: 1, mesa_id: 1 },
+      )
+      .lean<{ id: number; mesa_id: number }[]>()
+      .exec();
+    if (!pedidos.length) return [];
+
+    const porPedido = new Map(pedidos.map((p) => [p.id, p.mesa_id]));
+    const mesas = await this.mesas
+      .find({ restaurant_id: rid, id: { $in: [...new Set(pedidos.map((p) => p.mesa_id))] } }, { _id: 0, id: 1, numero: 1 })
+      .lean<{ id: number; numero: number }[]>()
+      .exec();
+    const numeroDeMesa = new Map(mesas.map((m) => [m.id, m.numero]));
+
+    const items = await this.detalle
+      .aggregate<any>([
+        { $match: { pedido_id: { $in: [...porPedido.keys()] }, listo: true, entregado: { $ne: true } } },
+        { $lookup: { from: 'productos', localField: 'producto_id', foreignField: 'id', as: 'p' } },
+        { $unwind: { path: '$p', preserveNullAndEmptyArrays: true } },
+        { $project: { _id: 0, id: 1, pedido_id: 1, cantidad: 1, nota: 1, listo_at: 1, nombre: '$p.nombre' } },
+        { $sort: { listo_at: 1 } },
+      ])
+      .exec();
+
+    return (items || []).map((it) => ({
+      ...it,
+      mesa_id: porPedido.get(it.pedido_id) ?? null,
+      mesa_numero: numeroDeMesa.get(porPedido.get(it.pedido_id) as number) ?? null,
+    }));
+  }
+
+  /* El mesero recogió el plato: sale de la bandeja, en su celular y en el de
+     cualquier compañero que la tenga abierta. */
+  async marcarItemEntregado(rid: number, pedidoId: string, itemId: string) {
+    const pid = this.toNumberId(pedidoId, 'pedidoId');
+    const iid = this.toNumberId(itemId, 'itemId');
+    const pedido = await this.pedidos.findOne({ id: pid, restaurant_id: rid }, { _id: 0, id: 1 }).lean().exec();
+    if (!pedido) throw new HttpException({ error: 'Pedido no encontrado' }, HttpStatus.NOT_FOUND);
+
+    const res = await this.detalle.updateOne({ id: iid, pedido_id: pid }, { $set: { entregado: true } }).exec();
+    if (!res.matchedCount) throw new HttpException({ error: 'Item no encontrado' }, HttpStatus.NOT_FOUND);
+
+    this.gateway.emitPedidoActualizado(rid, { pedido_id: pid, item_id: iid, accion: 'entregado' });
+    return { ok: true };
   }
 
   async enCursoDelMeseroActual(rid: number, userId?: number) {

@@ -72,6 +72,12 @@ export class AppGateway implements OnGatewayConnection {
     this.server?.to(`r:${restaurantId}`).emit('pedido_cerrado', data);
   }
 
+  /* Cambió el contenido de un pedido (se agregó o se quitó un plato): la
+     cocina necesita enterarse sin esperar al sondeo de 30 s. */
+  emitPedidoActualizado(restaurantId: number, data: any) {
+    this.server?.to(`r:${restaurantId}`).emit('pedido_actualizado', data);
+  }
+
   emitItemListo(restaurantId: number, data: any) {
     this.server?.to(`r:${restaurantId}`).emit('item_listo', data);
   }

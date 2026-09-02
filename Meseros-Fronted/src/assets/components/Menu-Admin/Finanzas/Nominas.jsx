@@ -16,6 +16,9 @@ const nowIso = () => new Date().toISOString();
 const toCurrency = (n) => (isNaN(n) ? '$0' : n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }));
 const parseNum = (v) => { if (typeof v === 'number') return v; const n = Number(String(v).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? 0 : n; };
 const clamp = (n, min = 0) => (isNaN(n) ? min : Math.max(min, n));
+/* Último día real del mes: mandar 31 en meses de 30 (o en febrero) hacía que el
+   backend recibiera una fecha inválida y respondiera 500. */
+const ultimoDiaMes = (y, m) => String(new Date(Number(y), Number(m), 0).getDate()).padStart(2, '0');
 
 /* ─── helpers de presentación (alineados con Inicio / Mesas) ─── */
 const cardBase = 'rounded-2xl bg-white p-5 ring-1 ring-slate-100 shadow-lg shadow-slate-200/60';
@@ -81,7 +84,7 @@ const Nominas = () => {
                 const y = today.getFullYear();
                 const m = String(today.getMonth() + 1).padStart(2, '0');
                 const desde = `${y}-${m}-01`;
-                const hasta = `${y}-${m}-31`;
+                const hasta = `${y}-${m}-${ultimoDiaMes(y, m)}`;
                 const data = await api.obtenerNomina('', desde, hasta);
                 const rows = Array.isArray(data) ? data : [];
                 const map = new Map(); // key: mesero|yyyy-mm-dd
@@ -203,7 +206,7 @@ const Nominas = () => {
             const y = String(inicio).slice(0, 4);
             const m = String(inicio).slice(5, 7);
             const desde = `${y}-${m}-01`;
-            const hasta = `${y}-${m}-31`;
+            const hasta = `${y}-${m}-${ultimoDiaMes(y, m)}`;
             const data = await api.obtenerNomina('', desde, hasta);
             const rows = Array.isArray(data) ? data : [];
             const map = new Map();

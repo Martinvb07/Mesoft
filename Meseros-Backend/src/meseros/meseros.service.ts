@@ -8,6 +8,10 @@ import { Restaurante } from '../common/db/schemas/restaurante.schema';
 import { Usuario } from '../common/db/schemas/usuario.schema';
 import { AppGateway } from '../gateway/app.gateway';
 
+/* Roles del usuario vinculado a un empleado: definen a qué panel entra al
+   iniciar sesión. */
+const ROLES_VALIDOS = ['admin', 'mesero', 'cocinero', 'cajero'];
+
 @Injectable()
 export class MeserosService {
   constructor(
@@ -117,6 +121,7 @@ export class MeserosService {
       correo,
       contrasena,
       apellido,
+      rol,
     } = body || {};
 
     if (!nombre) throw new HttpException({ error: 'Nombre requerido' }, HttpStatus.BAD_REQUEST);
@@ -125,6 +130,11 @@ export class MeserosService {
         { error: 'Correo y contraseña son obligatorios para crear un mesero con acceso' },
         HttpStatus.BAD_REQUEST,
       );
+    }
+
+    const rolFinal = rol == null || String(rol).trim() === '' ? 'mesero' : String(rol).trim();
+    if (!ROLES_VALIDOS.includes(rolFinal)) {
+      throw new HttpException({ error: 'Rol inválido' }, HttpStatus.BAD_REQUEST);
     }
 
     const email = String(correo).trim().toLowerCase();
@@ -150,7 +160,7 @@ export class MeserosService {
         correo: email,
         contrasena: hash,
         nombre: fullName || String(nombre || '').trim() || null,
-        rol: 'mesero',
+        rol: rolFinal,
         restaurante: restauranteNombre,
         restaurant_id: rid,
       } as any);
@@ -179,7 +189,28 @@ export class MeserosService {
     const id = Number(idRaw);
     const { nombre, estado, sueldo_base, correo, contrasena, confirm_correo, rol } = body || {};
 
-    const wantsUserChange = correo !== undefined || (contrasena !== undefined && contrasena !== '');
+    const current = await this.meseros
+      .findOne({ id, restaurant_id: rid }, { _id: 0, id: 1, usuario_id: 1 })
+      .lean<{ id: number; usuario_id?: number | null }>()
+      .exec();
+    if (!current) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
+    const currentUserId = current.usuario_id ?? null;
+
+    /* El panel manda siempre el correo actual, así que comparamos contra el que
+       ya tiene el usuario: solo pedimos confirmación cuando el correo cambia de
+       verdad o cuando llega contraseña nueva. Antes, editar solo el rol ya
+       disparaba la confirmación. */
+    const usuarioActual = currentUserId
+      ? await this.usuarios
+          .findOne({ id: currentUserId }, { _id: 0, correo: 1 })
+          .lean<{ correo?: string }>()
+          .exec()
+      : null;
+    const correoActual = String(usuarioActual?.correo || '').trim().toLowerCase();
+    const correoNuevo = correo === undefined || correo === null ? null : String(correo).trim().toLowerCase();
+    const cambiaCorreo = correoNuevo !== null && correoNuevo !== correoActual;
+    const cambiaPassword = contrasena !== undefined && contrasena !== null && contrasena !== '';
+    const wantsUserChange = cambiaCorreo || cambiaPassword;
     if (wantsUserChange) {
       if (!correo || !confirm_correo || String(correo).trim().toLowerCase() !== String(confirm_correo).trim().toLowerCase()) {
         throw new HttpException(
@@ -189,17 +220,9 @@ export class MeserosService {
       }
     }
 
-    const current = await this.meseros
-      .findOne({ id, restaurant_id: rid }, { _id: 0, id: 1, usuario_id: 1 })
-      .lean<{ id: number; usuario_id?: number | null }>()
-      .exec();
-    if (!current) throw new HttpException({ error: 'Mesero no encontrado' }, HttpStatus.NOT_FOUND);
-    const currentUserId = current.usuario_id ?? null;
-
     // Actualizar el rol del usuario vinculado (define a qué panel entra al iniciar sesión)
     if (rol !== undefined && rol !== null && currentUserId) {
-      const validRoles = ['admin', 'mesero', 'cocinero', 'cajero'];
-      if (!validRoles.includes(String(rol))) {
+      if (!ROLES_VALIDOS.includes(String(rol))) {
         throw new HttpException({ error: 'Rol inválido' }, HttpStatus.BAD_REQUEST);
       }
       await this.usuarios.updateOne({ id: currentUserId }, { $set: { rol: String(rol) } }).exec();
@@ -257,7 +280,8 @@ export class MeserosService {
     const restName = rest?.nombre ?? null;
     const hash = await bcrypt.hash(String(contrasena), 10);
     const newUid = await this.ids.next('usuarios');
-    await this.usuarios.create({ id: newUid, correo: email, contrasena: hash, nombre: nombre || null, rol: 'mesero', restaurante: restName, restaurant_id: rid } as any);
+    const rolNuevoUsuario = rol && ROLES_VALIDOS.includes(String(rol)) ? String(rol) : 'mesero';
+    await this.usuarios.create({ id: newUid, correo: email, contrasena: hash, nombre: nombre || null, rol: rolNuevoUsuario, restaurante: restName, restaurant_id: rid } as any);
     return updateMesero(newUid);
   }
 

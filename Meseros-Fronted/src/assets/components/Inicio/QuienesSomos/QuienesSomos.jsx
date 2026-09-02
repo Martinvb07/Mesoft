@@ -47,7 +47,7 @@ const QuienesSomos = () => {
     };
 
     return (
-        <div className="overflow-x-hidden bg-white">
+        <div className="overflow-x-clip bg-white">
             {/* HERO */}
             <section className="relative overflow-hidden bg-gradient-to-b from-orange-50 via-white to-white">
                 <div aria-hidden="true" className="pointer-events-none absolute -top-32 -right-32 h-96 w-96 rounded-full bg-orange-200/40 blur-3xl" />

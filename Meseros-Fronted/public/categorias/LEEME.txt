@@ -1,0 +1,35 @@
+Imágenes de las categorías del menú
+===================================
+
+Lo normal ahora es subirlas desde el panel: Admin → Categorías → editar una
+categoría → "Subir imagen". Van directo a Cloudinary, a la carpeta
+mesoft/<id-del-restaurante>/categorias, y se guardan recortadas y comprimidas
+solas. No hace falta que redimensiones nada antes: sube la foto tal como sale
+del celular.
+
+Para que eso funcione, el backend necesita estas tres variables en su .env:
+
+    CLOUDINARY_CLOUD_NAME=
+    CLOUDINARY_API_KEY=
+    CLOUDINARY_API_SECRET=
+
+(se sacan de cloudinary.com → Dashboard → API Keys). Sin ellas, el botón de
+subir responde "Cloudinary no está configurado en el servidor".
+
+
+¿Y esta carpeta?
+----------------
+
+Sigue sirviendo como alternativa sin Cloudinary. Dejas el archivo aquí y en el
+campo de la categoría escribes la ruta:
+
+    /categorias/hamburguesas.webp
+
+Si vas por este camino, la imagen se publica con el despliegue del frontend
+(la pones tú, no el dueño del restaurante) y sí te toca prepararla a mano:
+
+- Formato .webp o .jpg, 600 x 400 px, por debajo de 120 KB.
+- Nombre en minúsculas, sin espacios ni tildes.
+- La tarjeta recorta al centro, así que el plato debe quedar centrado.
+
+El campo también acepta una URL completa (https://...) de cualquier otro lado.

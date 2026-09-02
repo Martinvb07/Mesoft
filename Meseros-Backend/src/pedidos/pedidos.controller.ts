@@ -11,6 +11,16 @@ export class PedidosController {
     return this.pedidos.listarEnCurso(req.restaurantId!);
   }
 
+  @Get('listos/mi')
+  listosPendientesMi(@Req() req: RequestWithTenant) {
+    return this.pedidos.listosPendientesDelMeseroActual(req.restaurantId!, req.userId);
+  }
+
+  @Get('hoy/mi')
+  resumenHoyMi(@Req() req: RequestWithTenant) {
+    return this.pedidos.resumenDelDiaDelMeseroActual(req.restaurantId!, req.userId);
+  }
+
   @Get('en-curso/mi')
   enCursoMi(@Req() req: RequestWithTenant) {
     return this.pedidos.enCursoDelMeseroActual(req.restaurantId!, req.userId);
@@ -59,6 +69,11 @@ export class PedidosController {
   @Post(':id/pagar')
   pagar(@Req() req: RequestWithTenant, @Param('id') id: string, @Body() body: any) {
     return this.pedidos.registrarPago(req.restaurantId!, id, body, req.userId);
+  }
+
+  @Patch(':id/items/:itemId/entregado')
+  marcarItemEntregado(@Req() req: RequestWithTenant, @Param('id') id: string, @Param('itemId') itemId: string) {
+    return this.pedidos.marcarItemEntregado(req.restaurantId!, id, itemId);
   }
 
   @Patch(':id/items/:itemId/listo')

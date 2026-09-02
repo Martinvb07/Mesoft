@@ -1,16 +1,34 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
+/* De dónde cuelga el socket:
+   1. VITE_SOCKET_URL si la defines a mano.
+   2. Si VITE_API_BASE es absoluta (producción: https://mesoft.store/api), se le
+      quita el /api y queda el origen.
+   3. Si no, el propio origen: en desarrollo Vite hace de proxy de /socket.io
+      hacia el backend local (antes esto apuntaba fijo a mesoft.store, así que
+      en local el socket nunca conectaba y no llegaba ninguna notificación). */
+function resolverUrl() {
+    const explicita = import.meta.env.VITE_SOCKET_URL;
+    if (explicita) return String(explicita).replace(/\/$/, '');
+
+    const base = import.meta.env.VITE_API_BASE;
+    if (base && /^https?:\/\//i.test(base)) {
+        try { return new URL(base).origin; } catch { /* si viene rara, seguimos */ }
+    }
+    return typeof window !== 'undefined' ? window.location.origin : '';
+}
+
 /**
- * Hook to connect to the Mesoft Socket.io server scoped to a restaurant.
- * @param {string|number|null} restaurantId - The restaurant ID to scope events.
- * @param {(event: string, data: any) => void} onEvent - Callback for incoming events.
+ * Conecta al servidor de sockets de Mesoft para un restaurante.
+ * @param {string|number|null} restaurantId
+ * @param {(event: string, data: any) => void} onEvent
  */
 export function useSocket(restaurantId, onEvent) {
     const socketRef = useRef(null);
     const onEventRef = useRef(onEvent);
 
-    // Keep the callback reference fresh without reconnecting
+    // Mantiene fresca la referencia al callback sin reconectar
     useEffect(() => {
         onEventRef.current = onEvent;
     }, [onEvent]);
@@ -20,19 +38,20 @@ export function useSocket(restaurantId, onEvent) {
         const token = localStorage.getItem('auth_token');
         if (!token) return;
 
-        socketRef.current = io('https://mesoft.store', {
+        const socket = io(resolverUrl(), {
             auth: { token },
             transports: ['websocket', 'polling'],
         });
+        socketRef.current = socket;
 
-        const handle = (event) => (data) => onEventRef.current?.(event, data);
-
-        socketRef.current.on('mesa_update', handle('mesa_update'));
-        socketRef.current.on('nuevo_pedido', handle('nuevo_pedido'));
-        socketRef.current.on('pedido_cerrado', handle('pedido_cerrado'));
+        /* onAny en vez de listar los eventos uno por uno: así no se vuelve a
+           repetir lo de `item_listo`, que el backend emitía y aquí nadie
+           escuchaba, dejando al mesero sin aviso de "pedido listo". */
+        socket.onAny((event, data) => onEventRef.current?.(event, data));
 
         return () => {
-            socketRef.current?.disconnect();
+            socket.offAny();
+            socket.disconnect();
             socketRef.current = null;
         };
     }, [restaurantId]);

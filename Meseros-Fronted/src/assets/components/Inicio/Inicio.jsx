@@ -103,7 +103,7 @@ const Inicio = () => {
     }, []);
 
     return (
-        <div className="overflow-x-hidden bg-white">
+        <div className="overflow-x-clip bg-white">
             {/* ───────────────────────────  HERO  ─────────────────────────── */}
             <section className="relative overflow-hidden border-b border-slate-200/70">
                 {/* Retícula de fondo, desvanecida hacia los bordes */}

@@ -21,6 +21,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RestaurantesModule } from './restaurantes/restaurantes.module';
 import { AlegraModule } from './alegra/alegra.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { CategoriasModule } from './categorias/categorias.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
 
 @Module({
@@ -44,6 +46,8 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
     AlegraModule,
     ReviewsModule,
     ProveedoresModule,
+    CategoriasModule,
+    UploadsModule,
   ],
   controllers: [HealthController],
   providers: [

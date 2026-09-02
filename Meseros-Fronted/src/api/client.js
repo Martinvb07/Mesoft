@@ -78,6 +78,9 @@ export const api = {
   // Pedidos
   pedidosEnCurso: () => request('/pedidos/en-curso'),
   pedidosEnCursoMi: () => request('/pedidos/en-curso/mi'),
+  miResumenHoy: () => request('/pedidos/hoy/mi'),
+  misListosPendientes: () => request('/pedidos/listos/mi'),
+  marcarItemEntregado: (pedidoId, itemId) => request(`/pedidos/${pedidoId}/items/${itemId}/entregado`, { method: 'PATCH' }),
   facturas: (params = {}) => {
     const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v!=null && v!==''));
     const qs = q.toString();
@@ -145,7 +148,21 @@ export const api = {
     fetch(`https://mesoft.store/api/public/${restaurantId}/menu`).then((r) => r.json()),
 
   // Productos / Inventario
-  getProductos: () => request('/productos'),
+  getProductos: (params) => request('/productos' + (params ? `?${new URLSearchParams(params)}` : '')),
+
+  /* El POS necesita el menú completo: /productos viene paginado (20 por
+     defecto, tope de 100), así que recorremos las páginas. Sin esto, un menú
+     de más de 20 productos dejaba categorías enteras fuera de la grilla. */
+  getProductosTodos: async ({ soloActivos = true } = {}) => {
+    const todos = [];
+    for (let page = 1; page <= 50; page++) {
+      const r = await api.getProductos({ page, pageSize: 100, ...(soloActivos ? { estado: 'activos' } : {}) });
+      const items = Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : []);
+      todos.push(...items);
+      if (items.length < 100) break;
+    }
+    return todos;
+  },
   crearProducto: (data) => request('/productos', { method: 'POST', body: data }),
   actualizarProducto: (id, data) => request(`/productos/${id}`, { method: 'PUT', body: data }),
   eliminarProducto: (id) => request(`/productos/${id}`, { method: 'DELETE' }),
@@ -172,6 +189,19 @@ export const api = {
   crearProveedor: (data) => request('/proveedores', { method: 'POST', body: data }),
   actualizarProveedor: (id, data) => request(`/proveedores/${id}`, { method: 'PUT', body: data }),
   eliminarProveedor: (id) => request(`/proveedores/${id}`, { method: 'DELETE' }),
+
+  // Firma para subir imágenes directo a Cloudinary (el archivo no pasa por el backend)
+  firmaCloudinary: (carpeta) => request(`/uploads/firma?carpeta=${encodeURIComponent(carpeta || 'categorias')}`),
+
+  // Categorías del menú (catálogo que ordena el POS)
+  getCategorias: (soloActivas) => request(soloActivas ? '/categorias?activas=1' : '/categorias'),
+  crearCategoria: (data) => request('/categorias', { method: 'POST', body: data }),
+  actualizarCategoria: (id, data) => request(`/categorias/${id}`, { method: 'PUT', body: data }),
+  eliminarCategoria: (id, reasignar) => request(
+    reasignar === undefined ? `/categorias/${id}` : `/categorias/${id}?reasignar=${encodeURIComponent(reasignar)}`,
+    { method: 'DELETE' },
+  ),
+  reordenarCategorias: (ids) => request('/categorias/orden', { method: 'PUT', body: { ids } }),
 
   // Import CSV masivo de productos
   importarProductosCSV: (rows) => request('/productos/import-csv', { method: 'POST', body: rows }),

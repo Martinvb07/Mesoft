@@ -107,7 +107,9 @@ body, html { margin: 0; padding: 0; }
   margin-left: 76px;
 }
 
-@media (max-width: 1024px) {
+/* 1023.98 y no 1024: Tailwind lg: es min-width 1024, y en 1024 exactos (iPad
+   vertical) aplicaban los dos y el sidebar se comía el contenido. */
+@media (max-width: 1023.98px) {
   .admin-main,
   .admin-main.admin-main-collapsed {
     margin-left: 0;

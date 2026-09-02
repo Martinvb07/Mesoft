@@ -243,6 +243,7 @@ function Meseros() {
     const [nuevoTelefono, setNuevoTelefono] = useState('');
     const [nuevoPassword, setNuevoPassword] = useState('');
     const [nuevoActivo, setNuevoActivo] = useState(true);
+    const [nuevoRol, setNuevoRol] = useState('mesero');
 
     const [showEditar, setShowEditar] = useState(false);
     const [editId, setEditId] = useState(null);
@@ -259,7 +260,7 @@ function Meseros() {
     const [deleteId, setDeleteId] = useState(null);
 
     const abrirNuevo = () => {
-        setNuevoNombre(''); setNuevoApellido(''); setNuevoCorreo(''); setNuevoTelefono(''); setNuevoPassword(''); setNuevoActivo(true); setShowNuevo(true);
+        setNuevoNombre(''); setNuevoApellido(''); setNuevoCorreo(''); setNuevoTelefono(''); setNuevoPassword(''); setNuevoActivo(true); setNuevoRol('mesero'); setShowNuevo(true);
     };
     const confirmarNuevo = async () => {
         const nombre = nuevoNombre.trim();
@@ -273,7 +274,7 @@ function Meseros() {
             return Swal.fire({ icon: 'error', title: 'Contraseña requerida', text: 'Mínimo 6 caracteres.' });
         }
         try {
-            await api.crearMesero({ nombre, estado: nuevoActivo ? 'activo' : 'inactivo', correo, contrasena: nuevoPassword });
+            await api.crearMesero({ nombre, apellido: nuevoApellido.trim() || undefined, estado: nuevoActivo ? 'activo' : 'inactivo', correo, contrasena: nuevoPassword, rol: nuevoRol });
             setShowNuevo(false);
             await Swal.fire({ icon: 'success', title: 'Mesero creado', timer: 900, showConfirmButton: false });
             cargar();
@@ -319,7 +320,7 @@ function Meseros() {
             await api.actualizarMesero(editId, {
                 nombre,
                 estado: editActivo ? 'activo' : 'inactivo',
-                correo,
+                correo: wantsUserChange ? correo : undefined,
                 contrasena: editPassword || undefined,
                 confirm_correo: editCorreoConfirm || undefined,
                 rol: rolCambio ? editRol : undefined,
@@ -572,7 +573,7 @@ function Meseros() {
                         </>
                     }
                 >
-                    <p className="m-0 mb-4 text-sm text-slate-500">Crea un nuevo empleado. Luego puedes asignarle el rol (mesero, cajero o cocina). Los campos con <span className="font-bold text-orange-500">*</span> son obligatorios.</p>
+                    <p className="m-0 mb-4 text-sm text-slate-500">Crea un nuevo empleado y elige con qué rol entra al sistema. Los campos con <span className="font-bold text-orange-500">*</span> son obligatorios.</p>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label className={labelCls}>Nombre *</label>
@@ -599,6 +600,15 @@ function Meseros() {
                             <Select className="w-full" value={nuevoActivo ? '1' : '0'} onChange={e => setNuevoActivo(e.target.value === '1')}>
                                 <option value="1">Activo</option>
                                 <option value="0">Inactivo</option>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className={labelCls}>Rol del usuario *</label>
+                            <Select className="w-full" value={nuevoRol} onChange={e => setNuevoRol(e.target.value)}>
+                                <option value="mesero">Mesero (mesas y pedidos)</option>
+                                <option value="cocinero">Cocinero (solo ve Cocina)</option>
+                                <option value="cajero">Cajero (solo ve Caja)</option>
+                                <option value="admin">Admin (acceso total)</option>
                             </Select>
                         </div>
                     </div>

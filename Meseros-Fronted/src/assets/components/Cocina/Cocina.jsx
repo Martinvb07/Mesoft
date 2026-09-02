@@ -100,9 +100,9 @@ function Cocina() {
         return () => clearInterval(t);
     }, []);
 
-    // WebSocket: refresh on nuevo_pedido or pedido_cerrado
+    // WebSocket: la cocina se refresca sola ante cualquier cambio del pedido
     useSocket(restaurantId, useCallback((event) => {
-        if (event === 'nuevo_pedido' || event === 'pedido_cerrado') {
+        if (event === 'nuevo_pedido' || event === 'pedido_cerrado' || event === 'pedido_actualizado' || event === 'pedido_por_cobrar') {
             cargar();
         }
     }, [cargar]));

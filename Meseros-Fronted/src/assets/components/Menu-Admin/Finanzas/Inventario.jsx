@@ -133,11 +133,21 @@ const Inventario = () => {
         return () => { mounted = false; };
     }, []);
 
-    // Derivados y métricas
+    /* El catálogo lo administra Admin → Categorías. Si algún producto quedó con
+       una categoría que ya no está en el catálogo, igual la mostramos para no
+       esconderlo de los filtros. */
+    const [catalogo, setCatalogo] = useState([]);
+    useEffect(() => {
+        api.getCategorias().then(r => setCatalogo(Array.isArray(r) ? r : [])).catch(() => setCatalogo([]));
+    }, []);
+
     const categorias = useMemo(() => {
-        const s = new Set(productos.map(p => (p.categoria || '').trim()).filter(Boolean));
-        return Array.from(s).sort();
-    }, [productos]);
+        const nombres = catalogo.map(c => String(c.nombre || '').trim()).filter(Boolean);
+        const enUso = productos.map(p => String(p.categoria || '').trim()).filter(Boolean);
+        const vistas = new Set(nombres.map(n => n.toLowerCase()));
+        for (const n of enUso) if (!vistas.has(n.toLowerCase())) { vistas.add(n.toLowerCase()); nombres.push(n); }
+        return nombres;
+    }, [catalogo, productos]);
 
     const filtered = useMemo(() => {
         const q = busqueda.trim().toLowerCase();
@@ -531,8 +541,11 @@ const Inventario = () => {
                         </div>
                         <div>
                             <label className={labelCls}>Categoría</label>
-                            <input list="cat-list" className={inputCls} value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="Ej. Bebidas" />
-                            <datalist id="cat-list">{categorias.map(c => <option key={c} value={c} />)}</datalist>
+                            <Select className="w-full" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
+                                <option value="">Sin categoría</option>
+                                {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                            </Select>
+                            <p className="m-0 mt-1.5 text-[11px] text-slate-400">¿Falta alguna? Se crean en Admin → Categorías.</p>
                         </div>
                         <div>
                             <label className={labelCls}>Costo</label>

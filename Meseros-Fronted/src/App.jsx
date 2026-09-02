@@ -7,6 +7,7 @@ import NavbarInicio from './assets/components/Inicio/NavbarInicio';
 import FooterInicio from './assets/components/Inicio/FooterInicio';
 import Sidebar from './assets/components/Menu-Admin/Sidebar';
 import NavbarMesero from './assets/components/Menu-Mesero/NavbarMesero';
+import BandejaListos from './assets/components/Menu-Mesero/BandejaListos';
 import SidebarCajero from './assets/components/Menu-Cajero/SidebarCajero';
 import Caja from './assets/components/Menu-Cajero/Caja';
 import SidebarCocina from './assets/components/Menu-Cocina/SidebarCocina';
@@ -30,7 +31,7 @@ import FinCierreCaja from './assets/components/Menu-Admin/Finanzas/CierreCaja';
 import Configuracion from './assets/components/Menu-Admin/Configuracion/Configuracion';
 import Cocina from './assets/components/Cocina/Cocina';
 import AuditLog from './assets/components/Menu-Admin/Audit/AuditLog';
-import Combos from './assets/components/Menu-Admin/Combos/Combos';
+import Categorias from './assets/components/Menu-Admin/Categorias/Categorias';
 import Clientes from './assets/components/Menu-Admin/Clientes/Clientes';
 import Onboarding, { isOnboardingDone, markOnboardingDone } from './assets/components/Onboarding/Onboarding';
 import Proveedores from './assets/components/Menu-Admin/Proveedores/Proveedores';
@@ -179,10 +180,37 @@ function App() {
             return () => { alive = false; };
         }, []);
 
+        const [senalBandeja, setSenalBandeja] = useState(0);
+
         const pushToast = useCallback((toast) => {
             const id = Date.now() + Math.random();
             setToasts(prev => [...prev.slice(-3), { id, ...toast }]);
-            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000);
+            // 20 s en vez de 6: el mesero rara vez está mirando la pantalla.
+            // Aunque se le pase, el plato queda en la bandeja de pendientes.
+            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 20000);
+        }, []);
+
+        /* Un pitido corto con Web Audio (sin archivos que cargar) y vibración:
+           el celular suele ir en el bolsillo. */
+        const avisar = useCallback(() => {
+            try {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (Ctx) {
+                    const ctx = new Ctx();
+                    const osc = ctx.createOscillator();
+                    const vol = ctx.createGain();
+                    osc.connect(vol); vol.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.12);
+                    vol.gain.setValueAtTime(0.001, ctx.currentTime);
+                    vol.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+                    vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                    osc.start(); osc.stop(ctx.currentTime + 0.36);
+                    setTimeout(() => ctx.close().catch(() => {}), 600);
+                }
+            } catch { /* el navegador puede bloquear el audio hasta el primer toque */ }
+            try { navigator.vibrate?.([180, 90, 180]); } catch { /* iOS no vibra */ }
         }, []);
 
         useSocket(restaurantId, useCallback((event, data) => {
@@ -193,7 +221,9 @@ function App() {
             const prod = `${data?.cantidad ? `${data.cantidad}× ` : ''}${data?.nombre || 'Pedido'}`;
             const mesa = data?.mesa_numero ?? '';
             pushToast({ tone: 'listo', title: '¡Pedido listo!', msg: `${prod}${mesa ? ` · Mesa ${mesa}` : ''}` });
-        }, [pushToast]));
+            avisar();
+            setSenalBandeja(n => n + 1);
+        }, [pushToast, avisar]));
 
         return (
             <>
@@ -203,6 +233,8 @@ function App() {
                 </div>
                 {/* Toasts globales del mesero (cocina → listo) */}
                 <ToastStack toasts={toasts} />
+                {/* Y lo que no alcanzó a ver, queda aquí hasta que lo recoja */}
+                <BandejaListos recargarSenal={senalBandeja} />
             </>
         );
     };
@@ -278,7 +310,7 @@ function App() {
                     <Route path="configuracion" element={<AdminGuard><Configuracion /></AdminGuard>} />
                     <Route path="cocina" element={<Cocina />} />
                     <Route path="auditoria" element={<AdminGuard><AuditLog /></AdminGuard>} />
-                    <Route path="combos" element={<AdminGuard><Combos /></AdminGuard>} />
+                    <Route path="categorias" element={<AdminGuard><Categorias /></AdminGuard>} />
                     <Route path="clientes" element={<AdminGuard><Clientes /></AdminGuard>} />
                     <Route path="proveedores" element={<AdminGuard><Proveedores /></AdminGuard>} />
                     <Route path="horarios" element={<AdminGuard><Horarios /></AdminGuard>} />

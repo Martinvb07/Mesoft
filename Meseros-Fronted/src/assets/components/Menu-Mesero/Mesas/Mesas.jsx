@@ -4,22 +4,40 @@ import Swal from 'sweetalert2';
 import {
     HiOutlineTableCells, HiOutlineUsers, HiOutlineCheckCircle, HiOutlineSparkles,
     HiOutlineMagnifyingGlass, HiOutlineUser, HiOutlineArrowPath, HiXMark,
-    HiMinus, HiPlus, HiOutlinePaperAirplane,
+    HiMinus, HiPlus, HiOutlinePaperAirplane, HiChevronLeft,
 } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
-import { getCombosFromStorage } from '../../Menu-Admin/Combos/Combos';
 import { useSocket } from '../../../../hooks/useSocket';
 import Select from '../../ui/Select';
+import StepWizard from '../../ui/StepWizard';
+import { imagenTransformada } from '../../../../utils/imagen';
+
+const HEX_COLOR = {
+    orange: '#f97316', sky: '#0ea5e9', emerald: '#10b981', violet: '#8b5cf6',
+    amber: '#f59e0b', rose: '#f43f5e', teal: '#14b8a6', indigo: '#6366f1',
+    lime: '#84cc16', pink: '#ec4899', cyan: '#06b6d4', blue: '#3b82f6',
+    fuchsia: '#d946ef', green: '#22c55e', yellow: '#eab308', slate: '#94a3b8',
+};
+const hexDeColor = (c) => HEX_COLOR[c] || HEX_COLOR.slate;
+
+/* Blanco o casi negro según qué tan claro sea el color, para que el nombre de
+   la categoría se lea igual sobre naranja que sobre amarillo. */
+const textoSobre = (hex) => {
+    const v = String(hex || '').replace('#', '');
+    if (v.length !== 6) return '#ffffff';
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16) / 255);
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.6 ? '#0f172a' : '#ffffff';
+};
 
 /* ─── helpers de presentación (alineados con Inicio / Mesas admin) ─── */
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString('es-CO')}`;
-const cardBase = 'rounded-2xl bg-white p-5 ring-1 ring-slate-100 shadow-lg shadow-slate-200/60';
+const cardBase = 'rounded-2xl bg-white p-4 ring-1 ring-slate-100 shadow-lg shadow-slate-200/60 sm:p-5';
 const btnPrimary = 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-orange-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-500/30 transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-60';
 const btnGhost = 'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-60';
 const inputCls = 'w-full rounded-xl border-0 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-orange-400';
 // Acciones de tarjeta de mesa — estilo unificado, ancho igual
-const actPrimary = 'flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-gradient-to-b from-orange-500 to-orange-600 px-2.5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/30 transition-all hover:-translate-y-0.5 hover:shadow-md';
-const actSecondary = 'flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200';
+const actPrimary = 'min-w-[4.75rem] flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-gradient-to-b from-orange-500 to-orange-600 px-2.5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/30 transition-all hover:-translate-y-0.5 hover:shadow-md';
+const actSecondary = 'min-w-[4.75rem] flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200';
 
 const gridStagger = { hidden: {}, visible: { transition: { staggerChildren: 0.04 } } };
 const itemUp = {
@@ -39,12 +57,12 @@ function MetricCard({ icon: Icon, value, label }) {
     return (
         <motion.div variants={itemUp} className={`group ${cardBase} transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-orange-200`}>
             <div className="flex items-start justify-between">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50 transition-colors duration-300 group-hover:bg-orange-500">
-                    <Icon className="h-5 w-5 text-orange-500 transition-colors duration-300 group-hover:text-white" />
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 transition-colors duration-300 group-hover:bg-orange-500 sm:h-11 sm:w-11 sm:rounded-xl">
+                    <Icon className="h-4 w-4 text-orange-500 transition-colors duration-300 group-hover:text-white sm:h-5 sm:w-5" />
                 </span>
             </div>
-            <p className="mt-4 text-2xl font-extrabold text-slate-900">{value}</p>
-            <p className="mt-0.5 text-sm text-slate-400">{label}</p>
+            <p className="mt-2.5 text-lg font-extrabold text-slate-900 sm:mt-4 sm:text-2xl">{value}</p>
+            <p className="mt-0.5 text-[11px] leading-tight text-slate-400 sm:text-sm">{label}</p>
         </motion.div>
     );
 }
@@ -74,6 +92,88 @@ const Th = ({ children, right }) => (
     <th className={`px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-400 ${right ? 'text-right' : 'text-left'}`}>{children}</th>
 );
 
+const PASOS_PEDIDO = [
+    { title: 'Categoría', hint: 'Elige el grupo del menú' },
+    { title: 'Producto', hint: 'Ajusta cantidad y notas, y agrega' },
+    { title: 'Resumen', hint: 'Revisa el pedido y envíalo a caja' },
+];
+
+/* Consumos del pedido. En móvil va como lista (una tabla de 5 columnas obliga
+   a deslizar); de tablet en adelante, la tabla de siempre. */
+function TablaConsumos({ items, editable, total, onQuitar }) {
+    return (
+        <div className="overflow-hidden rounded-xl ring-1 ring-slate-100">
+            {/* Móvil */}
+            <ul className="m-0 list-none divide-y divide-slate-100 p-0 sm:hidden">
+                {items.map((it, idx) => (
+                    <li key={idx} className="flex list-none items-start gap-3 px-3 py-2.5">
+                        <div className="min-w-0 flex-1">
+                            <p className="m-0 text-sm font-semibold leading-tight text-slate-900">{it.nombre}</p>
+                            {it.nota && <p className="m-0 mt-0.5 text-xs italic text-slate-400">{it.nota}</p>}
+                            <p className="m-0 mt-1 text-xs text-slate-500">{it.cantidad} × {fmtCOP(it.precio)}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span className="text-sm font-extrabold text-slate-900">{fmtCOP(it.cantidad * it.precio)}</span>
+                            {editable && (
+                                <button onClick={() => onQuitar(idx)} className="text-xs font-semibold text-red-500">Quitar</button>
+                            )}
+                        </div>
+                    </li>
+                ))}
+                {items.length === 0 && (
+                    <li className="list-none px-3 py-6 text-center text-sm text-slate-400">Sin productos.</li>
+                )}
+                <li className="flex list-none items-center justify-between bg-slate-50 px-3 py-2.5">
+                    <span className="text-sm font-extrabold text-slate-900">Total</span>
+                    <span className="text-base font-extrabold text-orange-600">{fmtCOP(total)}</span>
+                </li>
+            </ul>
+
+            {/* Tablet y escritorio */}
+            <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full border-collapse">
+                    <thead className="bg-slate-50">
+                        <tr className="border-b border-slate-100">
+                            <Th>Producto</Th>
+                            <Th right>Cant.</Th>
+                            <Th right>Precio</Th>
+                            <Th right>Subtotal</Th>
+                            {editable && <Th right></Th>}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {items.map((it, idx) => (
+                            <tr key={idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+                                <td className="px-3 py-2.5 text-sm">
+                                    <span className="font-medium text-slate-900">{it.nombre}</span>
+                                    {it.nota && <span className="block text-xs italic text-slate-400">{it.nota}</span>}
+                                </td>
+                                <td className="px-3 py-2.5 text-right text-sm text-slate-700">{it.cantidad}</td>
+                                <td className="px-3 py-2.5 text-right text-sm text-slate-700">{fmtCOP(it.precio)}</td>
+                                <td className="px-3 py-2.5 text-right text-sm font-semibold text-slate-900">{fmtCOP(it.cantidad * it.precio)}</td>
+                                {editable && (
+                                    <td className="px-3 py-2.5 text-right">
+                                        <button onClick={() => onQuitar(idx)} className="rounded-lg px-2 py-1 text-xs font-semibold text-red-500 ring-1 ring-red-100 transition-colors hover:bg-red-50">Quitar</button>
+                                    </td>
+                                )}
+                            </tr>
+                        ))}
+                        {items.length === 0 && (
+                            <tr><td colSpan={editable ? 5 : 4} className="px-3 py-6 text-center text-sm text-slate-400">Sin productos.</td></tr>
+                        )}
+                    </tbody>
+                    <tfoot>
+                        <tr className="bg-slate-50">
+                            <td colSpan={3} className="px-3 py-2.5 text-right text-sm font-extrabold text-slate-900">Total</td>
+                            <td className="px-3 py-2.5 text-right text-sm font-extrabold text-orange-600" colSpan={editable ? 2 : 1}>{fmtCOP(total)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 const Mesas = () => {
     const [mesas, setMesas] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -95,6 +195,7 @@ const Mesas = () => {
     const normalizarMesas = (data) => (Array.isArray(data) ? data : []).map(m => ({
         id: m.id, numero: m.numero, capacidad: m.capacidad ?? 2,
         estado: m.estado || 'libre', meseroId: m.mesero_id ?? null, meseroNombre: m.mesero_nombre || '',
+        pedidoEstado: m.pedido_estado || null,
     })).sort((a, b) => a.numero - b.numero);
 
     const refrescar = useCallback(async () => {
@@ -107,7 +208,7 @@ const Mesas = () => {
                 const [me, ms, prods] = await Promise.all([
                     api.getMiMesero().catch(() => null),
                     api.getMesas(),
-                    api.getProductos().then(r => Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : [])),
+                    api.getProductosTodos(),
                 ]);
                 if (me && (me.id || me.mesero_id)) { setMiId(me.id ?? me.mesero_id); setMiNombre(me.nombre || 'Mesero'); }
                 setMesas(normalizarMesas(ms));
@@ -159,8 +260,12 @@ const Mesas = () => {
         }
     };
 
-    const [pedidoTab, setPedidoTab] = useState('productos');
-    const [combos, setCombos] = useState([]);
+    const [paso, setPaso] = useState(0);
+    const [dirPaso, setDirPaso] = useState(1);
+    const [flash, setFlash] = useState('');
+    const [categorias, setCategorias] = useState([]);
+    const [catSel, setCatSel] = useState(null);
+    const [buscaProd, setBuscaProd] = useState('');
     const [pedidoActual, setPedidoActual] = useState(null);
     const mapItems = (rows) => (Array.isArray(rows) ? rows.map(r => ({
         id: r.id, nombre: r.nombre, cantidad: Number(r.cantidad || 0), precio: Number(r.precio || 0), subtotal: Number(r.subtotal || 0), nota: r.nota || '',
@@ -174,19 +279,57 @@ const Mesas = () => {
             let items = [];
             if (pedido?.id) items = mapItems(await api.getPedidoItems(pedido.id));
             setPedidoItems(items);
-            setPedidoModal({ mesa, editable: mesa.estado === 'ocupada' });
-            setPedidoTab('productos');
-            setCombos(getCombosFromStorage());
+            const enCaja = pedido?.estado === 'por_cobrar';
+            setPedidoModal({ mesa, editable: mesa.estado === 'ocupada' && !enCaja, enCaja });
+            setCatSel(null);
+            setBuscaProd('');
+            setProductoSel('');
+            setFlash('');
+            setDirPaso(1);
+            setPaso(items.length ? 2 : 0);
+            api.getCategorias(true).then(r => setCategorias(Array.isArray(r) ? r : [])).catch(() => setCategorias([]));
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'No se pudo abrir el pedido', text: e?.message || 'Error' });
         }
     };
+    const irAPaso = (n) => { setDirPaso(n > paso ? 1 : -1); setPaso(n); setFlash(''); };
+
     const cerrarPedido = () => {
         setPedidoModal({ mesa: null, editable: false });
         setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
         setNotaItem('');
     };
     const [productoSel, setProductoSel] = useState('');
+    const productoElegido = useMemo(
+        () => productos.find(p => String(p.id) === String(productoSel)) || null,
+        [productos, productoSel],
+    );
+
+    /* Agrupa los productos según el catálogo de categorías del admin y en su
+       mismo orden; lo que no encaje en ninguna cae en "Otros". */
+    const categoriasConProductos = useMemo(() => {
+        const porNombre = new Map();
+        for (const c of categorias) {
+            porNombre.set(String(c.nombre || '').trim().toLowerCase(), { nombre: c.nombre, color: c.color, imagen: c.imagen, productos: [] });
+        }
+        const otros = { nombre: 'Otros', color: 'slate', imagen: null, productos: [] };
+        for (const p of productos) {
+            const k = String(p.categoria || '').trim().toLowerCase();
+            const grupo = (k && porNombre.get(k)) || otros;
+            grupo.productos.push(p);
+        }
+        const lista = [...porNombre.values()].filter(g => g.productos.length);
+        if (otros.productos.length) lista.push(otros);
+        return lista;
+    }, [categorias, productos]);
+
+    const productosVisibles = useMemo(() => {
+        const q = buscaProd.trim().toLowerCase();
+        const grupo = catSel ? categoriasConProductos.find(g => g.nombre === catSel) : null;
+        const base = catSel ? (grupo ? grupo.productos : []) : productos;
+        if (!q) return base;
+        return base.filter(p => String(p.nombre || '').toLowerCase().includes(q));
+    }, [productos, categoriasConProductos, catSel, buscaProd]);
     const agregarItem = async () => {
         if (!pedidoModal.editable) return;
         if (!pedidoActual?.id) return Swal.fire({ icon: 'error', title: 'No hay pedido abierto' });
@@ -200,9 +343,12 @@ const Mesas = () => {
             if (notaItem.trim()) body.nota = notaItem.trim();
             const resp = await api.addPedidoItem(pid, body);
             setPedidoItems(mapItems(await api.getPedidoItems(pid)));
+            const agregado = productos.find(p => String(p.id) === String(producto_id));
             setNuevoItem({ nombre: '', cantidad: 1, precio: 0 });
             setProductoSel('');
+            setBuscaProd('');
             setNotaItem('');
+            setFlash(`${cantidad} x ${agregado?.nombre || 'Producto'} agregado al pedido`);
             if (resp?.warnings?.lowStock) {
                 const w = resp.warnings;
                 Swal.fire({ icon: 'info', title: 'Stock bajo', text: `${w.nombre || 'Producto'}: quedan ${w.restante} (mínimo ${w.min_stock})`, timer: 2000, showConfirmButton: false });
@@ -216,7 +362,7 @@ const Mesas = () => {
                 Swal.fire({ icon: 'error', title: 'No se pudo agregar', text: e?.message || 'Error' });
             }
             try {
-                const prods = await api.getProductos().then(r => Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : []));
+                const prods = await api.getProductosTodos();
                 setProductos(prods);
             } catch {}
         }
@@ -233,17 +379,6 @@ const Mesas = () => {
             Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || 'Error' });
         }
     };
-    const agregarCombo = async (combo) => {
-        if (!pedidoActual?.id) return Swal.fire({ icon: 'error', title: 'No hay pedido abierto' });
-        const prodIds = combo.productos_ids || [];
-        if (!prodIds.length) return;
-        for (const pid of prodIds) {
-            try { await api.addPedidoItem(pedidoActual.id, { producto_id: Number(pid), cantidad: 1 }); } catch {}
-        }
-        setPedidoItems(mapItems(await api.getPedidoItems(pedidoActual.id).catch(() => [])));
-        Swal.fire({ icon: 'success', title: `Combo "${combo.nombre}" agregado`, timer: 800, showConfirmButton: false });
-    };
-
     // El mesero envía la cuenta a caja (el cajero cobra)
     const enviarACaja = async () => {
         if (!pedidoActual?.id) return Swal.fire({ icon: 'error', title: 'No hay pedido abierto' });
@@ -287,12 +422,12 @@ const Mesas = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: 'easeOut' }}
-                className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+                className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
             >
                 <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-orange-500">Operación en sala</span>
-                    <h1 className="m-0 mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Mesas</h1>
-                    <p className="m-0 mt-1 text-sm text-slate-500">Visualiza y gestiona tus mesas asignadas</p>
+                    <h1 className="m-0 mt-1 text-xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Mesas</h1>
+                    <p className="m-0 mt-1 text-[13px] text-slate-500 sm:text-sm">Visualiza y gestiona tus mesas asignadas</p>
                 </div>
                 <button className={btnGhost} onClick={refrescar} title="Refrescar desde servidor"><HiOutlineArrowPath className="h-4 w-4" /> Refrescar</button>
             </motion.div>
@@ -302,9 +437,9 @@ const Mesas = () => {
                 variants={gridStagger}
                 initial="hidden"
                 animate="visible"
-                className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3"
+                className="mt-5 grid grid-cols-3 gap-2.5 sm:mt-6 sm:gap-4"
             >
-                <MetricCard icon={HiOutlineTableCells} value={<>{libres}<span className="text-base font-bold text-slate-400"> / {total}</span></>} label="Mesas libres" />
+                <MetricCard icon={HiOutlineTableCells} value={<>{libres}<span className="text-xs font-bold text-slate-400 sm:text-base"> / {total}</span></>} label="Mesas libres" />
                 <MetricCard icon={HiOutlineCheckCircle} value={ocupadas} label="Ocupadas" />
                 <MetricCard icon={HiOutlineSparkles} value={limpieza} label="En limpieza" />
             </motion.div>
@@ -349,7 +484,7 @@ const Mesas = () => {
                     variants={gridStagger}
                     initial="hidden"
                     animate="visible"
-                    className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    className="mt-4 grid grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
                 >
                     {mesasFiltradas.map(m => {
                         const ui = estadoUI(m.estado);
@@ -371,8 +506,15 @@ const Mesas = () => {
                                         <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.icon}`}><HiOutlineTableCells className="h-5 w-5" /></span>
                                         <div>
                                             <p className="m-0 text-base font-extrabold tracking-tight text-slate-900">Mesa {m.numero}</p>
-                                            <span className={`mt-0.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${ui.pill}`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} /> {ui.label}
+                                            <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${ui.pill}`}>
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} /> {ui.label}
+                                                </span>
+                                                {m.pedidoEstado === 'por_cobrar' && (
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700 ring-1 ring-sky-200">
+                                                        Cuenta en caja
+                                                    </span>
+                                                )}
                                             </span>
                                         </div>
                                     </div>
@@ -383,13 +525,15 @@ const Mesas = () => {
                                     {m.meseroNombre && <div className="flex items-center gap-2 text-sm text-slate-500"><HiOutlineUser className="h-4 w-4 text-slate-400" /> <span className="truncate">{m.meseroNombre}</span></div>}
                                 </div>
 
-                                <div className="mt-3 flex items-stretch gap-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                                {(puedeAsignar || puedeLiberar || puedeLimpieza || puedeTerminarLimpieza || (esMiMesa && m.estado === 'ocupada')) && (
+                                <div className="mt-3 flex flex-wrap items-stretch gap-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
                                     {puedeAsignar && <button className={actPrimary} onClick={() => handleAsignar(m)}>Asignar</button>}
                                     {esMiMesa && m.estado === 'ocupada' && <button className={actPrimary} onClick={() => abrirPedido(m)}>Pedido</button>}
                                     {puedeLiberar && <button className={actSecondary} onClick={() => handleLiberar(m)}>Liberar</button>}
                                     {puedeLimpieza && <button className={actSecondary} onClick={() => handleLimpieza(m)}>Limpieza</button>}
                                     {puedeTerminarLimpieza && <button className={actPrimary} onClick={() => handleLimpiezaDone(m)}>Finalizar</button>}
                                 </div>
+                                )}
                             </motion.div>
                         );
                     })}
@@ -426,109 +570,160 @@ const Mesas = () => {
                     footer={
                         <>
                             <button className={btnGhost} onClick={cerrarPedido}>Cerrar</button>
-                            {pedidoModal.editable && <button className={btnPrimary} onClick={enviarACaja}><HiOutlinePaperAirplane className="h-4 w-4" /> Enviar a caja</button>}
+                            {pedidoModal.editable && paso < 2 && (
+                                <button className={btnPrimary} onClick={() => irAPaso(2)} disabled={!pedidoItems.length}>
+                                    Finalizar pedido{pedidoItems.length ? ` (${pedidoItems.length})` : ''}
+                                </button>
+                            )}
+                            {pedidoModal.editable && paso === 2 && (
+                                <>
+                                    <button className={btnGhost} onClick={() => irAPaso(0)}><HiChevronLeft className="h-4 w-4" /> Modificar</button>
+                                    <button className={btnPrimary} onClick={enviarACaja}><HiOutlinePaperAirplane className="h-4 w-4" /> Enviar a caja</button>
+                                </>
+                            )}
                         </>
                     }
                 >
                     {!pedidoModal.editable && (
-                        <div className="mb-3 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700 ring-1 ring-amber-100">Solo lectura: esta mesa no está asignada a ti.</div>
-                    )}
-
-                    {/* Tabs */}
-                    <div className="mb-3 inline-flex rounded-xl bg-slate-100 p-1">
-                        <button onClick={() => setPedidoTab('productos')} className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors ${pedidoTab === 'productos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Productos</button>
-                        <button onClick={() => { setPedidoTab('combos'); setCombos(getCombosFromStorage()); }} className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors ${pedidoTab === 'combos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Combos ({combos.length})</button>
-                    </div>
-
-                    {/* Combos tab */}
-                    {pedidoTab === 'combos' && (
-                        combos.length === 0 ? (
-                            <div className="rounded-xl bg-slate-50 px-3.5 py-6 text-center text-sm text-slate-400 ring-1 ring-slate-100">No hay combos creados. Ve a Admin → Combos.</div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                                {combos.map(combo => (
-                                    <div key={combo.id} className="flex flex-col gap-1.5 rounded-xl bg-orange-50/60 p-3 ring-1 ring-orange-100">
-                                        <p className="m-0 text-sm font-extrabold text-slate-900">{combo.nombre}</p>
-                                        {combo.descripcion && <p className="m-0 text-xs text-slate-500">{combo.descripcion}</p>}
-                                        <p className="m-0 text-base font-extrabold text-orange-600">{fmtCOP(combo.precio_combo)}</p>
-                                        {pedidoModal.editable && <button className={`${btnPrimary} mt-1 py-1.5 text-xs`} onClick={() => agregarCombo(combo)}>Agregar combo</button>}
-                                    </div>
-                                ))}
-                            </div>
-                        )
-                    )}
-
-                    {/* Productos tab */}
-                    {pedidoTab === 'productos' && (
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-                                <div>
-                                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">Producto</label>
-                                    <Select className="w-full" placeholder="Selecciona un producto" value={productoSel} onChange={e => setProductoSel(e.target.value)} disabled={!pedidoModal.editable}>
-                                        <option value="">Selecciona un producto</option>
-                                        {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} · {fmtCOP(p.precio)}</option>)}
-                                    </Select>
-                                </div>
-                                <div>
-                                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">Cantidad</label>
-                                    <div className="inline-flex items-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
-                                        <button type="button" disabled={!pedidoModal.editable} onClick={() => setNuevoItem(prev => ({ ...prev, cantidad: Math.max(1, Number(prev.cantidad || 1) - 1) }))} className="flex h-10 w-10 items-center justify-center rounded-l-xl text-slate-500 hover:bg-slate-100 disabled:opacity-40"><HiMinus className="h-4 w-4" /></button>
-                                        <input type="number" min="1" value={nuevoItem.cantidad} disabled={!pedidoModal.editable} onChange={e => setNuevoItem(prev => ({ ...prev, cantidad: Math.max(1, Number(e.target.value || 1)) }))} className="w-12 border-0 bg-transparent text-center text-sm font-bold text-slate-900 outline-none" />
-                                        <button type="button" disabled={!pedidoModal.editable} onClick={() => setNuevoItem(prev => ({ ...prev, cantidad: Number(prev.cantidad || 1) + 1 }))} className="flex h-10 w-10 items-center justify-center rounded-r-xl text-slate-500 hover:bg-slate-100 disabled:opacity-40"><HiPlus className="h-4 w-4" /></button>
-                                    </div>
-                                </div>
-                                <button className={btnPrimary} onClick={agregarItem} disabled={!pedidoModal.editable}><HiPlus className="h-4 w-4" /> Agregar</button>
-                            </div>
-                            {pedidoModal.editable && (
-                                <div>
-                                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">Nota / modificador (opcional)</label>
-                                    <input type="text" value={notaItem} onChange={e => setNotaItem(e.target.value)} placeholder="Ej: sin cebolla, término medio…" className={inputCls} />
-                                </div>
-                            )}
+                        <div className="mb-3 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700 ring-1 ring-amber-100">
+                            {pedidoModal.enCaja
+                                ? 'La cuenta ya está en caja: el cajero la va a cobrar. Aquí solo puedes revisarla.'
+                                : 'Solo lectura: esta mesa no está asignada a ti.'}
                         </div>
                     )}
 
-                    {/* Tabla de consumos */}
-                    <div className="mt-4 overflow-x-auto rounded-xl ring-1 ring-slate-100">
-                        <table className="w-full border-collapse">
-                            <thead className="bg-slate-50">
-                                <tr className="border-b border-slate-100">
-                                    <Th>Producto</Th>
-                                    <Th right>Cant.</Th>
-                                    <Th right>Precio</Th>
-                                    <Th right>Subtotal</Th>
-                                    {pedidoModal.editable && <Th right></Th>}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pedidoItems.map((it, idx) => (
-                                    <tr key={idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
-                                        <td className="px-3 py-2.5 text-sm">
-                                            <span className="font-medium text-slate-900">{it.nombre}</span>
-                                            {it.nota && <span className="block text-xs italic text-slate-400">{it.nota}</span>}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right text-sm text-slate-700">{it.cantidad}</td>
-                                        <td className="px-3 py-2.5 text-right text-sm text-slate-700">{fmtCOP(it.precio)}</td>
-                                        <td className="px-3 py-2.5 text-right text-sm font-semibold text-slate-900">{fmtCOP(it.cantidad * it.precio)}</td>
-                                        {pedidoModal.editable && (
-                                            <td className="px-3 py-2.5 text-right">
-                                                <button onClick={() => quitarItem(idx)} className="rounded-lg px-2 py-1 text-xs font-semibold text-red-500 ring-1 ring-red-100 transition-colors hover:bg-red-50">Quitar</button>
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))}
-                                {pedidoItems.length === 0 && (
-                                    <tr><td colSpan={pedidoModal.editable ? 5 : 4} className="px-3 py-6 text-center text-sm text-slate-400">Sin productos.</td></tr>
-                                )}
-                            </tbody>
-                            <tfoot>
-                                <tr className="bg-slate-50">
-                                    <td colSpan={3} className="px-3 py-2.5 text-right text-sm font-extrabold text-slate-900">Total</td>
-                                    <td className="px-3 py-2.5 text-right text-sm font-extrabold text-orange-600" colSpan={pedidoModal.editable ? 2 : 1}>{fmtCOP(pagoSubtotal)}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                    {pedidoModal.editable ? (
+                        <StepWizard steps={PASOS_PEDIDO} step={paso} dir={dirPaso} onGoTo={irAPaso}>
+
+                            {/* ── Paso 1: categoría ─────────────────────────── */}
+                            {paso === 0 && (
+                                <>
+                                    <div className="relative">
+                                        <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            value={buscaProd}
+                                            onChange={e => { setBuscaProd(e.target.value); if (e.target.value.trim()) { setCatSel(null); irAPaso(1); } }}
+                                            placeholder="O busca el producto directamente…"
+                                            className="w-full rounded-xl border-0 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-orange-400"
+                                        />
+                                    </div>
+
+                                    {categoriasConProductos.length === 0 ? (
+                                        <p className="m-0 py-6 text-center text-sm text-slate-400">No hay productos cargados.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                                            {categoriasConProductos.map(c => (
+                                                <button key={c.nombre} onClick={() => { setCatSel(c.nombre); irAPaso(1); }} className="w-full text-left">
+                                                    <span className="flex h-full flex-col overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:ring-orange-300">
+                                                        {c.imagen ? (
+                                                            /* c_fit y object-contain: la ilustración entra completa, sin que el
+                                                               recorte le coma la hamburguesa por los lados. */
+                                                            <img
+                                                                src={imagenTransformada(c.imagen, { w: 320, h: 240, modo: 'fit', recortarBorde: true })}
+                                                                alt=""
+                                                                loading="lazy"
+                                                                style={{ backgroundColor: '#ffffff' }}
+                                                                className="h-20 w-full object-contain p-1.5 sm:h-24"
+                                                            />
+                                                        ) : (
+                                                            <span style={{ backgroundColor: '#f1f5f9' }} className="block h-20 w-full sm:h-24" />
+                                                        )}
+                                                        <span
+                                                            style={{ backgroundColor: hexDeColor(c.color), color: textoSobre(hexDeColor(c.color)) }}
+                                                            className="flex flex-col items-start gap-0 px-2.5 py-2"
+                                                        >
+                                                            <span className="text-sm font-extrabold uppercase leading-tight tracking-wide">{c.nombre}</span>
+                                                            <span className="text-[11px] opacity-80">{c.productos.length} producto{c.productos.length === 1 ? '' : 's'}</span>
+                                                        </span>
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {/* ── Paso 2: producto, cantidad y nota ─────────── */}
+                            {paso === 1 && (
+                                <>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => { setCatSel(null); setBuscaProd(''); setProductoSel(''); irAPaso(0); }} className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+                                            <HiChevronLeft className="h-4 w-4" /> Categorías
+                                        </button>
+                                        <div className="relative min-w-0 flex-1">
+                                            <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                            <input
+                                                value={buscaProd}
+                                                onChange={e => setBuscaProd(e.target.value)}
+                                                placeholder={catSel ? 'Buscar en esta categoría…' : 'Buscar producto…'}
+                                                className="w-full rounded-lg border-0 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-900 ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-orange-400"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {flash && (
+                                        <p className="m-0 flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                                            <HiOutlineCheckCircle className="h-4 w-4" /> {flash}
+                                        </p>
+                                    )}
+
+                                    {productoElegido ? (
+                                        <div className="space-y-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="m-0 truncate text-sm font-extrabold text-slate-900">{productoElegido.nombre}</p>
+                                                    <p className="m-0 text-xs font-bold text-orange-600">{fmtCOP(productoElegido.precio)}</p>
+                                                </div>
+                                                <button onClick={() => setProductoSel('')} className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-500 ring-1 ring-slate-200 transition-colors hover:bg-white hover:text-slate-800">
+                                                    Cambiar
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-end gap-3">
+                                                <div>
+                                                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">Cantidad</label>
+                                                    <div className="inline-flex items-center rounded-xl bg-white ring-1 ring-slate-200">
+                                                        <button type="button" onClick={() => setNuevoItem(prev => ({ ...prev, cantidad: Math.max(1, Number(prev.cantidad || 1) - 1) }))} className="flex h-10 w-10 items-center justify-center rounded-l-xl text-slate-500 hover:bg-slate-100"><HiMinus className="h-4 w-4" /></button>
+                                                        <input type="number" min="1" value={nuevoItem.cantidad} onChange={e => setNuevoItem(prev => ({ ...prev, cantidad: Math.max(1, Number(e.target.value || 1)) }))} className="w-12 border-0 bg-transparent text-center text-sm font-bold text-slate-900 outline-none" />
+                                                        <button type="button" onClick={() => setNuevoItem(prev => ({ ...prev, cantidad: Number(prev.cantidad || 1) + 1 }))} className="flex h-10 w-10 items-center justify-center rounded-r-xl text-slate-500 hover:bg-slate-100"><HiPlus className="h-4 w-4" /></button>
+                                                    </div>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">Nota / modificador</label>
+                                                    <input type="text" value={notaItem} onChange={e => setNotaItem(e.target.value)} placeholder="Ej: sin cebolla…" className="w-full rounded-xl border-0 bg-white px-3.5 py-2.5 text-sm text-slate-900 ring-1 ring-slate-200 outline-none transition focus:ring-2 focus:ring-orange-400" />
+                                                </div>
+                                            </div>
+
+                                            <button className={`${btnPrimary} w-full`} onClick={agregarItem}><HiPlus className="h-4 w-4" /> Agregar al pedido</button>
+                                        </div>
+                                    ) : (
+                                        productosVisibles.length === 0 ? (
+                                            <p className="m-0 py-6 text-center text-sm text-slate-400">Sin productos que coincidan.</p>
+                                        ) : (
+                                            <div className="max-h-72 space-y-1.5 overflow-y-auto pr-0.5">
+                                                {productosVisibles.map(p => (
+                                                    <button key={p.id} onClick={() => { setProductoSel(String(p.id)); setBuscaProd(''); setFlash(''); }} className="w-full text-left">
+                                                        <span className="flex w-full items-center gap-3 rounded-xl bg-white p-2.5 ring-1 ring-slate-200 transition-colors hover:ring-orange-300">
+                                                            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{p.nombre}</span>
+                                                            {!catSel && p.categoria && <span className="hidden shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 sm:block">{p.categoria}</span>}
+                                                            <span className="shrink-0 text-sm font-extrabold text-orange-600">{fmtCOP(p.precio)}</span>
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )
+                                    )}
+                                </>
+                            )}
+
+                            {/* ── Paso 3: resumen ───────────────────────────── */}
+                            {paso === 2 && (
+                                <TablaConsumos items={pedidoItems} editable total={pagoSubtotal} onQuitar={quitarItem} />
+                            )}
+                        </StepWizard>
+                    ) : (
+                        <TablaConsumos items={pedidoItems} editable={false} total={pagoSubtotal} />
+                    )}
                 </Modal>
             )}
 

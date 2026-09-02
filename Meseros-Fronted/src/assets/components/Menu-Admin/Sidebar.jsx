@@ -54,7 +54,7 @@ function getUser() {
 }
 
 const OPERACIONES_ITEMS = [
-  { to: '/admin/combos',      label: 'Combos',       icon: HiOutlineSquaresPlus },
+  { to: '/admin/categorias',  label: 'Categorías',   icon: HiOutlineSquaresPlus },
   { to: '/admin/horarios',    label: 'Horarios',     icon: HiOutlineCalendarDays },
   { to: '/admin/clientes',    label: 'Clientes',     icon: HiOutlineUsers },
   { to: '/admin/proveedores', label: 'Proveedores',  icon: HiOutlineTruck },
@@ -482,7 +482,7 @@ const Sidebar = ({ collapsed, onToggleCollapse }) => {
               <motion.div variants={navItem}>
                 <SidebarGroup
                   label="Operaciones" icon={HiOutlineCog6Tooth} collapsed={collapsed} onExpand={expandSidebar}
-                  paths={['/admin/combos','/admin/horarios','/admin/clientes','/admin/proveedores']}
+                  paths={['/admin/categorias','/admin/horarios','/admin/clientes','/admin/proveedores']}
                   items={OPERACIONES_ITEMS}
                 />
               </motion.div>
@@ -607,7 +607,7 @@ const Sidebar = ({ collapsed, onToggleCollapse }) => {
 
                   <MobileGroup
                     label="Operaciones" icon={HiOutlineCog6Tooth}
-                    paths={['/admin/combos','/admin/horarios','/admin/clientes','/admin/proveedores']}
+                    paths={['/admin/categorias','/admin/horarios','/admin/clientes','/admin/proveedores']}
                     items={OPERACIONES_ITEMS} onNavigate={() => setMobileOpen(false)}
                   />
                   <MobileGroup

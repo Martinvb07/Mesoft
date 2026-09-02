@@ -10,6 +10,8 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      // ws: true, si no el socket no pasa por el proxy y en local no hay tiempo real
+      '/socket.io': { target: 'http://localhost:3001', ws: true, changeOrigin: true },
     },
   },
 })

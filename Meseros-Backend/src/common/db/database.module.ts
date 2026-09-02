@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { IdService } from './id.service';
+import { Categoria, CategoriaSchema } from './schemas/categoria.schema';
 import { Counter, CounterSchema } from './schemas/counter.schema';
 import { DetallePedido, DetallePedidoSchema } from './schemas/detallepedido.schema';
 import { Mesa, MesaSchema } from './schemas/mesa.schema';
@@ -31,6 +32,7 @@ import { Usuario, UsuarioSchema } from './schemas/usuario.schema';
       { name: NominaMovimiento.name, schema: NominaMovimientoSchema },
       { name: Review.name, schema: ReviewSchema },
       { name: Proveedor.name, schema: ProveedorSchema },
+      { name: Categoria.name, schema: CategoriaSchema },
     ]),
   ],
   providers: [IdService],

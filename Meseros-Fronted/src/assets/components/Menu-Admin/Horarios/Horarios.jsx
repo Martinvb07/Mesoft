@@ -14,6 +14,57 @@ const LS_KEY = 'mesoft_horarios_v1';
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const PRESETS = ['08:00-16:00', '14:00-22:00', '18:00-02:00'];
 
+/* Los turnos se guardan en 24h (HH:MM-HH:MM) y se muestran en 12h con am/pm.
+   Al escribir se acepta cualquiera de los dos formatos. */
+const to12h = (hhmm) => {
+    const [h, m] = String(hhmm).split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    const suf = h >= 12 ? 'pm' : 'am';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${suf}`;
+};
+
+/* "8", "8:30", "8am", "8:30 p.m.", "20:30" → "HH:MM" (null si no se entiende) */
+const parseHora = (raw) => {
+    const s = String(raw).trim().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ');
+    const m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?$/);
+    if (!m) return null;
+    let h = Number(m[1]);
+    const min = Number(m[2] || 0);
+    const suf = m[3] ? m[3][0] : null;
+    if (min > 59) return null;
+    if (suf) {
+        if (h < 1 || h > 12) return null;
+        if (suf === 'p' && h !== 12) h += 12;
+        if (suf === 'a' && h === 12) h = 0;
+    } else if (h > 23) return null;
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+};
+
+/* "8am - 4pm", "8 a 4 pm", "08:00-16:00" → "08:00-16:00" (null si no se entiende) */
+const normalizarTurno = (raw) => {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    if (/^libre$/i.test(s)) return 'Libre';
+    let partes = s.split(/\s*[-–—]\s*/).filter(Boolean);
+    if (partes.length !== 2) partes = s.split(/\s+a\s+/i).filter(Boolean);
+    if (partes.length !== 2) return null;
+    const ini = parseHora(partes[0]);
+    const fin = parseHora(partes[1]);
+    if (!ini || !fin) return null;
+    return `${ini}-${fin}`;
+};
+
+/* Cómo se ve el turno guardado: "8:00 am – 4:00 pm" */
+const mostrarTurno = (t) => {
+    if (!t || t === 'Libre') return 'Libre';
+    const p = String(t).split('-');
+    if (p.length !== 2) return t;
+    const a = to12h(p[0]);
+    const b = to12h(p[1]);
+    return a && b ? `${a} – ${b}` : t;
+};
+
 const cardBase = 'rounded-2xl bg-white p-5 ring-1 ring-slate-100 shadow-lg shadow-slate-200/60';
 const btnGhost = 'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900';
 
@@ -66,6 +117,7 @@ const Horarios = () => {
     const [horarios, setHorarios] = useState({});
     const [editCell, setEditCell] = useState(null); // { meseroId, dia }
     const [editValue, setEditValue] = useState('');
+    const [editError, setEditError] = useState(false);
 
     useEffect(() => {
         api.getMeseros().catch(() => []).then(res => setMeseros(Array.isArray(res) ? res : []));
@@ -85,14 +137,19 @@ const Horarios = () => {
     };
 
     const openEdit = (meseroId, dia) => {
+        const t = getTurno(meseroId, dia);
         setEditCell({ meseroId, dia });
-        setEditValue(getTurno(meseroId, dia) || '');
+        setEditValue(t && t !== 'Libre' ? mostrarTurno(t) : '');
+        setEditError(false);
     };
 
     const applyEdit = () => {
         if (!editCell) return;
-        setTurno(editCell.meseroId, editCell.dia, editValue);
+        const turno = normalizarTurno(editValue);
+        if (turno === null) { setEditError(true); return; }
+        setTurno(editCell.meseroId, editCell.dia, turno);
         setEditCell(null);
+        setEditError(false);
     };
 
     const printHorario = () => {
@@ -109,7 +166,7 @@ const Horarios = () => {
                 if (!turno || turno === 'Libre') {
                     html += `<td class="libre">Libre</td>`;
                 } else {
-                    html += `<td class="working">${turno}</td>`;
+                    html += `<td class="working">${mostrarTurno(turno)}</td>`;
                 }
             }
             html += '</tr>';
@@ -213,14 +270,14 @@ const Horarios = () => {
                                                                 autoFocus
                                                                 type="text"
                                                                 value={editValue}
-                                                                onChange={e => setEditValue(e.target.value)}
-                                                                placeholder="8:00-16:00"
-                                                                className="w-full rounded-md border-0 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-900 ring-1 ring-slate-200 outline-none focus:ring-2 focus:ring-orange-400"
+                                                                onChange={e => { setEditValue(e.target.value); if (editError) setEditError(false); }}
+                                                                placeholder="8:00 am - 4:00 pm"
+                                                                className={`w-full rounded-md border-0 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-900 ring-1 outline-none focus:ring-2 ${editError ? 'ring-red-300 focus:ring-red-400' : 'ring-slate-200 focus:ring-orange-400'}`}
                                                                 onKeyDown={e => { if (e.key === 'Enter') applyEdit(); if (e.key === 'Escape') setEditCell(null); }}
                                                             />
                                                             <div className="flex flex-wrap gap-1">
                                                                 {PRESETS.map(p => (
-                                                                    <button key={p} type="button" onClick={() => setEditValue(p)} className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200 transition-colors hover:bg-orange-50 hover:text-orange-600">{p.slice(0, 5)}</button>
+                                                                    <button key={p} type="button" onClick={() => { setEditValue(mostrarTurno(p)); setEditError(false); }} className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200 transition-colors hover:bg-orange-50 hover:text-orange-600">{to12h(p.slice(0, 5))}</button>
                                                                 ))}
                                                             </div>
                                                             <div className="flex gap-1">
@@ -237,7 +294,7 @@ const Horarios = () => {
                                                             title="Clic para editar turno"
                                                             className={`flex min-h-[40px] w-full items-center justify-center rounded-lg px-2 py-2 text-xs font-bold ring-1 transition-colors ${isLibre ? 'bg-slate-50 text-slate-400 ring-slate-100 hover:bg-slate-100 hover:text-slate-500' : 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'}`}
                                                         >
-                                                            {isLibre ? 'Libre' : turno}
+                                                            {isLibre ? 'Libre' : mostrarTurno(turno)}
                                                         </button>
                                                     )}
                                                 </td>
@@ -250,7 +307,7 @@ const Horarios = () => {
                     </div>
                 )}
                 <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
-                    Clic en cualquier celda para asignar o modificar el turno. Escribe el horario (ej: <strong className="text-slate-500">8:00-16:00</strong>) o márcalo como <strong className="text-slate-500">Libre</strong>.
+                    Clic en cualquier celda para asignar o modificar el turno. Escribe el horario en am/pm (ej: <strong className="text-slate-500">8:00 am - 4:00 pm</strong>) o márcalo como <strong className="text-slate-500">Libre</strong>.
                 </div>
             </motion.div>
         </div>

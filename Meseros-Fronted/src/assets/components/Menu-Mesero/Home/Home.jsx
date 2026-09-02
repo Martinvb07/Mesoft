@@ -19,7 +19,7 @@ const todayKey = () => { const { year, month, day } = toBogotaDateParts(); retur
 
 /* ─── helpers de presentación (alineados con Inicio / Mesas admin) ─── */
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString('es-CO')}`;
-const cardBase = 'rounded-2xl bg-white p-5 ring-1 ring-slate-100 shadow-lg shadow-slate-200/60';
+const cardBase = 'rounded-2xl bg-white p-4 ring-1 ring-slate-100 shadow-lg shadow-slate-200/60 sm:p-5';
 const btnPrimary = 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-orange-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-500/30 transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-60';
 const btnGhost = 'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-60';
 
@@ -36,12 +36,12 @@ function MetricCard({ icon: Icon, value, label }) {
     return (
         <motion.div variants={itemUp} className={`group ${cardBase} transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-orange-200`}>
             <div className="flex items-start justify-between">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50 transition-colors duration-300 group-hover:bg-orange-500">
-                    <Icon className="h-5 w-5 text-orange-500 transition-colors duration-300 group-hover:text-white" />
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 transition-colors duration-300 group-hover:bg-orange-500 sm:h-11 sm:w-11 sm:rounded-xl">
+                    <Icon className="h-4 w-4 text-orange-500 transition-colors duration-300 group-hover:text-white sm:h-5 sm:w-5" />
                 </span>
             </div>
-            <p className="mt-4 text-2xl font-extrabold text-slate-900">{value}</p>
-            <p className="mt-0.5 text-sm text-slate-400">{label}</p>
+            <p className="mt-2.5 text-sm font-extrabold leading-tight tabular-nums text-slate-900 sm:mt-4 sm:text-2xl">{value}</p>
+            <p className="mt-1 text-[11px] leading-tight text-slate-400 sm:mt-0.5 sm:text-sm">{label}</p>
         </motion.div>
     );
 }
@@ -135,8 +135,10 @@ const Home = () => {
             try {
                 const p = await api.propinas(meseroInfo.id, hoy, hoy).catch(() => ({ propinas: 0 }));
                 setPropinasHoy(Number(p?.propinas || 0));
-                const enCursoMi = await api.pedidosEnCursoMi().catch(() => ({ count: 0 }));
-                setMesasHoy(Number(enCursoMi?.count || 0));
+                /* Mesas distintas que atendió hoy, no las que tiene abiertas
+                   ahora: al enviar una cuenta a caja el contador se caía a 0. */
+                const resumen = await api.miResumenHoy().catch(() => ({ mesas: 0 }));
+                setMesasHoy(Number(resumen?.mesas || 0));
             } catch { setPropinasHoy(0); setMesasHoy(0); }
         };
         loadPropinasYMesasHoy();
@@ -291,12 +293,12 @@ const Home = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: 'easeOut' }}
-                className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+                className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
             >
                 <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-orange-500">Panel del mesero</span>
-                    <h1 className="m-0 mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Hola, {nombre}</h1>
-                    <p className="m-0 mt-1 text-sm text-slate-500">Gestiona tus mesas y pedidos rápidamente desde aquí</p>
+                    <h1 className="m-0 mt-1 text-xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Hola, {nombre}</h1>
+                    <p className="m-0 mt-1 text-[13px] text-slate-500 sm:text-sm">Gestiona tus mesas y pedidos rápidamente desde aquí</p>
                 </div>
                 <Link className={`${btnPrimary} no-underline`} to="/mesero/mesas">Ir a Mesas <HiOutlineArrowRight className="h-4 w-4" /></Link>
             </motion.div>
@@ -306,7 +308,7 @@ const Home = () => {
                 variants={gridStagger}
                 initial="hidden"
                 animate="visible"
-                className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3"
+                className="mt-5 grid grid-cols-3 gap-2.5 sm:mt-6 sm:gap-4"
             >
                 <MetricCard icon={HiOutlineTableCells} value={mesasHoy} label="Mesas atendidas hoy" />
                 <MetricCard icon={HiOutlineBanknotes} value={fmtCOP(ventasHoy)} label="Ventas de hoy" />
@@ -318,14 +320,14 @@ const Home = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, ease: 'easeOut', delay: 0.1 }}
-                className={`mt-5 ${cardBase} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}
+                className={`mt-4 sm:mt-5 ${cardBase} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}
             >
                 <div className="flex items-center gap-3">
-                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${enTurno ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                        <HiOutlineClock className="h-5 w-5" />
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-xl sm:h-11 sm:w-11 ${enTurno ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                        <HiOutlineClock className="h-4 w-4 sm:h-5 sm:w-5" />
                     </span>
                     <div>
-                        <p className={`m-0 text-base font-extrabold ${enTurno ? 'text-emerald-600' : 'text-slate-700'}`}>{enTurno ? 'En turno' : 'Fuera de turno'}</p>
+                        <p className={`m-0 text-sm font-extrabold sm:text-base ${enTurno ? 'text-emerald-600' : 'text-slate-700'}`}>{enTurno ? 'En turno' : 'Fuera de turno'}</p>
                         {enTurno && turnoInicio && (
                             <p className="m-0 text-sm text-slate-400">Trabajando {formatTurnoDuration(turnoInicio)} · inicio {new Date(turnoInicio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</p>
                         )}
@@ -346,18 +348,18 @@ const Home = () => {
                 variants={gridStagger}
                 initial="hidden"
                 animate="visible"
-                className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3"
+                className="mt-4 grid grid-cols-1 gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-3"
             >
                 <motion.div variants={itemUp} className={`${cardBase} lg:col-span-2`}>
-                    <h3 className="m-0 mb-4 text-base font-extrabold tracking-tight text-slate-900">Atajos rápidos</h3>
+                    <h3 className="m-0 mb-3 text-sm font-extrabold tracking-tight text-slate-900 sm:mb-4 sm:text-base">Atajos rápidos</h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {[
                             { to: '/mesero/mesas', label: 'Gestionar Mesas', icon: HiOutlineTableCells },
                             { to: '/mesero/meseros', label: 'Compañeros', icon: HiOutlineUserGroup },
                         ].map(s => (
-                            <Link key={s.to} to={s.to} className="group flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3.5 no-underline ring-1 ring-slate-100 transition-all hover:-translate-y-0.5 hover:bg-white hover:ring-orange-200">
-                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-500 transition-colors group-hover:bg-orange-500 group-hover:text-white">
-                                    <s.icon className="h-5 w-5" />
+                            <Link key={s.to} to={s.to} className="group flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 no-underline ring-1 ring-slate-100 transition-all hover:-translate-y-0.5 hover:bg-white hover:ring-orange-200 sm:px-4 sm:py-3.5">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-500 transition-colors group-hover:bg-orange-500 group-hover:text-white sm:h-10 sm:w-10">
+                                    <s.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </span>
                                 <span className="text-sm font-bold text-slate-700">{s.label}</span>
                                 <HiOutlineArrowRight className="ml-auto h-4 w-4 text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-orange-500" />
@@ -367,7 +369,7 @@ const Home = () => {
                 </motion.div>
 
                 <motion.div variants={itemUp} className={`${cardBase} lg:col-span-1`}>
-                    <h3 className="m-0 mb-4 text-base font-extrabold tracking-tight text-slate-900">Mi perfil</h3>
+                    <h3 className="m-0 mb-3 text-sm font-extrabold tracking-tight text-slate-900 sm:mb-4 sm:text-base">Mi perfil</h3>
                     <div className="flex items-center gap-3">
                         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 text-lg font-extrabold text-white shadow-sm shadow-orange-500/30">
                             {iniciales || (nombre?.[0] || 'M')}
@@ -391,11 +393,11 @@ const Home = () => {
                 variants={gridStagger}
                 initial="hidden"
                 animate="visible"
-                className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2"
+                className="mt-4 grid grid-cols-1 gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-2"
             >
                 {/* Mis mesas */}
                 <motion.div variants={itemUp} className={cardBase}>
-                    <h3 className="m-0 mb-4 text-base font-extrabold tracking-tight text-slate-900">Mis mesas</h3>
+                    <h3 className="m-0 mb-3 text-sm font-extrabold tracking-tight text-slate-900 sm:mb-4 sm:text-base">Mis mesas</h3>
                     {misMesas.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
                             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400"><HiOutlineTableCells className="h-5 w-5" /></span>
@@ -424,7 +426,7 @@ const Home = () => {
 
                 {/* Nómina */}
                 <motion.div variants={itemUp} className={cardBase}>
-                    <h3 className="m-0 mb-4 text-base font-extrabold tracking-tight text-slate-900">Nómina <span className="font-medium text-slate-400">(mes actual)</span></h3>
+                    <h3 className="m-0 mb-3 text-sm font-extrabold tracking-tight text-slate-900 sm:mb-4 sm:text-base">Nómina <span className="font-medium text-slate-400">(mes actual)</span></h3>
                     <div className="divide-y divide-slate-100">
                         {nominaRows.map((r) => (
                             <div key={r.label} className="flex items-center justify-between gap-2 py-2.5">
