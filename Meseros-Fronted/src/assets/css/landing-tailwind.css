@@ -30,6 +30,7 @@ html.theme-transition :is(.admin-main, .ms-sidebar) * {
   &.bg-white\/90, & .bg-white\/90 { background-color: rgba(15,23,42,.90); }
   &.bg-slate-50, & .bg-slate-50 { background-color: #1e293b; }
   & .bg-slate-100 { background-color: #1e293b; }
+  & .bg-slate-200 { background-color: #334155; }
   & .bg-slate-50\/60, & .bg-slate-50\/60 { background-color: #182234; }
   & .hover\:bg-slate-50:hover { background-color: #1e293b; }
   & .hover\:bg-slate-50\/60:hover { background-color: #182234; }
@@ -52,6 +53,8 @@ html.theme-transition :is(.admin-main, .ms-sidebar) * {
   & .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
   &.ring-slate-100, & .ring-slate-100 { --tw-ring-color: #1e293b; }
   & .ring-slate-200 { --tw-ring-color: #334155; }
+  & .ring-slate-300 { --tw-ring-color: #475569; }
+  & .hover\:ring-slate-300:hover, &.hover\:ring-slate-300:hover { --tw-ring-color: #475569; }
   & .ring-black\/5 { --tw-ring-color: rgba(255,255,255,.06); }
   & .focus\:ring-orange-400:focus { --tw-ring-color: #fb923c; }
 
@@ -62,6 +65,8 @@ html.theme-transition :is(.admin-main, .ms-sidebar) * {
   & .bg-amber-50 { background-color: rgba(245,158,11,.15); }
   & .bg-red-50 { background-color: rgba(239,68,68,.15); }
   & .hover\:bg-orange-50:hover { background-color: rgba(249,115,22,.22); }
+  & .bg-orange-100 { background-color: rgba(249,115,22,.24); }
+  & .hover\:bg-orange-100:hover { background-color: rgba(249,115,22,.30); }
   & .hover\:bg-red-50:hover { background-color: rgba(239,68,68,.20); }
 
   & .text-orange-600 { color: #fb923c; }
