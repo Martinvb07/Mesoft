@@ -2,6 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './ErrorBoundary';
+/* Las utilidades de Tailwind y el modo oscuro se cargan aquí, en el bundle
+   inicial. Antes venían arrastradas por los componentes que las importaban;
+   con las rutas diferidas eso dejaría sin estilos a cualquier chunk que no
+   incluyera uno de esos 9 archivos. */
+import './assets/css/landing-tailwind.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { initTheme } from './lib/theme';
 

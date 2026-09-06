@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { imagenTransformada } from '../../../utils/imagen';
 import './MenuPublico.css';
 
 const formatCOP = (value) =>
@@ -174,10 +175,17 @@ function MenuPublico() {
                                 {(Array.isArray(cat.productos) ? cat.productos : []).map((prod) => (
                                     <div key={prod.id} className="menu-pub-card">
                                         {prod.imagen ? (
+                                            /* La miniatura se ve a 60px: se pide a Cloudinary a 120
+                                               (retina) en WebP/AVIF en vez del original del celular,
+                                               que puede pesar varios MB por plato. */
                                             <img
-                                                src={prod.imagen}
+                                                src={imagenTransformada(prod.imagen, { w: 120, h: 120 })}
                                                 alt={prod.nombre}
                                                 className="menu-pub-card-img"
+                                                width="60"
+                                                height="60"
+                                                loading="lazy"
+                                                decoding="async"
                                                 onError={e => { e.target.style.display='none'; e.target.nextSibling && (e.target.nextSibling.style.display='flex'); }}
                                             />
                                         ) : (

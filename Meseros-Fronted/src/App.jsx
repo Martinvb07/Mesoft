@@ -1,50 +1,57 @@
-import { BrowserRouter, Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSocket } from './hooks/useSocket';
-import ToastStack from './assets/components/ui/ToastStack';
-// Navbars
-import NavbarInicio from './assets/components/Inicio/NavbarInicio';
-import FooterInicio from './assets/components/Inicio/FooterInicio';
-import Sidebar from './assets/components/Menu-Admin/Sidebar';
-import NavbarMesero from './assets/components/Menu-Mesero/NavbarMesero';
-import BandejaListos from './assets/components/Menu-Mesero/BandejaListos';
-import SidebarCajero from './assets/components/Menu-Cajero/SidebarCajero';
-import Caja from './assets/components/Menu-Cajero/Caja';
-import SidebarCocina from './assets/components/Menu-Cocina/SidebarCocina';
-// Páginas públicas
-import Inicio from './assets/components/Inicio/Inicio';
-import Funciones from './assets/components/Inicio/Funciones/Funciones';
-import QuienesSomos from './assets/components/Inicio/QuienesSomos/QuienesSomos';
-import Solicitar from './assets/components/Inicio/Solicitar/Solicitar';
-import Login from './assets/components/Inicio/Sesion/Login';
-import MenuPublico from './assets/components/Public/MenuPublico';
-// Páginas por rol Admin
-import HomeAdmin from './assets/components/Menu-Admin/Home/Home';
-import MesasAdmin from './assets/components/Menu-Admin/Mesas/Mesas';
-import MeserosAdmin from './assets/components/Menu-Admin/Meseros/Meseros';
-import FinanzasAdmin from  './assets/components/Menu-Admin/Finanzas/FinanzasAdmin';
-import FinResumen from './assets/components/Menu-Admin/Finanzas/Resumen';
-import FinIngresos from './assets/components/Menu-Admin/Finanzas/Ingresos';
-import FinEgresos from './assets/components/Menu-Admin/Finanzas/Egresos';
-import FinReportes from './assets/components/Menu-Admin/Finanzas/Reportes';
-import FinCierreCaja from './assets/components/Menu-Admin/Finanzas/CierreCaja';
-import Configuracion from './assets/components/Menu-Admin/Configuracion/Configuracion';
-import Cocina from './assets/components/Cocina/Cocina';
-import AuditLog from './assets/components/Menu-Admin/Audit/AuditLog';
-import Categorias from './assets/components/Menu-Admin/Categorias/Categorias';
-import Clientes from './assets/components/Menu-Admin/Clientes/Clientes';
-import Onboarding, { isOnboardingDone, markOnboardingDone } from './assets/components/Onboarding/Onboarding';
-import Proveedores from './assets/components/Menu-Admin/Proveedores/Proveedores';
-import Horarios from './assets/components/Menu-Admin/Horarios/Horarios';
-// Páginas por rol Mesero
-import HomeMesero from './assets/components/Menu-Mesero/Home/Home';
-import MesasMesero from './assets/components/Menu-Mesero/Mesas/Mesas';
-import MeserosMesero from './assets/components/Menu-Mesero/Meseros/Meseros';
-import FinInventario from './assets/components/Menu-Admin/Finanzas/Inventario';
-import FinNominas from './assets/components/Menu-Admin/Finanzas/Nominas';
-import { api } from './api/client';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import RouteFallback from './assets/components/ui/RouteFallback';
 import { syncThemeForRoute } from './lib/theme';
 import './App.css';
+
+/* ── Carga diferida por ruta ──────────────────────────────────────────────
+   Todo va con React.lazy: quien entra a la landing ya no se descarga el
+   panel admin, el POS del mesero ni la caja. Cada pantalla pide su trozo de
+   JS (y su CSS) la primera vez que se visita, y queda cacheado después.
+   Solo el enrutador y el fallback viajan en el bundle inicial. */
+
+// Layouts
+const PublicLayout = lazy(() => import('./layouts/PublicLayout'));
+const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
+const CocineroLayout = lazy(() => import('./layouts/CocineroLayout'));
+const CajeroLayout = lazy(() => import('./layouts/CajeroLayout'));
+const MeseroLayout = lazy(() => import('./layouts/MeseroLayout'));
+
+// Páginas públicas
+const Inicio = lazy(() => import('./assets/components/Inicio/Inicio'));
+const Funciones = lazy(() => import('./assets/components/Inicio/Funciones/Funciones'));
+const QuienesSomos = lazy(() => import('./assets/components/Inicio/QuienesSomos/QuienesSomos'));
+const Solicitar = lazy(() => import('./assets/components/Inicio/Solicitar/Solicitar'));
+const Login = lazy(() => import('./assets/components/Inicio/Sesion/Login'));
+const MenuPublico = lazy(() => import('./assets/components/Public/MenuPublico'));
+
+// Admin
+const HomeAdmin = lazy(() => import('./assets/components/Menu-Admin/Home/Home'));
+const MesasAdmin = lazy(() => import('./assets/components/Menu-Admin/Mesas/Mesas'));
+const MeserosAdmin = lazy(() => import('./assets/components/Menu-Admin/Meseros/Meseros'));
+const FinanzasAdmin = lazy(() => import('./assets/components/Menu-Admin/Finanzas/FinanzasAdmin'));
+const FinResumen = lazy(() => import('./assets/components/Menu-Admin/Finanzas/Resumen'));
+const FinIngresos = lazy(() => import('./assets/components/Menu-Admin/Finanzas/Ingresos'));
+const FinEgresos = lazy(() => import('./assets/components/Menu-Admin/Finanzas/Egresos'));
+const FinReportes = lazy(() => import('./assets/components/Menu-Admin/Finanzas/Reportes'));
+const FinCierreCaja = lazy(() => import('./assets/components/Menu-Admin/Finanzas/CierreCaja'));
+const FinInventario = lazy(() => import('./assets/components/Menu-Admin/Finanzas/Inventario'));
+const FinNominas = lazy(() => import('./assets/components/Menu-Admin/Finanzas/Nominas'));
+const Configuracion = lazy(() => import('./assets/components/Menu-Admin/Configuracion/Configuracion'));
+const AuditLog = lazy(() => import('./assets/components/Menu-Admin/Audit/AuditLog'));
+const Categorias = lazy(() => import('./assets/components/Menu-Admin/Categorias/Categorias'));
+const Clientes = lazy(() => import('./assets/components/Menu-Admin/Clientes/Clientes'));
+const Proveedores = lazy(() => import('./assets/components/Menu-Admin/Proveedores/Proveedores'));
+const Horarios = lazy(() => import('./assets/components/Menu-Admin/Horarios/Horarios'));
+
+// Cocina y caja
+const Cocina = lazy(() => import('./assets/components/Cocina/Cocina'));
+const Caja = lazy(() => import('./assets/components/Menu-Cajero/Caja'));
+
+// Mesero
+const HomeMesero = lazy(() => import('./assets/components/Menu-Mesero/Home/Home'));
+const MesasMesero = lazy(() => import('./assets/components/Menu-Mesero/Mesas/Mesas'));
+const MeserosMesero = lazy(() => import('./assets/components/Menu-Mesero/Meseros/Meseros'));
 
 // Al cambiar de ruta, sube al inicio de la página (salvo cuando hay un ancla #seccion)
 function ScrollToTop() {
@@ -66,7 +73,7 @@ function getUserRol() {
         try {
             const raw = localStorage.getItem(k);
             if (raw) { const u = JSON.parse(raw); const rol = u?.rol || u?.role || u?.usuario?.rol || ''; if (rol) return rol; }
-        } catch {}
+        } catch { /* JSON inválido en localStorage: se ignora esa clave */ }
     }
     return '';
 }
@@ -79,266 +86,68 @@ function AdminGuard({ children }) {
     return children;
 }
 
-// Onboarding gate: show wizard on first login if no mesas exist
-function OnboardingGate({ children }) {
-    const [checked, setChecked] = useState(false);
-    const [showOnboarding, setShowOnboarding] = useState(false);
-
-    useEffect(() => {
-        if (isOnboardingDone()) { setChecked(true); return; }
-        api.getMesas().then(mesas => {
-            const count = Array.isArray(mesas) ? mesas.length : 0;
-            if (count === 0) setShowOnboarding(true);
-            else { markOnboardingDone(); }
-            setChecked(true);
-        }).catch(() => {
-            // Can't reach API — skip onboarding to not block the user
-            setChecked(true);
-        });
-    }, []);
-
-    if (!checked) return null;
-    if (showOnboarding) return <Onboarding onDone={() => setShowOnboarding(false)} />;
-    return children;
-}
-
 function App() {
-    const AdminLayout = () => {
-        const [collapsed, setCollapsed] = useState(() => {
-            try { return localStorage.getItem('admin_sidebar_collapsed') === '1'; } catch { return false; }
-        });
-
-        useEffect(() => {
-            try { localStorage.setItem('admin_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
-        }, [collapsed]);
-
-        return (
-            <>
-                <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
-                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
-                    <OnboardingGate>
-                        <Outlet />
-                    </OnboardingGate>
-                </div>
-            </>
-        );
-    };
-
-    const CocineroLayout = () => {
-        const [collapsed, setCollapsed] = useState(() => {
-            try { return localStorage.getItem('cocina_sidebar_collapsed') === '1'; } catch { return false; }
-        });
-        useEffect(() => {
-            try { localStorage.setItem('cocina_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
-        }, [collapsed]);
-
-        return (
-            <>
-                <SidebarCocina collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
-                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
-                    <Outlet />
-                </div>
-            </>
-        );
-    };
-
-    const CajeroLayout = () => {
-        const [collapsed, setCollapsed] = useState(() => {
-            try { return localStorage.getItem('cajero_sidebar_collapsed') === '1'; } catch { return false; }
-        });
-        useEffect(() => {
-            try { localStorage.setItem('cajero_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
-        }, [collapsed]);
-
-        return (
-            <>
-                <SidebarCajero collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
-                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
-                    <Outlet />
-                </div>
-            </>
-        );
-    };
-
-    const MeseroLayout = () => {
-        const [collapsed, setCollapsed] = useState(() => {
-            try { return localStorage.getItem('mesero_sidebar_collapsed') === '1'; } catch { return false; }
-        });
-        useEffect(() => {
-            try { localStorage.setItem('mesero_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
-        }, [collapsed]);
-
-        // Notificaciones en tiempo real (cocina marca "listo") en CUALQUIER
-        // pantalla del mesero, no solo en Mesas.
-        const [toasts, setToasts] = useState([]);
-        const miIdRef = useRef(null);
-        const restaurantId = (() => { try { return localStorage.getItem('restaurant_id'); } catch { return null; } })();
-
-        useEffect(() => {
-            let alive = true;
-            api.getMiMesero().then(me => { if (alive) miIdRef.current = me?.id ?? null; }).catch(() => {});
-            return () => { alive = false; };
-        }, []);
-
-        const [senalBandeja, setSenalBandeja] = useState(0);
-
-        const pushToast = useCallback((toast) => {
-            const id = Date.now() + Math.random();
-            setToasts(prev => [...prev.slice(-3), { id, ...toast }]);
-            // 20 s en vez de 6: el mesero rara vez está mirando la pantalla.
-            // Aunque se le pase, el plato queda en la bandeja de pendientes.
-            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 20000);
-        }, []);
-
-        /* Un pitido corto con Web Audio (sin archivos que cargar) y vibración:
-           el celular suele ir en el bolsillo. */
-        const avisar = useCallback(() => {
-            try {
-                const Ctx = window.AudioContext || window.webkitAudioContext;
-                if (Ctx) {
-                    const ctx = new Ctx();
-                    const osc = ctx.createOscillator();
-                    const vol = ctx.createGain();
-                    osc.connect(vol); vol.connect(ctx.destination);
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(880, ctx.currentTime);
-                    osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.12);
-                    vol.gain.setValueAtTime(0.001, ctx.currentTime);
-                    vol.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
-                    vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-                    osc.start(); osc.stop(ctx.currentTime + 0.36);
-                    setTimeout(() => ctx.close().catch(() => {}), 600);
-                }
-            } catch { /* el navegador puede bloquear el audio hasta el primer toque */ }
-            try { navigator.vibrate?.([180, 90, 180]); } catch { /* iOS no vibra */ }
-        }, []);
-
-        useSocket(restaurantId, useCallback((event, data) => {
-            if (event !== 'item_listo') return;
-            const myId = miIdRef.current;
-            // Solo notificar si el pedido es de este mesero (o no se sabe)
-            if (data?.mesero_id != null && myId != null && Number(data.mesero_id) !== Number(myId)) return;
-            const prod = `${data?.cantidad ? `${data.cantidad}× ` : ''}${data?.nombre || 'Pedido'}`;
-            const mesa = data?.mesa_numero ?? '';
-            pushToast({ tone: 'listo', title: '¡Pedido listo!', msg: `${prod}${mesa ? ` · Mesa ${mesa}` : ''}` });
-            avisar();
-            setSenalBandeja(n => n + 1);
-        }, [pushToast, avisar]));
-
-        return (
-            <>
-                <NavbarMesero collapsed={collapsed} onToggleCollapse={() => setCollapsed(v => !v)} />
-                <div className={`admin-main ${collapsed ? 'admin-main-collapsed' : ''}`}>
-                    <Outlet />
-                </div>
-                {/* Toasts globales del mesero (cocina → listo) */}
-                <ToastStack toasts={toasts} />
-                {/* Y lo que no alcanzó a ver, queda aquí hasta que lo recoja */}
-                <BandejaListos recargarSenal={senalBandeja} />
-            </>
-        );
-    };
-
     return (
         <BrowserRouter>
             <ScrollToTop />
-            <Routes>
-                {/* Ruta pública menú QR — sin navbar ni auth */}
-                <Route path="/menu/:restaurantId" element={<MenuPublico />} />
+            <Suspense fallback={<RouteFallback />}>
+                <Routes>
+                    {/* Ruta pública menú QR — sin navbar ni auth */}
+                    <Route path="/menu/:restaurantId" element={<MenuPublico />} />
 
-                {/* Rutas públicas con NavbarInicio */}
-                <Route path="/" element={
-                    <>
-                        <NavbarInicio />
-                        <div className="main-content">
-                            <Inicio />
-                        </div>
-                        <FooterInicio />
-                    </>
-                } />
-                <Route path="/funciones" element={
-                    <>
-                        <NavbarInicio />
-                        <div className="main-content">
-                            <Funciones />
-                        </div>
-                        <FooterInicio />
-                    </>
-                } />
-                <Route path="/quienes-somos" element={
-                    <>
-                        <NavbarInicio />
-                        <div className="main-content">
-                            <QuienesSomos />
-                        </div>
-                        <FooterInicio />
-                    </>
-                } />
-                <Route path="/solicitar" element={
-                    <>
-                        <NavbarInicio />
-                        <div className="main-content">
-                            <Solicitar />
-                        </div>
-                        <FooterInicio />
-                    </>
-                } />
-                <Route path="/login" element={
-                    <>
-                        <NavbarInicio />
-                        <div className="main-content">
-                            <Login />
-                        </div>
-                        <FooterInicio />
-                    </>
-                } />
+                    {/* Rutas públicas con NavbarInicio */}
+                    <Route element={<PublicLayout />}>
+                        <Route path="/" element={<Inicio />} />
+                        <Route path="/funciones" element={<Funciones />} />
+                        <Route path="/quienes-somos" element={<QuienesSomos />} />
+                        <Route path="/solicitar" element={<Solicitar />} />
+                        <Route path="/login" element={<Login />} />
+                    </Route>
 
-                {/* Rutas para admin con Sidebar */}
-                <Route path="/admin" element={<AdminLayout />}>
-                    <Route index element={<AdminGuard><HomeAdmin /></AdminGuard>} />
-                    <Route path="home" element={<AdminGuard><HomeAdmin /></AdminGuard>} />
-                    <Route path="mesas" element={<AdminGuard><MesasAdmin /></AdminGuard>} />
-                    <Route path="meseros" element={<AdminGuard><MeserosAdmin /></AdminGuard>} />
-                    <Route path="finanzas" element={<AdminGuard><FinanzasAdmin /></AdminGuard>} />
-                    <Route path="finanzas/resumen" element={<AdminGuard><FinResumen /></AdminGuard>} />
-                    <Route path="finanzas/ingresos" element={<AdminGuard><FinIngresos /></AdminGuard>} />
-                    <Route path="finanzas/egresos" element={<AdminGuard><FinEgresos /></AdminGuard>} />
-                    <Route path="finanzas/reportes" element={<AdminGuard><FinReportes /></AdminGuard>} />
-                    <Route path="finanzas/cierre" element={<AdminGuard><FinCierreCaja /></AdminGuard>} />
-                    <Route path="finanzas/inventario" element={<AdminGuard><FinInventario /></AdminGuard>} />
-                    <Route path="finanzas/nominas" element={<AdminGuard><FinNominas /></AdminGuard>} />
-                    <Route path="configuracion" element={<AdminGuard><Configuracion /></AdminGuard>} />
-                    <Route path="cocina" element={<Cocina />} />
-                    <Route path="auditoria" element={<AdminGuard><AuditLog /></AdminGuard>} />
-                    <Route path="categorias" element={<AdminGuard><Categorias /></AdminGuard>} />
-                    <Route path="clientes" element={<AdminGuard><Clientes /></AdminGuard>} />
-                    <Route path="proveedores" element={<AdminGuard><Proveedores /></AdminGuard>} />
-                    <Route path="horarios" element={<AdminGuard><Horarios /></AdminGuard>} />
-                </Route>
+                    {/* Rutas para admin con Sidebar */}
+                    <Route path="/admin" element={<AdminLayout />}>
+                        <Route index element={<AdminGuard><HomeAdmin /></AdminGuard>} />
+                        <Route path="home" element={<AdminGuard><HomeAdmin /></AdminGuard>} />
+                        <Route path="mesas" element={<AdminGuard><MesasAdmin /></AdminGuard>} />
+                        <Route path="meseros" element={<AdminGuard><MeserosAdmin /></AdminGuard>} />
+                        <Route path="finanzas" element={<AdminGuard><FinanzasAdmin /></AdminGuard>} />
+                        <Route path="finanzas/resumen" element={<AdminGuard><FinResumen /></AdminGuard>} />
+                        <Route path="finanzas/ingresos" element={<AdminGuard><FinIngresos /></AdminGuard>} />
+                        <Route path="finanzas/egresos" element={<AdminGuard><FinEgresos /></AdminGuard>} />
+                        <Route path="finanzas/reportes" element={<AdminGuard><FinReportes /></AdminGuard>} />
+                        <Route path="finanzas/cierre" element={<AdminGuard><FinCierreCaja /></AdminGuard>} />
+                        <Route path="finanzas/inventario" element={<AdminGuard><FinInventario /></AdminGuard>} />
+                        <Route path="finanzas/nominas" element={<AdminGuard><FinNominas /></AdminGuard>} />
+                        <Route path="configuracion" element={<AdminGuard><Configuracion /></AdminGuard>} />
+                        <Route path="cocina" element={<Cocina />} />
+                        <Route path="auditoria" element={<AdminGuard><AuditLog /></AdminGuard>} />
+                        <Route path="categorias" element={<AdminGuard><Categorias /></AdminGuard>} />
+                        <Route path="clientes" element={<AdminGuard><Clientes /></AdminGuard>} />
+                        <Route path="proveedores" element={<AdminGuard><Proveedores /></AdminGuard>} />
+                        <Route path="horarios" element={<AdminGuard><Horarios /></AdminGuard>} />
+                    </Route>
 
-                {/* Rutas para cocina con su propio Sidebar */}
-                <Route path="/cocinero" element={<CocineroLayout />}>
-                    <Route index element={<Cocina />} />
-                    <Route path="cocina" element={<Cocina />} />
-                </Route>
+                    {/* Rutas para cocina con su propio Sidebar */}
+                    <Route path="/cocinero" element={<CocineroLayout />}>
+                        <Route index element={<Cocina />} />
+                        <Route path="cocina" element={<Cocina />} />
+                    </Route>
 
-                {/* Rutas para cajero con su propio Sidebar */}
-                <Route path="/cajero" element={<CajeroLayout />}>
-                    <Route index element={<Caja />} />
-                    <Route path="caja" element={<Caja />} />
-                </Route>
+                    {/* Rutas para cajero con su propio Sidebar */}
+                    <Route path="/cajero" element={<CajeroLayout />}>
+                        <Route index element={<Caja />} />
+                        <Route path="caja" element={<Caja />} />
+                    </Route>
 
-                {/* Rutas para mesero con NavbarMesero */}
-                <Route path="/mesero" element={<MeseroLayout />}>
-                    <Route index element={<HomeMesero />} />
-                    <Route path="home" element={<HomeMesero />} />
-                    <Route path="mesas" element={<MesasMesero />} />
-                    <Route path="meseros" element={<MeserosMesero />} />
-                </Route>
-
-                {/* Otras rutas generales */}
-                {/* <Route path="/" element={<LandingPage />} /> */}
-            </Routes>
+                    {/* Rutas para mesero con NavbarMesero */}
+                    <Route path="/mesero" element={<MeseroLayout />}>
+                        <Route index element={<HomeMesero />} />
+                        <Route path="home" element={<HomeMesero />} />
+                        <Route path="mesas" element={<MesasMesero />} />
+                        <Route path="meseros" element={<MeserosMesero />} />
+                    </Route>
+                </Routes>
+            </Suspense>
         </BrowserRouter>
     );
 }

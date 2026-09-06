@@ -9,6 +9,7 @@ import {
 } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 import { logAudit } from '../../../../utils/audit';
+import { imagenTransformada } from '../../../../utils/imagen';
 import Select from '../../ui/Select';
 
 // Utilidades
@@ -473,7 +474,9 @@ const Inventario = () => {
                                         <tr key={p.id} className={`border-b border-slate-50 last:border-0 transition-colors hover:bg-slate-50/60 ${!p.activo ? 'opacity-60' : ''}`}>
                                             <td className="px-3 py-2.5">
                                                 {p.imagen ? (
-                                                    <img src={p.imagen} alt={p.nombre} className="h-9 w-9 rounded-lg object-cover ring-1 ring-slate-100" onError={e => { e.target.style.display = 'none'; }} />
+                                                    /* 36px en pantalla → se pide a 72 y no el original,
+                                                       que se descargaba entero por cada fila de la tabla. */
+                                                    <img src={imagenTransformada(p.imagen, { w: 72, h: 72 })} alt={p.nombre} width="36" height="36" loading="lazy" decoding="async" className="h-9 w-9 rounded-lg object-cover ring-1 ring-slate-100" onError={e => { e.target.style.display = 'none'; }} />
                                                 ) : (
                                                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">—</span>
                                                 )}
@@ -580,7 +583,7 @@ const Inventario = () => {
                             <label className={labelCls}>URL de imagen (opcional)</label>
                             <div className="flex items-center gap-2">
                                 <input type="url" className={inputCls} value={form.imagen} onChange={e => setForm(f => ({ ...f, imagen: e.target.value }))} placeholder="https://ejemplo.com/imagen.jpg" />
-                                {form.imagen && <img src={form.imagen} alt="preview" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-100" onError={e => { e.target.style.display = 'none'; }} />}
+                                {form.imagen && <img src={imagenTransformada(form.imagen, { w: 80, h: 80 })} alt="preview" width="40" height="40" decoding="async" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-100" onError={e => { e.target.style.display = 'none'; }} />}
                             </div>
                         </div>
                     </div>

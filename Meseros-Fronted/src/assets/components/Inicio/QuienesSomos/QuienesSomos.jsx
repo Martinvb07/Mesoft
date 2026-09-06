@@ -236,6 +236,8 @@ const QuienesSomos = () => {
                         <img
                             src="/logoLlanoStudio.png"
                             alt="Llano Studio — Diseño Web"
+                            loading="lazy"
+                            decoding="async"
                             className="w-full max-w-xs object-contain transition-transform duration-300 hover:scale-105"
                         />
                     </motion.a>

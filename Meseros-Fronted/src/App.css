@@ -166,3 +166,45 @@ body, html { margin: 0; padding: 0; }
 .read-the-docs {
   color: #888;
 }
+
+/* ── Fallback de las rutas diferidas (React.lazy + Suspense) ──────────────
+   Aparece con 300 ms de retraso para que un chunk ya cacheado no produzca
+   un parpadeo. En modo oscuro hereda el fondo del shell admin. */
+.route-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  min-height: 60vh;
+  opacity: 0;
+  animation: route-fallback-in 0.25s ease-out 0.3s forwards;
+}
+
+.route-fallback-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: 3px solid rgba(249, 115, 22, 0.18);
+  border-top-color: #f97316;
+  animation: route-fallback-spin 0.7s linear infinite;
+}
+
+.route-fallback-text {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #94a3b8;
+}
+
+@keyframes route-fallback-in {
+  to { opacity: 1; }
+}
+
+@keyframes route-fallback-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fallback-spinner { animation-duration: 2s; }
+}

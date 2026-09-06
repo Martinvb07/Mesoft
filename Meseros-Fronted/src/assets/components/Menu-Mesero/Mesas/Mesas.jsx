@@ -5,6 +5,7 @@ import {
     HiOutlineTableCells, HiOutlineUsers, HiOutlineCheckCircle, HiOutlineSparkles,
     HiOutlineMagnifyingGlass, HiOutlineUser, HiOutlineArrowPath, HiXMark,
     HiMinus, HiPlus, HiOutlinePaperAirplane, HiChevronLeft,
+    HiOutlineSquares2X2, HiOutlineMap,
 } from 'react-icons/hi2';
 import { api } from '../../../../api/client';
 import { useSocket } from '../../../../hooks/useSocket';
@@ -174,6 +175,89 @@ function TablaConsumos({ items, editable, total, onQuitar }) {
     );
 }
 
+
+/* ─── Vista "Plano del salón" ───────────────────────────────────────────
+   Cada mesa se dibuja en planta: el tablero al centro y las sillas repartidas
+   por los cuatro lados según la capacidad. El color viene del estado, igual
+   que los pills de la vista de tarjetas. */
+const PLANO_UI = {
+    libre: { mesa: '#10b981', silla: '#a7f3d0', sombra: 'rgba(16,185,129,.35)' },
+    ocupada: { mesa: '#f97316', silla: '#fed7aa', sombra: 'rgba(249,115,22,.35)' },
+    reservada: { mesa: '#0ea5e9', silla: '#bae6fd', sombra: 'rgba(14,165,233,.35)' },
+    limpieza: { mesa: '#f59e0b', silla: '#fde68a', sombra: 'rgba(245,158,11,.35)' },
+};
+const planoUI = (e) => PLANO_UI[e] || { mesa: '#cbd5e1', silla: '#e2e8f0', sombra: 'rgba(148,163,184,.35)' };
+
+/* Reparte n sillas por los lados en orden arriba/abajo/izquierda/derecha y las
+   separa de forma pareja a lo largo de cada lado. */
+const sillasDeCapacidad = (cap) => {
+    const n = Math.max(1, Math.min(Number(cap) || 4, 10));
+    const lados = ['top', 'bottom', 'left', 'right'];
+    const conteo = { top: 0, bottom: 0, left: 0, right: 0 };
+    for (let i = 0; i < n; i++) conteo[lados[i % 4]] += 1;
+    const out = [];
+    for (const lado of lados) {
+        for (let i = 0; i < conteo[lado]; i++) out.push({ lado, p: ((i + 1) / (conteo[lado] + 1)) * 100 });
+    }
+    return out;
+};
+
+const estiloSilla = ({ lado, p }) => {
+    const base = { position: 'absolute', borderRadius: '999px', transition: 'background-color .25s' };
+    const largo = '26%', grosor = '10%';
+    if (lado === 'top') return { ...base, width: largo, height: grosor, left: `${p}%`, top: '2%', transform: 'translateX(-50%)' };
+    if (lado === 'bottom') return { ...base, width: largo, height: grosor, left: `${p}%`, bottom: '2%', transform: 'translateX(-50%)' };
+    if (lado === 'left') return { ...base, width: grosor, height: largo, top: `${p}%`, left: '2%', transform: 'translateY(-50%)' };
+    return { ...base, width: grosor, height: largo, top: `${p}%`, right: '2%', transform: 'translateY(-50%)' };
+};
+
+function MesaPlano({ mesa, seleccionada, esMia, onClick }) {
+    const c = planoUI(mesa.estado);
+    const colorMesa = seleccionada ? '#0f172a' : c.mesa;
+    const colorSilla = seleccionada ? c.mesa : c.silla;
+    return (
+        <motion.button
+            variants={itemUp}
+            type="button"
+            onClick={onClick}
+            aria-pressed={seleccionada}
+            title={`Mesa ${mesa.numero} · ${estadoUI(mesa.estado).label} · ${mesa.capacidad} personas`}
+            className="group relative aspect-square w-full rounded-2xl outline-none transition-transform duration-200 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-orange-400"
+        >
+            <span
+                className="absolute inset-0 rounded-2xl transition-all duration-200 group-hover:bg-slate-50"
+                style={seleccionada ? { backgroundColor: 'rgba(249,115,22,.10)', boxShadow: '0 0 0 2px #f97316' } : undefined}
+            />
+            {sillasDeCapacidad(mesa.capacidad).map((s, i) => (
+                <span key={i} style={{ ...estiloSilla(s), backgroundColor: colorSilla }} />
+            ))}
+            <span
+                className="absolute inset-[19%] flex items-center justify-center rounded-[28%] text-sm font-extrabold transition-all duration-200 sm:text-base"
+                style={{ backgroundColor: colorMesa, color: textoSobre(colorMesa), boxShadow: `0 6px 16px ${c.sombra}` }}
+            >
+                {mesa.numero}
+            </span>
+            {esMia && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-900 ring-2 ring-white" />}
+            {mesa.pedidoEstado === 'por_cobrar' && (
+                <span className="absolute left-1 top-1 rounded-full bg-sky-500 px-1.5 py-px text-[9px] font-bold leading-4 text-white">Caja</span>
+            )}
+        </motion.button>
+    );
+}
+
+function LeyendaPlano() {
+    return (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {['libre', 'ocupada', 'reservada', 'limpieza'].map(e => (
+                <span key={e} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                    <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: planoUI(e).mesa }} />
+                    {estadoUI(e).label}
+                </span>
+            ))}
+        </div>
+    );
+}
+
 const Mesas = () => {
     const [mesas, setMesas] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -189,6 +273,11 @@ const Mesas = () => {
     const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: 1, precio: 0 });
     const [notaItem, setNotaItem] = useState('');
     const [toasts, setToasts] = useState([]);
+    const [vista, setVista] = useState(() => {
+        try { return localStorage.getItem('ms_mesas_vista') === 'plano' ? 'plano' : 'tarjetas'; } catch { return 'tarjetas'; }
+    });
+    const [mesaPlanoSel, setMesaPlanoSel] = useState(null);
+    useEffect(() => { try { localStorage.setItem('ms_mesas_vista', vista); } catch { /* sin localStorage */ } }, [vista]);
 
     const restaurantId = (() => { try { return localStorage.getItem('restaurant_id') || null; } catch { return null; } })();
 
@@ -404,6 +493,24 @@ const Mesas = () => {
             .sort((a, b) => a.numero - b.numero);
     }, [mesas, busqueda, filtroEstado, filtroCapacidad]);
 
+    /* Qué puede hacer el mesero con una mesa; lo usan la tarjeta y el panel del plano. */
+    const permisosMesa = useCallback((m) => {
+        const esMiMesa = !!m && m.meseroId === miId;
+        return {
+            esMiMesa,
+            asignar: !!m && m.estado === 'libre',
+            pedido: esMiMesa && m.estado === 'ocupada',
+            liberar: esMiMesa && m.estado === 'ocupada',
+            limpieza: !!m && (m.estado === 'libre' || (esMiMesa && m.estado === 'ocupada')),
+            finalizar: !!m && m.estado === 'limpieza',
+        };
+    }, [miId]);
+
+    const mesaSelPlano = useMemo(
+        () => mesasFiltradas.find(m => m.id === mesaPlanoSel) || null,
+        [mesasFiltradas, mesaPlanoSel],
+    );
+
     const total = mesas.length;
     const libres = mesas.filter(m => m.estado === 'libre').length;
     const ocupadas = mesas.filter(m => m.estado === 'ocupada').length;
@@ -456,6 +563,21 @@ const Mesas = () => {
                     <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por número…" className="w-full rounded-xl border-0 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-orange-400" />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="Cambiar vista">
+                        {[
+                            { id: 'tarjetas', label: 'Tarjetas', icon: HiOutlineSquares2X2 },
+                            { id: 'plano', label: 'Plano', icon: HiOutlineMap },
+                        ].map(v => (
+                            <button
+                                key={v.id}
+                                onClick={() => setVista(v.id)}
+                                aria-pressed={vista === v.id}
+                                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${vista === v.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                <v.icon className="h-4 w-4" /> {v.label}
+                            </button>
+                        ))}
+                    </div>
                     <Select className="min-w-[150px]" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} aria-label="Filtrar por estado">
                         <option value="todos">Todos los estados</option>
                         <option value="libre">Libres</option>
@@ -471,7 +593,7 @@ const Mesas = () => {
                 </div>
             </motion.div>
 
-            {/* Grid de mesas */}
+            {/* Mesas: vista plano o vista tarjetas */}
             {mesasFiltradas.length === 0 ? (
                 <div className={`mt-5 ${cardBase}`}>
                     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
@@ -479,6 +601,76 @@ const Mesas = () => {
                         <p className="m-0 text-sm text-slate-400">No hay mesas disponibles.</p>
                     </div>
                 </div>
+            ) : vista === 'plano' ? (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className={`mt-4 ${cardBase} sm:mt-5`}
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="m-0 text-xs font-bold uppercase tracking-wider text-slate-400">Plano del salón</p>
+                            <LeyendaPlano />
+                        </div>
+                        <motion.div
+                            variants={gridStagger}
+                            initial="hidden"
+                            animate="visible"
+                            className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5 xl:grid-cols-6"
+                        >
+                            {mesasFiltradas.map(m => (
+                                <MesaPlano
+                                    key={m.id}
+                                    mesa={m}
+                                    esMia={m.meseroId === miId}
+                                    seleccionada={m.id === mesaPlanoSel}
+                                    onClick={() => setMesaPlanoSel(prev => (prev === m.id ? null : m.id))}
+                                />
+                            ))}
+                        </motion.div>
+                    </motion.div>
+
+                    {/* Panel de acciones de la mesa seleccionada */}
+                    {mesaSelPlano && (() => {
+                        const ui = estadoUI(mesaSelPlano.estado);
+                        const p = permisosMesa(mesaSelPlano);
+                        return (
+                            <motion.div
+                                key={mesaSelPlano.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.25, ease: 'easeOut' }}
+                                className={`mt-3 ${cardBase} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.icon}`}>
+                                        <HiOutlineTableCells className="h-5 w-5" />
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="m-0 text-base font-extrabold tracking-tight text-slate-900">Mesa {mesaSelPlano.numero}</p>
+                                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${ui.pill}`}>
+                                                <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} /> {ui.label}
+                                            </span>
+                                            <span className="text-[11px] font-semibold text-slate-400">Capacidad {mesaSelPlano.capacidad}</span>
+                                            {mesaSelPlano.meseroNombre && (
+                                                <span className="truncate text-[11px] font-semibold text-slate-400">· {mesaSelPlano.meseroNombre}</span>
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-stretch gap-2">
+                                    {p.asignar && <button className={actPrimary} onClick={() => handleAsignar(mesaSelPlano)}>Asignar</button>}
+                                    <button className={p.pedido ? actPrimary : actSecondary} onClick={() => abrirPedido(mesaSelPlano)}>Pedido</button>
+                                    {p.liberar && <button className={actSecondary} onClick={() => handleLiberar(mesaSelPlano)}>Liberar</button>}
+                                    {p.limpieza && <button className={actSecondary} onClick={() => handleLimpieza(mesaSelPlano)}>Limpieza</button>}
+                                    {p.finalizar && <button className={actPrimary} onClick={() => handleLimpiezaDone(mesaSelPlano)}>Finalizar</button>}
+                                </div>
+                            </motion.div>
+                        );
+                    })()}
+                </>
             ) : (
                 <motion.div
                     variants={gridStagger}

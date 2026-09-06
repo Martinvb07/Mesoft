@@ -258,7 +258,7 @@ export default function Categorias() {
                                     </div>
 
                                     {c.imagen ? (
-                                        <img src={imagenTransformada(c.imagen, { w: 120, h: 120, modo: 'fit', recortarBorde: true })} alt="" style={{ backgroundColor: '#ffffff' }} className={`h-9 w-9 shrink-0 rounded-lg object-contain ring-1 ring-slate-200 ${oculta ? 'opacity-40' : ''}`} />
+                                        <img src={imagenTransformada(c.imagen, { w: 120, h: 120, modo: 'fit', recortarBorde: true })} alt="" width="36" height="36" loading="lazy" decoding="async" style={{ backgroundColor: '#ffffff' }} className={`h-9 w-9 shrink-0 rounded-lg object-contain ring-1 ring-slate-200 ${oculta ? 'opacity-40' : ''}`} />
                                     ) : (
                                         <span style={{ backgroundColor: ui.hex }} className={`h-2.5 w-2.5 shrink-0 rounded-full ${oculta ? 'opacity-40' : ''}`} />
                                     )}
