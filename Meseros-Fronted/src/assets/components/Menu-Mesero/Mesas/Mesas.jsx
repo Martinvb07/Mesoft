@@ -40,6 +40,11 @@ const inputCls = 'w-full rounded-xl border-0 bg-slate-50 px-3.5 py-2.5 text-sm t
 const actPrimary = 'min-w-[4.75rem] flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-gradient-to-b from-orange-500 to-orange-600 px-2.5 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/30 transition-all hover:-translate-y-0.5 hover:shadow-md';
 const actSecondary = 'min-w-[4.75rem] flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200';
 
+/* Variantes tactiles de los botones de accion: en el modal movil ocupan todo
+   el ancho y tienen mas area para el dedo. */
+const actPrimaryLg = 'w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-orange-500 to-orange-600 px-3 py-3 text-sm font-bold text-white shadow-sm shadow-orange-500/30 transition-transform active:scale-[.98]';
+const actSecondaryLg = 'w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-3 py-3 text-sm font-bold text-slate-600 transition-transform active:scale-[.98]';
+
 const gridStagger = { hidden: {}, visible: { transition: { staggerChildren: 0.04 } } };
 const itemUp = {
     hidden: { opacity: 0, y: 16 },
@@ -68,14 +73,35 @@ function MetricCard({ icon: Icon, value, label }) {
     );
 }
 
-function Modal({ title, onClose, children, footer, maxW = 'max-w-lg' }) {
+function Modal({ title, onClose, children, footer, maxW = 'max-w-lg', cerrarFuera = false }) {
+    /* Con el modal abierto el fondo no debe scrollear: en movil se sentia como
+       si la pantalla se moviera bajo el dialogo. */
+    const cerrarRef = useRef(onClose);
+    cerrarRef.current = onClose;
+    useEffect(() => {
+        const previo = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const onKey = (e) => { if (e.key === 'Escape') cerrarRef.current(); };
+        window.addEventListener('keydown', onKey);
+        return () => {
+            document.body.style.overflow = previo;
+            window.removeEventListener('keydown', onKey);
+        };
+    }, []);
+
     return (
-        <div className="fixed inset-0 z-[1000] grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+        <div
+            className="fixed inset-0 z-[1000] grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            onClick={cerrarFuera ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}
+        >
             <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className={`ms-mesas-mesero flex max-h-[90vh] w-full ${maxW} flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100`}
+                onClick={(e) => e.stopPropagation()}
+                className={`ms-mesas-mesero flex max-h-[88vh] w-full ${maxW} flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100`}
             >
                 <style>{`:where(.ms-mesas-mesero) button{-webkit-appearance:none;appearance:none;border:0;background-color:transparent;cursor:pointer;font:inherit;color:inherit;}`}</style>
                 <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -258,6 +284,69 @@ function LeyendaPlano() {
     );
 }
 
+/* En pantallas chicas el detalle de la mesa se muestra como modal centrado en
+   vez del panel bajo el plano, que quedaba fuera de vista al tocar la mesa. */
+const useEsMovil = (consulta = '(max-width: 639px)') => {
+    const [esMovil, setEsMovil] = useState(() => (
+        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+            ? window.matchMedia(consulta).matches
+            : false
+    ));
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+        const mq = window.matchMedia(consulta);
+        const onChange = (e) => setEsMovil(e.matches);
+        setEsMovil(mq.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, [consulta]);
+    return esMovil;
+};
+
+/* Cabecera y acciones del detalle: las comparten el panel de escritorio y el
+   modal movil para que no haya dos listas de botones que mantener. */
+function ResumenMesa({ mesa, grande }) {
+    const ui = estadoUI(mesa.estado);
+    return (
+        <div className="flex items-center gap-3">
+            <span className={`flex shrink-0 items-center justify-center rounded-xl ${ui.icon} ${grande ? 'h-12 w-12' : 'h-11 w-11'}`}>
+                <HiOutlineTableCells className={grande ? 'h-6 w-6' : 'h-5 w-5'} />
+            </span>
+            <div className="min-w-0">
+                <p className={`m-0 font-extrabold tracking-tight text-slate-900 ${grande ? 'text-lg' : 'text-base'}`}>Mesa {mesa.numero}</p>
+                <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${ui.pill}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} /> {ui.label}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-400">Capacidad {mesa.capacidad}</span>
+                    {mesa.meseroNombre && (
+                        <span className="truncate text-[11px] font-semibold text-slate-400">· {mesa.meseroNombre}</span>
+                    )}
+                    {mesa.pedidoEstado === 'por_cobrar' && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700 ring-1 ring-sky-200">
+                            Cuenta en caja
+                        </span>
+                    )}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function AccionesMesa({ mesa, permisos, apilado, onAsignar, onPedido, onLiberar, onLimpieza, onFinalizar }) {
+    const primario = apilado ? actPrimaryLg : actPrimary;
+    const secundario = apilado ? actSecondaryLg : actSecondary;
+    return (
+        <div className={apilado ? 'grid gap-2' : 'flex flex-wrap items-stretch gap-2'}>
+            {permisos.asignar && <button className={primario} onClick={() => onAsignar(mesa)}>Asignar</button>}
+            <button className={permisos.pedido ? primario : secundario} onClick={() => onPedido(mesa)}>Pedido</button>
+            {permisos.liberar && <button className={secundario} onClick={() => onLiberar(mesa)}>Liberar</button>}
+            {permisos.limpieza && <button className={secundario} onClick={() => onLimpieza(mesa)}>Limpieza</button>}
+            {permisos.finalizar && <button className={primario} onClick={() => onFinalizar(mesa)}>Finalizar</button>}
+        </div>
+    );
+}
+
 const Mesas = () => {
     const [mesas, setMesas] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -277,6 +366,7 @@ const Mesas = () => {
         try { return localStorage.getItem('ms_mesas_vista') === 'plano' ? 'plano' : 'tarjetas'; } catch { return 'tarjetas'; }
     });
     const [mesaPlanoSel, setMesaPlanoSel] = useState(null);
+    const esMovil = useEsMovil();
     useEffect(() => { try { localStorage.setItem('ms_mesas_vista', vista); } catch { /* sin localStorage */ } }, [vista]);
 
     const restaurantId = (() => { try { return localStorage.getItem('restaurant_id') || null; } catch { return null; } })();
@@ -631,45 +721,27 @@ const Mesas = () => {
                         </motion.div>
                     </motion.div>
 
-                    {/* Panel de acciones de la mesa seleccionada */}
-                    {mesaSelPlano && (() => {
-                        const ui = estadoUI(mesaSelPlano.estado);
-                        const p = permisosMesa(mesaSelPlano);
-                        return (
-                            <motion.div
-                                key={mesaSelPlano.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.25, ease: 'easeOut' }}
-                                className={`mt-3 ${cardBase} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.icon}`}>
-                                        <HiOutlineTableCells className="h-5 w-5" />
-                                    </span>
-                                    <div className="min-w-0">
-                                        <p className="m-0 text-base font-extrabold tracking-tight text-slate-900">Mesa {mesaSelPlano.numero}</p>
-                                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${ui.pill}`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} /> {ui.label}
-                                            </span>
-                                            <span className="text-[11px] font-semibold text-slate-400">Capacidad {mesaSelPlano.capacidad}</span>
-                                            {mesaSelPlano.meseroNombre && (
-                                                <span className="truncate text-[11px] font-semibold text-slate-400">· {mesaSelPlano.meseroNombre}</span>
-                                            )}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap items-stretch gap-2">
-                                    {p.asignar && <button className={actPrimary} onClick={() => handleAsignar(mesaSelPlano)}>Asignar</button>}
-                                    <button className={p.pedido ? actPrimary : actSecondary} onClick={() => abrirPedido(mesaSelPlano)}>Pedido</button>
-                                    {p.liberar && <button className={actSecondary} onClick={() => handleLiberar(mesaSelPlano)}>Liberar</button>}
-                                    {p.limpieza && <button className={actSecondary} onClick={() => handleLimpieza(mesaSelPlano)}>Limpieza</button>}
-                                    {p.finalizar && <button className={actPrimary} onClick={() => handleLimpiezaDone(mesaSelPlano)}>Finalizar</button>}
-                                </div>
-                            </motion.div>
-                        );
-                    })()}
+                    {/* Detalle de la mesa: panel bajo el plano en escritorio, modal en movil */}
+                    {mesaSelPlano && !esMovil && (
+                        <motion.div
+                            key={mesaSelPlano.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
+                            className={`mt-3 ${cardBase} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}
+                        >
+                            <ResumenMesa mesa={mesaSelPlano} />
+                            <AccionesMesa
+                                mesa={mesaSelPlano}
+                                permisos={permisosMesa(mesaSelPlano)}
+                                onAsignar={handleAsignar}
+                                onPedido={abrirPedido}
+                                onLiberar={handleLiberar}
+                                onLimpieza={handleLimpieza}
+                                onFinalizar={handleLimpiezaDone}
+                            />
+                        </motion.div>
+                    )}
                 </>
             ) : (
                 <motion.div
@@ -730,6 +802,30 @@ const Mesas = () => {
                         );
                     })}
                 </motion.div>
+            )}
+
+            {/* Detalle de mesa en movil: modal centrado con las acciones */}
+            {esMovil && vista === 'plano' && mesaSelPlano && !modalMesa && !pedidoModal.mesa && (
+                <Modal
+                    title={`Mesa ${mesaSelPlano.numero}`}
+                    onClose={() => setMesaPlanoSel(null)}
+                    maxW="max-w-sm"
+                    cerrarFuera
+                >
+                    <ResumenMesa mesa={mesaSelPlano} grande />
+                    <div className="mt-4 border-t border-slate-100 pt-4">
+                        <AccionesMesa
+                            mesa={mesaSelPlano}
+                            permisos={permisosMesa(mesaSelPlano)}
+                            apilado
+                            onAsignar={handleAsignar}
+                            onPedido={abrirPedido}
+                            onLiberar={handleLiberar}
+                            onLimpieza={handleLimpieza}
+                            onFinalizar={handleLimpiezaDone}
+                        />
+                    </div>
+                </Modal>
             )}
 
             {/* Modal acción de mesa */}
